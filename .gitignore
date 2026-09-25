@@ -24,3 +24,10 @@ projects/*
 testbench/static/vendor/
 .cache/
 backups/
+
+# Agent tooling and local coverage output. Skills are installed per developer, so they do not
+# belong to the project's history; .claude/settings.json can be un-ignored below if the team
+# ever wants to share permissions.
+.claude/
+.coverage
+skills-lock.json
