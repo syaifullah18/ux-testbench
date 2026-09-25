@@ -102,6 +102,7 @@ runner:
   out_of_order: This task was already submitted or is not next.
   ease_required: Choose how easy the task was.
 admin:
+  results: Results
   badge: Admin
   login_title: Admin access
   all_projects: All projects
@@ -194,3 +195,87 @@ admin:
   grade_fail: Failed
   observer_note: Observer note
   not_done: Not done yet.
+studio:
+  tab: Studio
+  title: Studio
+  editable: editable
+  read_only: read-only
+  read_only_hint: "This project is loaded from {dir}, outside the Studio folder, so it is read-only here. Duplicate it to edit a copy."
+  duplicate: Duplicate into Studio
+  new_slug: New URL name
+  export: Export .zip
+  created: Project created. Set its passcodes, then add or edit modules.
+  settings: Settings and access
+  settings_hint: Name, language, login mode, consent text, colours and module order live in project.yaml. Passcodes are set here and stored hashed; an environment variable, when set, takes precedence.
+  passcode_participant: Participant passcode
+  passcode_admin: Admin passcode
+  pc_env: "Set by the {env} environment variable."
+  pc_set: Set in the Studio.
+  pc_unset: Not set.
+  pc_open: Not needed while access is open.
+  pc_new: New passcode (min. 6 characters)
+  pc_clear: Remove this passcode
+  pc_save: Save passcodes
+  passcodes_saved: Passcodes updated.
+  passcode_short: Passcodes need at least 6 characters.
+  edit: Edit
+  view: View
+  order_hint: Change the order or the home-screen list in project.yaml.
+  module_id: Module id
+  add_module: Add module
+  bad_module_id: Module ids use lowercase letters, digits, '-' and '_'.
+  module_exists: "A module named '{id}' already exists."
+  module_deleted: "Module '{id}' removed. Its file is kept in history and its collected data stays in the database."
+  module_delete_confirm: "Remove module {id}? {n} participants have started it. Collected data is kept."
+  prototypes: Prototypes
+  prototypes_hint: Static HTML pages used by A/B tests, with their CSS, scripts and images. Reference them from a module as prototypes/<path>.
+  no_files: No files yet.
+  upload_files: Files or a .zip
+  upload_folder: Or a whole folder
+  target_folder: Put them in
+  extract_zip: Extract .zip files
+  upload_rules: Web files only (html, css, js, images, fonts, video, pdf). Existing files with the same path are replaced.
+  upload: Upload
+  uploaded: "{n} file(s) uploaded."
+  skipped: "Skipped (type not allowed): {files}"
+  file_in_use: "{file} is used by a module. Point the module elsewhere first."
+  file_deleted: "{file} deleted."
+  file_delete_confirm: "Delete {file}?"
+  history: Recent versions
+  history_hint: Every save keeps the previous version. Open one to review it, then save to restore it.
+  delete_project: Delete project
+  delete_project_hint: Removes the project folder. Tick the box to also delete its participants, answers and passcodes permanently.
+  type_slug: "Type {slug} to confirm"
+  with_data: Also delete collected data
+  confirm_mismatch: The confirmation did not match the project name; nothing was deleted.
+  saved_live: Saved. The change is live.
+  valid_not_saved: No problems found. Not saved yet.
+  restored: This is an older version. Save to restore it.
+  not_saved: Not saved. Fix these problems first.
+  live_warning: "{n} participants have started this module. Wording changes are safe; renaming or removing ids separates earlier answers from the new ones."
+  save: Save
+  check: Check
+  save_hint: Saving validates the whole project first.
+  files: Files
+  cheatsheet: Question syntax
+  docs_hint: Full reference in docs/configuration.md of the repository.
+  new_project: New project
+  new_project_hint: "Stored in {dir}, which is not part of the git repository."
+  slug: URL name
+  slug_hint: Lowercase letters, digits and hyphens. The project opens at /<name>/.
+  name: Display name
+  start_from: Start from
+  blank: Blank project
+  copy_of: "Copy of {name}"
+  language: Language
+  login: Login
+  access: Access
+  create: Create project
+  import: Import project
+  import_hint: Upload a .zip exported from another Testbench, or any zip with project.yaml at its root.
+  zip_file: Project .zip
+  slug_from_zip: taken from the file name
+  no_file: Choose a file to upload.
+  no_project_yaml: The zip has no project.yaml at its root.
+  bad_slug: "URL names use lowercase letters, digits and hyphens, and cannot be admin, api, health or static."
+  slug_taken: "A project named '{slug}' already exists."

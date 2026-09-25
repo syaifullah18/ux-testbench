@@ -1,0 +1,158 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ t('studio.tab') }}{% endblock %}
+{% block content %}
+{% set card = 'border border-slate-200 rounded-xl p-5 mb-6' %}
+{% set btn = 'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] font-semibold' %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">{{ t('studio.title') }}</h1>
+        <p class="text-[14px] text-slate-500">{{ project.name }} · /{{ project.slug }}/ ·
+            {% if project.editable %}<span class="text-emerald-700 font-semibold">{{ t('studio.editable') }}</span>{% else %}<span class="text-amber-700 font-semibold">{{ t('studio.read_only') }}</span>{% endif %}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{{ url_for('web.home', slug=project.slug) }}" target="_blank" class="{{ btn }} border border-slate-300 hover:bg-slate-50"><i class="fa-solid fa-arrow-up-right-from-square"></i>{{ t('admin.participant_view') }}</a>
+        <a href="{{ url_for('studio.export_zip', slug=project.slug) }}" class="{{ btn }} border border-slate-300 hover:bg-slate-50"><i class="fa-solid fa-file-zipper"></i>{{ t('studio.export') }}</a>
+    </div>
+</div>
+
+{% if created %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('studio.created') }}</div>{% endif %}
+{% if notice %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ notice }}</div>{% endif %}
+{% if error %}<div class="p-3 mb-5 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]" role="alert">{{ error }}</div>{% endif %}
+{% if not project.editable %}
+<div class="p-4 mb-6 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[14px]">
+    {{ t('studio.read_only_hint', dir=project.dir) }}
+    {% if is_super %}
+    <form method="post" action="{{ url_for('studio.new_project') }}" class="mt-3 flex flex-wrap gap-2 items-end">
+        <input type="hidden" name="source" value="{{ project.slug }}">
+        <div><label class="block text-[12px] mb-1" for="dup-slug">{{ t('studio.new_slug') }}</label>
+            <input id="dup-slug" name="slug" required pattern="[a-z0-9][a-z0-9-]*" placeholder="{{ project.slug }}-copy" class="border border-slate-400 rounded-lg px-3 py-1.5 text-[14px] bg-white"></div>
+        <button class="{{ btn }} bg-brand text-white hover:bg-brand/90"><i class="fa-solid fa-copy"></i>{{ t('studio.duplicate') }}</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+{# ------------------------------------------------ settings and passcodes #}
+<section class="{{ card }}">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h2 class="text-lg font-bold text-slate-900">{{ t('studio.settings') }}</h2>
+        <a href="{{ url_for('studio.edit', slug=project.slug, file='project.yaml') }}" class="{{ btn }} border border-slate-300 hover:bg-slate-50"><i class="fa-solid fa-pen"></i>project.yaml</a>
+    </div>
+    <p class="text-[14px] text-slate-600 mb-4">{{ t('studio.settings_hint') }}</p>
+    <form method="post" action="{{ url_for('studio.set_passcodes', slug=project.slug) }}" class="grid sm:grid-cols-2 gap-4">
+        {% for kind in ('participant', 'admin') %}
+        <div class="border border-slate-200 rounded-lg p-4">
+            <label for="pc-{{ kind }}" class="block font-semibold text-slate-900 text-[14px]">{{ t('studio.passcode_' ~ kind) }}</label>
+            <p class="text-[12px] mb-2 {% if pc[kind] %}text-emerald-700{% else %}text-red-700{% endif %}">
+                {% if pc[kind] == 'env' %}{{ t('studio.pc_env', env=(env_prefix ~ ('_PASSCODE' if kind == 'participant' else '_ADMIN_PASSCODE'))) }}
+                {% elif pc[kind] == 'studio' %}{{ t('studio.pc_set') }}
+                {% else %}{{ t('studio.pc_unset') }}{% if kind == 'participant' and project.access == 'open' %} {{ t('studio.pc_open') }}{% endif %}{% endif %}</p>
+            <input id="pc-{{ kind }}" type="password" name="{{ kind }}" autocomplete="new-password" minlength="6" placeholder="{{ t('studio.pc_new') }}" {% if pc[kind] == 'env' %}disabled{% endif %}
+                   class="w-full border border-slate-400 rounded-lg px-3 py-2 text-[14px]">
+            {% if pc[kind] == 'studio' %}<label class="mt-2 flex items-center gap-2 text-[13px]"><input type="checkbox" name="clear_{{ kind }}" value="1" class="rounded">{{ t('studio.pc_clear') }}</label>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="sm:col-span-2"><button class="{{ btn }} bg-brand text-white hover:bg-brand/90"><i class="fa-solid fa-key"></i>{{ t('studio.pc_save') }}</button></div>
+    </form>
+</section>
+
+{# ------------------------------------------------ modules #}
+<section class="{{ card }}">
+    <h2 class="text-lg font-bold text-slate-900 mb-4">{{ t('admin.modules')|capitalize }}</h2>
+    <div class="overflow-x-auto mb-4">
+        <table class="w-full text-[14px]">
+            <thead><tr class="border-b border-slate-200 text-left text-slate-500">
+                <th class="py-2 pr-3 font-semibold">#</th><th class="py-2 px-3 font-semibold">{{ t('admin.module') }}</th><th class="py-2 px-3 font-semibold">{{ t('admin.type') }}</th>
+                <th class="py-2 px-3 font-semibold">{{ t('admin.started') }}</th><th></th></tr></thead>
+            <tbody>
+            {% for m in project.modules.values() %}
+            <tr class="border-b border-slate-200 last:border-0">
+                <td class="py-2 pr-3 text-slate-500">{{ loop.index }}</td>
+                <td class="py-2 px-3"><span class="font-semibold text-slate-900">{{ m.title }}</span> <span class="text-slate-400 text-[12px]">{{ m.id }}</span></td>
+                <td class="py-2 px-3 text-slate-500">{{ m.type }}</td>
+                <td class="py-2 px-3">{{ started.get(m.id, 0) }}</td>
+                <td class="py-2 pl-3 text-right whitespace-nowrap">
+                    <a class="text-brand hover:underline" href="{{ url_for('studio.edit', slug=project.slug, file='modules/' ~ m.id ~ '.yaml') }}">{{ t('studio.edit') if project.editable else t('studio.view') }}</a>
+                    {% if project.editable %}
+                    <form method="post" action="{{ url_for('studio.module_delete', slug=project.slug, mid=m.id) }}" class="inline ml-3" onsubmit="return confirm({{ t('studio.module_delete_confirm', id=m.id, n=started.get(m.id, 0))|tojson }})">
+                        <button class="text-red-700 hover:underline">{{ t('admin.delete') }}</button></form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-[13px] text-slate-500 mb-3">{{ t('studio.order_hint') }}</p>
+    {% if project.editable %}
+    <form method="post" action="{{ url_for('studio.module_new', slug=project.slug) }}" class="flex flex-wrap gap-2 items-end">
+        <div><label class="block text-[12px] text-slate-500 mb-1" for="m-id">{{ t('studio.module_id') }}</label>
+            <input id="m-id" name="id" required pattern="[a-z0-9][a-z0-9_-]*" placeholder="checkout-ab" class="border border-slate-400 rounded-lg px-3 py-2 text-[14px]"></div>
+        <div><label class="block text-[12px] text-slate-500 mb-1" for="m-type">{{ t('admin.type') }}</label>
+            <select id="m-type" name="type" class="border border-slate-400 rounded-lg px-3 py-2 text-[14px]">{% for mt in module_types %}<option value="{{ mt }}">{{ mt }}</option>{% endfor %}</select></div>
+        <button class="{{ btn }} bg-brand text-white hover:bg-brand/90"><i class="fa-solid fa-plus"></i>{{ t('studio.add_module') }}</button>
+    </form>
+    {% endif %}
+</section>
+
+{# ------------------------------------------------ prototypes #}
+<section class="{{ card }}">
+    <h2 class="text-lg font-bold text-slate-900 mb-1">{{ t('studio.prototypes') }}</h2>
+    <p class="text-[14px] text-slate-600 mb-4">{{ t('studio.prototypes_hint') }}</p>
+    {% if files %}
+    <div class="overflow-x-auto mb-4 max-h-96 overflow-y-auto border border-slate-200 rounded-lg">
+        <table class="w-full text-[14px]"><tbody>
+        {% for f in files %}
+        <tr class="border-b border-slate-100 last:border-0">
+            <td class="py-1.5 px-3 font-mono text-[13px]"><a class="hover:text-brand" target="_blank" href="{{ url_for('studio.files_raw', slug=project.slug, rel=f.rel) }}">{{ f.rel }}</a></td>
+            <td class="py-1.5 px-3 text-slate-500 text-right whitespace-nowrap">{% if f.size < 1024 %}{{ f.size }} B{% else %}{{ (f.size / 1024)|round(1) }} KB{% endif %}</td>
+            <td class="py-1.5 px-3 text-right">{% if project.editable %}
+                <form method="post" action="{{ url_for('studio.files_delete', slug=project.slug) }}" class="inline" onsubmit="return confirm({{ t('studio.file_delete_confirm', file=f.rel)|tojson }})">
+                    <input type="hidden" name="path" value="{{ f.rel }}"><button class="text-red-700 hover:underline text-[13px]">{{ t('admin.delete') }}</button></form>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody></table>
+    </div>
+    {% else %}<p class="text-[14px] text-slate-500 mb-4">{{ t('studio.no_files') }}</p>{% endif %}
+    {% if project.editable %}
+    <form method="post" action="{{ url_for('studio.files_upload', slug=project.slug) }}" enctype="multipart/form-data" class="grid sm:grid-cols-2 gap-4 border border-dashed border-slate-300 rounded-lg p-4">
+        <div>
+            <label class="block text-[13px] font-semibold text-slate-900 mb-1" for="up-files">{{ t('studio.upload_files') }}</label>
+            <input id="up-files" type="file" name="files" multiple class="block w-full text-[13px]">
+            <label class="block text-[13px] font-semibold text-slate-900 mt-3 mb-1" for="up-dir">{{ t('studio.upload_folder') }}</label>
+            <input id="up-dir" type="file" name="files" webkitdirectory multiple class="block w-full text-[13px]">
+        </div>
+        <div>
+            <label class="block text-[13px] font-semibold text-slate-900 mb-1" for="up-folder">{{ t('studio.target_folder') }}</label>
+            <div class="flex items-center gap-1 text-[14px]"><span class="font-mono text-slate-500">prototypes/</span>
+                <input id="up-folder" name="folder" placeholder="checkout" class="flex-1 border border-slate-400 rounded-lg px-3 py-1.5 font-mono text-[13px]"></div>
+            <label class="mt-3 flex items-center gap-2 text-[13px]"><input type="checkbox" name="extract" value="1" checked class="rounded">{{ t('studio.extract_zip') }}</label>
+            <p class="text-[12px] text-slate-500 mt-2">{{ t('studio.upload_rules') }}</p>
+            <button class="mt-3 {{ btn }} bg-brand text-white hover:bg-brand/90"><i class="fa-solid fa-upload"></i>{{ t('studio.upload') }}</button>
+        </div>
+    </form>
+    {% endif %}
+</section>
+
+{% if history %}
+<section class="{{ card }}">
+    <h2 class="text-lg font-bold text-slate-900 mb-3">{{ t('studio.history') }}</h2>
+    <ul class="text-[14px] space-y-1">{% for h in history %}
+        <li><a class="text-brand hover:underline font-mono text-[13px]" href="{{ url_for('studio.edit', slug=project.slug, file=h.file, restore=h.id) if h.file.endswith('.yaml') else '#' }}">{{ h.file }}</a> <span class="text-slate-500 text-[13px]">· {{ h.when }}</span></li>{% endfor %}</ul>
+    <p class="text-[12px] text-slate-500 mt-2">{{ t('studio.history_hint') }}</p>
+</section>
+{% endif %}
+
+{% if is_super and project.editable %}
+<details class="border border-red-300 rounded-xl p-4">
+    <summary class="font-semibold text-red-700 cursor-pointer">{{ t('studio.delete_project') }}</summary>
+    <p class="text-[14px] mt-2">{{ t('studio.delete_project_hint') }}</p>
+    <form method="post" action="{{ url_for('studio.delete_project', slug=project.slug) }}" class="mt-3 flex flex-wrap gap-3 items-end">
+        <div><label for="del-confirm" class="block text-[13px] mb-1">{{ t('studio.type_slug', slug=project.slug) }}</label>
+            <input id="del-confirm" name="confirm" autocomplete="off" class="border border-slate-400 rounded-lg px-3 py-2 text-[14px]"></div>
+        <label class="flex items-center gap-2 text-[13px] pb-2"><input type="checkbox" name="with_data" value="1" class="rounded">{{ t('studio.with_data') }}</label>
+        <button class="px-4 py-2 rounded-lg bg-red-600 text-white text-[14px] font-semibold hover:bg-red-700">{{ t('studio.delete_project') }}</button>
+    </form>
+</details>
+{% endif %}
+{% endblock %}

@@ -1,26 +1,79 @@
 {% extends "base.html" %}
 {% block title %}{{ t('admin.all_projects') }}{% endblock %}
-{% block width %}max-w-4xl{% endblock %}
+{% block width %}max-w-5xl{% endblock %}
 {% block content %}
+{% set btn = 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-semibold bg-brand text-white hover:bg-brand/90' %}
+{% set field = 'border border-slate-400 rounded-lg px-3 py-2 text-[14px] w-full' %}
 <h1 class="text-2xl font-bold text-slate-900 mb-6">{{ t('admin.all_projects') }}</h1>
+{% if error %}<div class="p-3 mb-5 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]" role="alert">{{ error }}</div>{% endif %}
+{% if notice %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ notice }}</div>{% endif %}
 {% if config_error %}
 <div class="p-4 mb-6 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]">
     <p class="font-semibold mb-1">{{ t('admin.config_error') }}</p>
     <ul class="list-disc ml-5">{% for p in config_error.problems %}<li>{{ p }}</li>{% endfor %}</ul>
 </div>
 {% endif %}
-<ul class="space-y-3">
+
+<ul class="space-y-3 mb-10">
     {% for p in projects %}
     <li class="border border-slate-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="font-semibold text-slate-900">{{ p.name }} <span class="text-slate-500 font-normal">/{{ p.slug }}/</span>{% if not p.listed %} <span class="text-[12px] px-1.5 py-0.5 rounded bg-slate-200">{{ t('admin.unlisted') }}</span>{% endif %}</p>
+            <p class="font-semibold text-slate-900">{{ p.name }} <span class="text-slate-500 font-normal">/{{ p.slug }}/</span>
+                {% if not p.listed %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-slate-200">{{ t('admin.unlisted') }}</span>{% endif %}
+                {% if p.editable %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">{{ t('studio.editable') }}</span>
+                {% else %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">{{ t('studio.read_only') }}</span>{% endif %}</p>
             <p class="text-[13px] text-slate-500">{{ p.modules|length }} {{ t('admin.modules') }} · {{ p.identity.mode }} · {{ p.locale }}</p>
         </div>
-        <div class="flex gap-3 text-[14px]">
+        <div class="flex gap-4 text-[14px]">
             <a class="text-brand hover:underline" href="{{ url_for('web.home', slug=p.slug) }}">{{ t('admin.participant_view') }}</a>
-            <a class="text-brand hover:underline font-semibold" href="{{ url_for('admin.dashboard', slug=p.slug) }}">{{ t('admin.badge') }}</a>
+            <a class="text-brand hover:underline" href="{{ url_for('studio.home', slug=p.slug) }}">{{ t('studio.tab') }}</a>
+            <a class="text-brand hover:underline font-semibold" href="{{ url_for('admin.dashboard', slug=p.slug) }}">{{ t('admin.results') }}</a>
         </div>
     </li>
     {% endfor %}
 </ul>
+
+<div class="grid md:grid-cols-2 gap-6">
+    <section class="border border-slate-200 rounded-xl p-5">
+        <h2 class="text-lg font-bold text-slate-900 mb-1">{{ t('studio.new_project') }}</h2>
+        <p class="text-[13px] text-slate-500 mb-4">{{ t('studio.new_project_hint', dir=studio_dir) }}</p>
+        <form method="post" action="{{ url_for('studio.new_project') }}" class="space-y-3">
+            <div><label class="block text-[13px] font-semibold mb-1" for="np-slug">{{ t('studio.slug') }}</label>
+                <input id="np-slug" name="slug" required pattern="[a-z0-9][a-z0-9-]*" placeholder="checkout-2026" class="{{ field }}">
+                <p class="text-[12px] text-slate-500 mt-1">{{ t('studio.slug_hint') }}</p></div>
+            <div><label class="block text-[13px] font-semibold mb-1" for="np-name">{{ t('studio.name') }}</label>
+                <input id="np-name" name="name" class="{{ field }}"></div>
+            <div><label class="block text-[13px] font-semibold mb-1" for="np-source">{{ t('studio.start_from') }}</label>
+                <select id="np-source" name="source" class="{{ field }}">
+                    <option value="blank">{{ t('studio.blank') }}</option>
+                    {% for p in projects %}<option value="{{ p.slug }}">{{ t('studio.copy_of', name=p.name) }}</option>{% endfor %}
+                </select></div>
+            <div class="grid grid-cols-3 gap-2" id="np-blank">
+                <div><label class="block text-[12px] mb-1" for="np-locale">{{ t('studio.language') }}</label>
+                    <select id="np-locale" name="locale" class="{{ field }}">{% for l in locales %}<option>{{ l }}</option>{% endfor %}</select></div>
+                <div><label class="block text-[12px] mb-1" for="np-identity">{{ t('studio.login') }}</label>
+                    <select id="np-identity" name="identity" class="{{ field }}"><option>code</option><option>email</option><option>anonymous</option></select></div>
+                <div><label class="block text-[12px] mb-1" for="np-access">{{ t('studio.access') }}</label>
+                    <select id="np-access" name="access" class="{{ field }}"><option>passcode</option><option>open</option></select></div>
+            </div>
+            <button class="{{ btn }}"><i class="fa-solid fa-plus"></i>{{ t('studio.create') }}</button>
+        </form>
+    </section>
+    <section class="border border-slate-200 rounded-xl p-5">
+        <h2 class="text-lg font-bold text-slate-900 mb-1">{{ t('studio.import') }}</h2>
+        <p class="text-[13px] text-slate-500 mb-4">{{ t('studio.import_hint') }}</p>
+        <form method="post" action="{{ url_for('studio.import_project') }}" enctype="multipart/form-data" class="space-y-3">
+            <div><label class="block text-[13px] font-semibold mb-1" for="im-file">{{ t('studio.zip_file') }}</label>
+                <input id="im-file" type="file" name="archive" accept=".zip" required class="block w-full text-[13px]"></div>
+            <div><label class="block text-[13px] font-semibold mb-1" for="im-slug">{{ t('studio.slug') }}</label>
+                <input id="im-slug" name="slug" pattern="[a-z0-9][a-z0-9-]*" placeholder="{{ t('studio.slug_from_zip') }}" class="{{ field }}"></div>
+            <button class="{{ btn }}"><i class="fa-solid fa-file-import"></i>{{ t('studio.import') }}</button>
+        </form>
+    </section>
+</div>
+<script>
+document.getElementById('np-source').addEventListener('change', function () {
+    document.getElementById('np-blank').hidden = this.value !== 'blank';
+});
+</script>
 {% endblock %}

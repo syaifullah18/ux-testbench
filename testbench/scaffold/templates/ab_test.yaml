@@ -1,0 +1,31 @@
+# A/B test module. Upload your prototypes under Prototypes, then point `file` at them.
+# Reference: docs/configuration.md
+type: ab_test
+title: Compare two designs
+description: Try two versions of a page with the same short tasks.
+minutes: 15
+
+variants:
+  A: { label: Current, file: prototypes/variant-a.html }
+  B: { label: Proposal, file: prototypes/variant-b.html }
+baseline: A
+order: rotate            # rotate | code_parity | random | fixed
+
+tasks:
+  - id: find-contact
+    title: Find the contact email
+    prompt: Where would you write to get help? Type the email address.
+    fields: [{ id: email, label: Email address }]
+    accept: { email: ["help@example.org"] }
+    probe: Is the help contact easy to spot?
+
+post_survey:
+  - id: easy
+    type: scale
+    label: I found what I needed easily.
+    labels: [Strongly disagree, Strongly agree]
+
+decision_rule:
+  min_participants: 8
+  survey_questions: [easy]
+  min_survey_gain: 0.5

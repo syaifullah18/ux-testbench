@@ -9,8 +9,8 @@ identity:
   pattern: "^P\\d{2}$"      # code mode: codes you hand out, e.g. P01
   # domains: [example.com] # email mode: restrict to these domains
 
-access: passcode           # passcode | open. Passcodes come from env vars, never from this file:
-                           # <SLUG>_PASSCODE and <SLUG>_ADMIN_PASSCODE (override with passcode_env / admin_passcode_env)
+access: passcode           # passcode | open. Set passcodes in the Studio (never in this file);
+                           # <SLUG>_PASSCODE / <SLUG>_ADMIN_PASSCODE env vars override them
 
 consent: >-
   I agree that my answers are recorded for this research. My name is not collected.

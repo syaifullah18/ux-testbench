@@ -5,7 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from .config import ConfigError, SLUG_RE, RESERVED_SLUGS, env_prefix, load_all, project_dirs
+from .config import ConfigError, SLUG_RE, RESERVED_SLUGS, env_prefix, load_all, project_dirs, studio_dir
 from .modules import MODULE_TYPES
 
 SCAFFOLD = Path(__file__).parent / "scaffold"
@@ -22,10 +22,8 @@ def cmd_check(_args):
         for m in p.modules.values():
             extra = f"  requires {', '.join(m.requires)}" if m.requires else ""
             print(f"    - {m.id:<20} {m.type:<8} {m.title}{extra}")
-        missing = [e for e in (p.passcode_env if p.access == "passcode" else None, p.admin_passcode_env)
-                   if e and not os.environ.get(e)]
-        if missing:
-            print(f"    ! env not set: {', '.join(missing)}")
+        where = "studio, editable" if p.editable else "read-only"
+        print(f"    ({where}: {p.dir})")
     print(f"OK: {len(projects)} project(s)")
     return 0
 
@@ -35,15 +33,16 @@ def cmd_new(args):
     if not SLUG_RE.match(slug) or slug in RESERVED_SLUGS:
         print(f"Invalid slug '{slug}': use lowercase letters, digits and hyphens, and not one of {sorted(RESERVED_SLUGS)}.", file=sys.stderr)
         return 1
-    target = project_dirs()[0] / slug
-    if target.exists():
-        print(f"{target} already exists.", file=sys.stderr)
+    if any((d / slug).exists() for d in project_dirs()):
+        print(f"A project named '{slug}' already exists.", file=sys.stderr)
         return 1
+    target = studio_dir() / slug  # the Studio folder: git-ignored and editable from the admin site
     shutil.copytree(SCAFFOLD, target)
     yaml_path = target / "project.yaml"
     yaml_path.write_text(yaml_path.read_text(encoding="utf-8").replace("__NAME__", args.name or slug), encoding="utf-8")
     prefix = env_prefix(slug)
-    print(f"Created {target}\nSet {prefix}_PASSCODE and {prefix}_ADMIN_PASSCODE, then open /{slug}/")
+    print(f"Created {target}\nSet passcodes in the Studio (/{slug}/admin/studio/) or with "
+          f"{prefix}_PASSCODE and {prefix}_ADMIN_PASSCODE, then open /{slug}/")
     return 0
 
 

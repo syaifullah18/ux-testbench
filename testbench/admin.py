@@ -6,10 +6,10 @@ import os
 
 from flask import Blueprint, Response, abort, redirect, render_template, request, session as cookie, url_for
 
-from . import storage
+from . import passcodes, storage
 from .context import Ctx, is_admin
 from .i18n import translator
-from .web import get_project, passcode_ok, registry
+from .web import get_project, registry
 
 bp = Blueprint("admin", __name__)
 
@@ -18,10 +18,6 @@ def grant(scope):
     granted = set(cookie.get("tb_admin") or [])
     granted.add(scope)
     cookie["tb_admin"] = sorted(granted)
-
-
-def superadmin_passcode():
-    return os.environ.get("SUPERADMIN_PASSCODE", "")
 
 
 def admin_ctx(slug, mid=None):
@@ -41,14 +37,16 @@ def overview():
     t = translator("en")
     error = None
     if request.method == "POST":
-        if passcode_ok(superadmin_passcode(), request.form.get("passcode")):
+        if passcodes.superadmin_ok(request.form.get("passcode")):
             grant("*")
             return redirect(url_for("admin.overview"))
-        error = t("admin.bad_passcode") if superadmin_passcode() else t("admin.super_not_configured")
+        error = t("admin.bad_passcode") if os.environ.get("SUPERADMIN_PASSCODE") else t("admin.super_not_configured")
     if "*" not in (cookie.get("tb_admin") or []):
         return render_template("admin/login.html", t=t, error=error, project=None)
+    from .i18n import available
     return render_template("admin/overview.html", t=t, projects=registry().projects.values(),
-                           config_error=registry().last_error)
+                           config_error=registry().last_error, locales=available(), studio_dir=registry().studio,
+                           error=request.args.get("error"), notice=request.args.get("notice"))
 
 
 @bp.route("/<slug>/admin/", methods=["GET", "POST"])
@@ -59,13 +57,13 @@ def dashboard(slug):
         error = None
         if request.method == "POST":
             given = request.form.get("passcode")
-            if passcode_ok(project.admin_passcode, given):
+            if passcodes.check(project, "admin", given):
                 grant(slug)
                 return redirect(url_for("admin.dashboard", slug=slug))
-            if passcode_ok(superadmin_passcode(), given):
+            if passcodes.superadmin_ok(given):
                 grant("*")
                 return redirect(url_for("admin.dashboard", slug=slug))
-            error = t("admin.bad_passcode") if project.admin_passcode or superadmin_passcode() \
+            error = t("admin.bad_passcode") if passcodes.source(project, "admin") or os.environ.get("SUPERADMIN_PASSCODE") \
                 else t("admin.not_configured", env=project.admin_passcode_env)
         return render_template("admin/login.html", t=t, error=error, project=project)
     ctx = Ctx(project, admin=True)
@@ -167,7 +165,7 @@ def reset(slug):
     if early:
         return early
     given = request.form.get("passcode")
-    if not (passcode_ok(ctx.project.admin_passcode, given) or passcode_ok(superadmin_passcode(), given)):
+    if not (passcodes.check(ctx.project, "admin", given) or passcodes.superadmin_ok(given)):
         return redirect(url_for("admin.dashboard", slug=slug, reset="failed"))
     storage.reset(slug)
     return redirect(url_for("admin.dashboard", slug=slug))

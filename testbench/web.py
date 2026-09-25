@@ -1,11 +1,10 @@
 """Participant routes: project index, login, home screen, and the generic module flow."""
-import hmac
 import re
 import secrets
 
 from flask import Blueprint, abort, current_app, redirect, render_template, request, url_for
 
-from . import storage
+from . import passcodes, storage
 from .context import Ctx, audience_ok, module_status, participant_id, set_participant
 from .i18n import translator
 from .modules.base import ADVANCE
@@ -35,10 +34,6 @@ def current_participant(project):
     if row is None:
         set_participant(project.slug, None)
     return row
-
-
-def passcode_ok(expected, given):
-    return bool(expected) and hmac.compare_digest(expected.encode(), (given or "").encode())
 
 
 @bp.route("/")
@@ -101,9 +96,9 @@ def login(project):
                     errors["identity"] = t("login.unknown_code")
         form["identity"] = raw
         if project.access == "passcode":
-            if not project.passcode:
+            if not passcodes.source(project, "participant"):
                 errors["passcode"] = t("login.not_configured")
-            elif not passcode_ok(project.passcode, request.form.get("passcode")):
+            elif not passcodes.check(project, "participant", request.form.get("passcode")):
                 errors["passcode"] = t("login.bad_passcode")
         if project.consent and not request.form.get("consent"):
             errors["consent"] = t("login.need_consent")

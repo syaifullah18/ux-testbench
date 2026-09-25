@@ -65,14 +65,7 @@ class Project:
     passcode_env: str
     admin_passcode_env: str
     modules: dict            # id -> Module, in home-screen order
-
-    @property
-    def passcode(self):
-        return os.environ.get(self.passcode_env, "")
-
-    @property
-    def admin_passcode(self):
-        return os.environ.get(self.admin_passcode_env, "")
+    editable: bool = False   # lives in the Studio folder, so the admin site may change it
 
     def module(self, module_id):
         return self.modules.get(module_id)
@@ -231,15 +224,31 @@ class Scope:
         check_ref(project, module_id, ref, self.problems, f"{self.where} {what}")
 
 
-def project_dirs():
+def studio_dir(data_dir=None):
+    """Projects created or imported from the admin site live here, next to the databases and
+    outside the repository, so real studies are never committed by accident."""
+    return Path(data_dir or os.environ.get("DATA_DIR") or "instance").expanduser() / "projects"
+
+
+def project_dirs(data_dir=None):
+    """Read-only folders from PROJECTS_DIRS, then the Studio folder (created if missing)."""
     raw = os.environ.get("PROJECTS_DIRS") or "projects"
-    return [Path(p).expanduser() for p in raw.split(os.pathsep) if p]
+    dirs = [Path(p).expanduser() for p in raw.split(os.pathsep) if p]
+    studio = studio_dir(data_dir)
+    studio.mkdir(parents=True, exist_ok=True)
+    return dirs + [studio]
+
+
+def studio_dir_of(dirs):
+    """By convention the last folder in the list is the writable Studio folder."""
+    return Path(dirs[-1]).resolve() if dirs else None
 
 
 def load_all(module_types, dirs=None):
     problems = Problems()
     projects = {}
-    for base in dirs or project_dirs():
+    dirs = list(dirs or project_dirs())
+    for base in dirs:
         if not base.is_dir():
             problems.at(str(base), "projects directory does not exist")
             continue
@@ -250,6 +259,7 @@ def load_all(module_types, dirs=None):
             if project.slug in projects:
                 problems.at(str(pdir), f"slug '{project.slug}' already loaded from {projects[project.slug].dir}")
                 continue
+            project.editable = pdir.parent.resolve() == studio_dir_of(dirs)
             projects[project.slug] = project
     if problems:
         raise ConfigError(problems)
@@ -260,16 +270,16 @@ class Registry:
     """Holds the loaded projects and reloads them when any YAML file changes, so researchers
     can edit questions without restarting. A broken edit keeps the last good config running."""
 
-    def __init__(self, module_types, dirs=None):
+    def __init__(self, module_types, dirs):
         self.module_types = module_types
-        self.dirs = dirs
+        self.dirs = list(dirs)
         self.projects = load_all(module_types, dirs)
         self.signature = self._signature()
         self.last_error = None
 
     def _signature(self):
         sig = []
-        for base in self.dirs or project_dirs():
+        for base in self.dirs:
             if base.is_dir():
                 for path in base.glob("*/**/*.yaml"):
                     try:
@@ -280,9 +290,13 @@ class Registry:
                     sig.append((str(path), path.stat().st_mtime_ns))
         return tuple(sorted(set(sig)))
 
-    def refresh(self):
+    @property
+    def studio(self):
+        return self.dirs[-1]
+
+    def refresh(self, force=False):
         sig = self._signature()
-        if sig == self.signature:
+        if sig == self.signature and not force:
             return
         self.signature = sig
         try:

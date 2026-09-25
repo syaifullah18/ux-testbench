@@ -1,6 +1,6 @@
 # Configuration reference
 
-A project is a folder under one of the `PROJECTS_DIRS`. The folder name is the URL slug: lowercase letters, digits and hyphens, and not `admin`, `static`, `api` or `health`. Run `python -m testbench check` after every change. It lists every problem across all projects in one pass.
+A project is a folder under `DATA_DIR/projects/` (editable in the Studio) or under one of the read-only `PROJECTS_DIRS`. The Studio edits exactly these files, so everything below also applies there. The folder name is the URL slug: lowercase letters, digits and hyphens, and not `admin`, `static`, `api` or `health`. Run `python -m testbench check` after every change. It lists every problem across all projects in one pass.
 
 ## project.yaml
 
@@ -17,6 +17,7 @@ identity:
   # domains: [example.com] # email: allowed domains (optional)
 
 access: passcode           # passcode | open
+# Passcodes are set in the Studio. An environment variable, when set, overrides it:
 # passcode_env: MY_STUDY_PASSCODE              # defaults shown
 # admin_passcode_env: MY_STUDY_ADMIN_PASSCODE
 

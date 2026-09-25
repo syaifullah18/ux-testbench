@@ -13,6 +13,7 @@
         {% for m in project.modules.values() %}
         <a href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}" class="hover:text-brand {% if module and module.id == m.id %}font-semibold text-slate-900{% endif %}">{{ m.title }}</a>
         {% endfor %}
+        <a href="{{ url_for('studio.home', slug=project.slug) }}" class="hover:text-brand {% if request.endpoint and request.endpoint.startswith('studio.') %}font-semibold text-slate-900{% endif %}"><i class="fa-solid fa-pen-ruler mr-1"></i>{{ t('studio.tab') }}</a>
         <a href="{{ url_for('admin.participants', slug=project.slug) }}" class="hover:text-brand {% if request.endpoint in ('admin.participants', 'admin.participant') %}font-semibold text-slate-900{% endif %}">{{ t('admin.participants') }}</a>
     </div>
 </div>

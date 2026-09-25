@@ -1,0 +1,63 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ rel }}{% endblock %}
+{% block content %}
+{% set btn = 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-semibold' %}
+<a href="{{ url_for('studio.home', slug=project.slug) }}" class="text-[14px] text-brand hover:underline"><i class="fa-solid fa-arrow-left mr-1"></i>{{ t('studio.tab') }}</a>
+<div class="grid lg:grid-cols-[minmax(0,1fr)_16rem] gap-6 mt-3">
+    <div>
+        <h1 class="text-xl font-bold text-slate-900 font-mono mb-3">{{ rel }}</h1>
+        {% if saved %}<div class="p-3 mb-4 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('studio.saved_live') }}</div>{% endif %}
+        {% if status == 'valid' %}<div class="p-3 mb-4 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('studio.valid_not_saved') }}</div>{% endif %}
+        {% if status == 'restored' %}<div class="p-3 mb-4 rounded-lg bg-amber-50 text-amber-900 text-[14px]">{{ t('studio.restored') }}</div>{% endif %}
+        {% if problems %}
+        <div class="p-3 mb-4 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]" role="alert">
+            <p class="font-semibold mb-1">{{ t('studio.not_saved') }}</p>
+            <ul class="list-disc ml-5 font-mono text-[12px]">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+        {% if started %}<div class="p-3 mb-4 rounded-lg bg-amber-50 text-amber-900 text-[14px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ t('studio.live_warning', n=started) }}</div>{% endif %}
+        <form method="post">
+            <input type="hidden" name="file" value="{{ rel }}">
+            <textarea id="content" name="content" spellcheck="false" {% if not project.editable %}readonly{% endif %}
+                      class="w-full h-[65vh] font-mono text-[13px] leading-5 border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-brand focus:border-brand" style="tab-size: 2">{{ text }}</textarea>
+            {% if project.editable %}
+            <div class="flex flex-wrap gap-2 mt-3">
+                <button name="action" value="save" class="{{ btn }} bg-brand text-white hover:bg-brand/90"><i class="fa-solid fa-floppy-disk"></i>{{ t('studio.save') }}</button>
+                <button name="action" value="check" class="{{ btn }} border border-slate-300 hover:bg-slate-50"><i class="fa-solid fa-check-double"></i>{{ t('studio.check') }}</button>
+                <span class="text-[12px] text-slate-500 self-center">{{ t('studio.save_hint') }}</span>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+    <aside class="text-[14px]">
+        <p class="font-semibold text-slate-900 mb-2">{{ t('studio.files') }}</p>
+        <ul class="space-y-1 mb-6 font-mono text-[13px]">{% for f in files %}
+            <li><a href="{{ url_for('studio.edit', slug=project.slug, file=f) }}" class="{% if f == rel %}font-bold text-slate-900{% else %}text-brand hover:underline{% endif %}">{{ f }}</a></li>{% endfor %}</ul>
+        <p class="font-semibold text-slate-900 mb-2">{{ t('studio.cheatsheet') }}</p>
+        <pre class="text-[11px] leading-4 bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto">- id: role
+  type: single   # multi scale
+                 # matrix text
+  label: Question
+  options: [A, B]
+  required: false
+  show_if:
+    ref: other   # or module.q
+    equals: x    # in / not_in</pre>
+        <p class="text-[12px] text-slate-500 mt-2">{{ t('studio.docs_hint') }}</p>
+        {% if history %}
+        <p class="font-semibold text-slate-900 mt-6 mb-2">{{ t('studio.history') }}</p>
+        <ul class="space-y-1 text-[13px]">{% for h in history %}
+            <li><a class="text-brand hover:underline" href="{{ url_for('studio.edit', slug=project.slug, file=rel, restore=h.id) }}">{{ h.when }}</a></li>{% endfor %}</ul>
+        {% endif %}
+    </aside>
+</div>
+<script>
+// Tab inserts two spaces instead of leaving the editor, since YAML is indentation-based.
+document.getElementById('content').addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab' || e.shiftKey || this.readOnly) return;
+    e.preventDefault();
+    const s = this.selectionStart;
+    this.setRangeText('  ', s, this.selectionEnd, 'end');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+# Survey module. Reference: docs/configuration.md
+# Question types: single, multi, scale, matrix, text. Add `show_if` to show a question conditionally.
+type: survey
+title: New survey
+description: One sentence shown on the home screen.
+minutes: 3
+# requires: [profile]                    # finish these modules first
+# audience: { identity_pattern: "^P" }   # only these participants see it
+
+questions:
+  - id: overall
+    type: scale
+    label: Overall, how easy is the product to use?
+    points: 5
+    labels: [Very difficult, Very easy]
+
+  - id: hardest
+    type: single
+    label: Which part is hardest?
+    options:
+      search: Finding information
+      forms: Filling in forms
+      upload: Uploading documents
+      none: Nothing in particular
+
+  - id: why
+    type: text
+    label: Tell us why.
+    show_if: { ref: hardest, not_in: [none] }

@@ -102,6 +102,7 @@ runner:
   out_of_order: Tugas ini sudah dikirim atau belum gilirannya.
   ease_required: Pilih seberapa mudah tugas ini.
 admin:
+  results: Hasil
   badge: Admin
   login_title: Akses admin
   all_projects: Semua proyek
@@ -194,3 +195,87 @@ admin:
   grade_fail: Gagal
   observer_note: Catatan pengamat
   not_done: Belum dikerjakan.
+studio:
+  tab: Studio
+  title: Studio
+  editable: dapat diubah
+  read_only: hanya baca
+  read_only_hint: "Proyek ini dimuat dari {dir}, di luar folder Studio, sehingga hanya bisa dibaca di sini. Duplikasi untuk mengubah salinannya."
+  duplicate: Duplikasi ke Studio
+  new_slug: Nama URL baru
+  export: Ekspor .zip
+  created: Proyek dibuat. Atur kode aksesnya, lalu tambah atau ubah modul.
+  settings: Pengaturan dan akses
+  settings_hint: Nama, bahasa, cara masuk, teks persetujuan, warna, dan urutan modul ada di project.yaml. Kode akses diatur di sini dan disimpan dalam bentuk hash; variabel lingkungan, jika ada, lebih diutamakan.
+  passcode_participant: Kode akses peserta
+  passcode_admin: Kode akses admin
+  pc_env: "Diatur oleh variabel lingkungan {env}."
+  pc_set: Diatur di Studio.
+  pc_unset: Belum diatur.
+  pc_open: Tidak diperlukan selama akses terbuka.
+  pc_new: Kode akses baru (min. 6 karakter)
+  pc_clear: Hapus kode akses ini
+  pc_save: Simpan kode akses
+  passcodes_saved: Kode akses diperbarui.
+  passcode_short: Kode akses minimal 6 karakter.
+  edit: Ubah
+  view: Lihat
+  order_hint: Urutan dan daftar modul di beranda diatur di project.yaml.
+  module_id: Id modul
+  add_module: Tambah modul
+  bad_module_id: Id modul memakai huruf kecil, angka, '-' dan '_'.
+  module_exists: "Modul '{id}' sudah ada."
+  module_deleted: "Modul '{id}' dihapus. Berkasnya tersimpan di riwayat dan data yang terkumpul tetap ada di basis data."
+  module_delete_confirm: "Hapus modul {id}? {n} peserta sudah memulainya. Data yang terkumpul tetap disimpan."
+  prototypes: Prototipe
+  prototypes_hint: Halaman HTML statis untuk uji A/B beserta CSS, skrip, dan gambarnya. Rujuk dari modul sebagai prototypes/<path>.
+  no_files: Belum ada berkas.
+  upload_files: Berkas atau .zip
+  upload_folder: Atau satu folder utuh
+  target_folder: Simpan di
+  extract_zip: Ekstrak berkas .zip
+  upload_rules: Hanya berkas web (html, css, js, gambar, font, video, pdf). Berkas dengan jalur sama akan ditimpa.
+  upload: Unggah
+  uploaded: "{n} berkas diunggah."
+  skipped: "Dilewati (jenis tidak diizinkan): {files}"
+  file_in_use: "{file} masih dipakai modul. Arahkan modul ke berkas lain terlebih dahulu."
+  file_deleted: "{file} dihapus."
+  file_delete_confirm: "Hapus {file}?"
+  history: Versi terakhir
+  history_hint: Setiap simpan menyimpan versi sebelumnya. Buka salah satunya untuk ditinjau, lalu simpan untuk memulihkan.
+  delete_project: Hapus proyek
+  delete_project_hint: Menghapus folder proyek. Centang kotak untuk sekaligus menghapus peserta, jawaban, dan kode akses secara permanen.
+  type_slug: "Ketik {slug} untuk konfirmasi"
+  with_data: Hapus juga data yang terkumpul
+  confirm_mismatch: Konfirmasi tidak cocok dengan nama proyek; tidak ada yang dihapus.
+  saved_live: Tersimpan. Perubahan sudah aktif.
+  valid_not_saved: Tidak ada masalah. Belum disimpan.
+  restored: Ini versi lama. Simpan untuk memulihkannya.
+  not_saved: Belum disimpan. Perbaiki masalah berikut terlebih dahulu.
+  live_warning: "{n} peserta sudah memulai modul ini. Mengubah kalimat aman; mengganti atau menghapus id memisahkan jawaban lama dari yang baru."
+  save: Simpan
+  check: Periksa
+  save_hint: Menyimpan akan memvalidasi seluruh proyek terlebih dahulu.
+  files: Berkas
+  cheatsheet: Sintaks pertanyaan
+  docs_hint: Referensi lengkap ada di docs/configuration.md pada repositori.
+  new_project: Proyek baru
+  new_project_hint: "Disimpan di {dir}, yang bukan bagian dari repositori git."
+  slug: Nama URL
+  slug_hint: Huruf kecil, angka, dan tanda hubung. Proyek dibuka di /<nama>/.
+  name: Nama tampilan
+  start_from: Mulai dari
+  blank: Proyek kosong
+  copy_of: "Salinan {name}"
+  language: Bahasa
+  login: Cara masuk
+  access: Akses
+  create: Buat proyek
+  import: Impor proyek
+  import_hint: Unggah .zip hasil ekspor Testbench lain, atau zip apa pun yang berisi project.yaml di akarnya.
+  zip_file: Berkas .zip proyek
+  slug_from_zip: diambil dari nama berkas
+  no_file: Pilih berkas untuk diunggah.
+  no_project_yaml: Zip tidak berisi project.yaml di akarnya.
+  bad_slug: "Nama URL memakai huruf kecil, angka, dan tanda hubung, dan tidak boleh admin, api, health, atau static."
+  slug_taken: "Proyek '{slug}' sudah ada."
