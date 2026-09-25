@@ -1,0 +1,116 @@
+{% from "modules/_summary.html" import summary_block %}
+{% set th = 'px-3 py-2 text-left font-semibold text-slate-500 whitespace-nowrap' %}
+{% set td = 'px-3 py-2 align-top' %}
+{% macro ok(flag) %}{% if flag %}<span class="text-emerald-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>{{ t('admin.rule_met') }}</span>{% else %}<span class="text-red-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>{{ t('admin.rule_not_met') }}</span>{% endif %}{% endmacro %}
+
+<div class="flex flex-wrap gap-2 mb-6 text-[14px]">
+    {% for k in keys %}<a href="{{ ctx.action_url('preview/' ~ k ~ '/') }}" target="_blank" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50"><i class="fa-solid fa-eye mr-1"></i>{{ k }} · {{ c.variants[k].label }}</a>{% endfor %}
+</div>
+<p class="text-[14px] text-slate-500 mb-4">{% for k in keys %}{{ k }}: {{ t('admin.n_runs', n=by_variant[k].n) }}{% if not loop.last %} · {% endif %}{% endfor %}. {{ t('admin.ab_note') }}</p>
+
+{% for r in rules %}
+<div class="border {% if r.all_ok and r.enough %}border-emerald-300 bg-emerald-50{% else %}border-slate-200{% endif %} rounded-xl p-5 mb-6">
+    <p class="font-semibold text-slate-900">{{ t('admin.rule_title', challenger=r.variant, baseline=c.baseline) }}</p>
+    <p class="text-[13px] text-slate-500 mb-3">{{ t('admin.rule_pairs', n=r.n) }}{% if not r.enough %} {{ t('admin.rule_indicative', min=c.rule.min_participants) }}{% endif %}</p>
+    <table class="w-full text-[14px]"><tbody>
+    {% for chk in r.checks %}
+        <tr class="border-b border-slate-200 last:border-0">
+            <td class="{{ td }}">{{ t('admin.rule_' ~ chk.key, challenger=r.variant, gain=c.rule.min_survey_gain, qs=c.rule.survey_questions|join(', ')) }}</td>
+            <td class="{{ td }} whitespace-nowrap">
+                {% if chk.key == 'faster' %}{{ chk.value }}
+                {% elif chk.key == 'success' %}{{ c.baseline }} {{ chk.a|pct }}, {{ r.variant }} {{ chk.b|pct }}
+                {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}{% if chk.gain is not none %} ({{ '%+.2f'|format(chk.gain) }}){% endif %}{% endif %}
+            </td>
+            <td class="{{ td }}">{{ ok(chk.ok) }}</td>
+        </tr>
+    {% endfor %}
+    </tbody></table>
+</div>
+{% endfor %}
+
+<div class="border border-slate-200 rounded-xl overflow-x-auto mb-6">
+    <table class="w-full text-[14px]">
+        <thead><tr class="border-b border-slate-200">
+            <th class="{{ th }}">{{ t('admin.task') }}</th><th class="{{ th }}">{{ t('admin.variant') }}</th><th class="{{ th }}">{{ t('admin.success') }}</th>
+            <th class="{{ th }}">{{ t('admin.unaided') }}</th><th class="{{ th }}">{{ t('admin.median_time') }}</th><th class="{{ th }}">{{ t('admin.clicks') }}</th>
+            <th class="{{ th }}">{{ t('admin.reversals') }}</th>{% if c.ease %}<th class="{{ th }}">{{ t('admin.ease') }}</th>{% endif %}
+            <th class="{{ th }}">{{ t('admin.gave_up') }}</th><th class="{{ th }}">{{ t('admin.first_clicks') }}</th>
+        </tr></thead>
+        <tbody>
+        {% for i in range(c.tasks|length) %}
+            {% for k in keys %}{% set s = by_variant[k].tasks[i] %}
+            <tr class="{% if loop.last %}border-b border-slate-200{% endif %}">
+                {% if loop.first %}<td class="{{ td }} font-semibold text-slate-900" rowspan="{{ keys|length }}">{{ i + 1 }}. {{ s.task.title }}
+                    {% if s.task.probe %}<p class="text-[12px] font-normal text-slate-500 mt-1">{{ s.task.probe }}</p>{% endif %}</td>{% endif %}
+                <td class="{{ td }}">{{ k }}</td>
+                <td class="{{ td }}">{{ s.success|pct }}{% if s.ungraded %}<span class="block text-[12px] text-amber-700">{{ t('admin.ungraded', n=s.ungraded) }}</span>{% endif %}</td>
+                <td class="{{ td }}">{{ s.unaided|pct }}</td>
+                <td class="{{ td }}">{{ s.median_ms|secs }}</td>
+                <td class="{{ td }}">{{ s.clicks|num }}</td>
+                <td class="{{ td }}">{{ s.reversals|num }}</td>
+                {% if c.ease %}<td class="{{ td }}">{{ s.ease|num }}</td>{% endif %}
+                <td class="{{ td }}">{{ s.gave_up }}</td>
+                <td class="{{ td }} text-[13px]">{% for label, n in s.first_clicks %}<div>{{ label }} <span class="text-slate-500">({{ n }})</span></div>{% else %}-{% endfor %}</td>
+            </tr>
+            {% endfor %}
+        {% endfor %}
+        <tr class="bg-slate-50 font-semibold"><td class="{{ td }}">{{ t('admin.total_all_tasks') }}</td><td class="{{ td }}" colspan="9">
+            {% for k in keys %}{{ k }} {{ by_variant[k].median_total|secs }}{% if not loop.last %} · {% endif %}{% endfor %}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-5 mb-6">
+    <div class="border border-slate-200 rounded-xl p-4">
+        <p class="font-semibold text-slate-900 mb-1">{{ t('admin.by_device') }}</p>
+        <p class="text-[12px] text-slate-500 mb-2">{{ t('admin.by_device_hint', px=mobile_max) }}</p>
+        <table class="w-full text-[14px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold py-1"></th><th class="text-left font-semibold px-2">n</th><th class="text-left font-semibold px-2">{{ t('admin.median_total') }}</th><th class="text-left font-semibold px-2">{{ t('admin.success') }}</th></tr></thead><tbody>
+        {% for dev in ('desktop', 'mobile') %}{% for k in keys %}{% set s = by_device[dev][k] %}
+            <tr><td class="py-1">{{ t('admin.' ~ dev) }} {{ k }}</td><td class="px-2">{{ s.n }}</td><td class="px-2">{{ s.median_total|secs }}</td><td class="px-2">{{ s.success|pct }}</td></tr>
+        {% endfor %}{% endfor %}
+        </tbody></table>
+    </div>
+    <div class="border border-slate-200 rounded-xl p-4">
+        <p class="font-semibold text-slate-900 mb-1">{{ t('admin.order_effect') }}</p>
+        <p class="text-[12px] text-slate-500 mb-2">{{ t('admin.order_effect_hint') }}</p>
+        <table class="w-full text-[14px]"><thead><tr class="text-slate-500"><th class="text-left font-semibold py-1">{{ t('admin.order') }}</th><th class="text-left font-semibold px-2">n</th>{% for k in keys %}<th class="text-left font-semibold px-2">{{ k }}</th>{% endfor %}</tr></thead><tbody>
+        {% for o in order_effect %}<tr><td class="py-1">{{ o.order }}</td><td class="px-2">{{ o.n }}</td>{% for k in keys %}<td class="px-2">{{ o.medians[k]|secs }}</td>{% endfor %}</tr>
+        {% else %}<tr><td class="py-1 text-slate-500" colspan="9">-</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+    <div class="border border-slate-200 rounded-xl p-4">
+        <p class="font-semibold text-slate-900 mb-2">{{ t('admin.preference') }}</p>
+        <ul class="text-[14px] space-y-1">
+            {% for k in keys %}<li class="flex justify-between gap-3"><span>{{ k }} · {{ c.variants[k].label }}</span><strong>{{ pref.get(k, 0) }}</strong></li>{% endfor %}
+            <li class="flex justify-between gap-3"><span>{{ t('ab.no_preference') }}</span><strong>{{ pref.get('none', 0) }}</strong></li>
+        </ul>
+    </div>
+</div>
+
+{% if scale_q %}
+<div class="border border-slate-200 rounded-xl overflow-x-auto mb-6">
+    <table class="w-full text-[14px]">
+        <thead><tr class="border-b border-slate-200"><th class="{{ th }}">{{ t('admin.post_survey') }}</th>{% for k in keys %}<th class="{{ th }}">{{ k }}</th>{% endfor %}
+            {% if keys|length > 1 %}{% for k in keys if k != c.baseline %}<th class="{{ th }}">{{ k }} − {{ c.baseline }}</th>{% endfor %}{% endif %}</tr></thead>
+        <tbody>{% for q in scale_q %}
+        <tr class="border-b border-slate-200 last:border-0"><td class="{{ td }}">{{ q.label }} <span class="text-slate-400 text-[12px]">({{ q.id }})</span></td>
+            {% for k in keys %}<td class="{{ td }}">{{ by_variant[k].survey[q.id]|num(2) }}</td>{% endfor %}
+            {% for k in keys if k != c.baseline %}{% set a = by_variant[c.baseline].survey[q.id] %}{% set b = by_variant[k].survey[q.id] %}
+            <td class="{{ td }}">{% if a is not none and b is not none %}{{ '%+.2f'|format(b - a) }}{% else %}-{% endif %}</td>{% endfor %}
+        </tr>{% endfor %}</tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if texts %}
+<details class="border border-slate-200 rounded-xl p-4 mb-6">
+    <summary class="font-semibold text-slate-900 cursor-pointer">{{ t('admin.open_answers') }} ({{ texts|length }})</summary>
+    <ul class="mt-3 space-y-3 text-[14px]">{% for who, k, label, text in texts %}
+        <li class="border-l-2 border-slate-200 pl-3"><span class="text-slate-500 text-[12px]">{{ who }} · {{ k }} · {{ label }}</span><br><span class="whitespace-pre-line">{{ text }}</span></li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if final_summary %}
+<h2 class="text-lg font-bold text-slate-900 mb-3">{{ t('ab.final_title') }}</h2>
+<div class="space-y-4">{{ summary_block(final_summary, t) }}</div>
+{% endif %}

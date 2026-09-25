@@ -1,0 +1,47 @@
+{% set td = 'px-3 py-2 align-top' %}
+<div class="space-y-5">
+{% for v in views %}
+<div class="border border-slate-200 rounded-lg overflow-x-auto">
+    <div class="px-3 py-2 border-b border-slate-200 flex flex-wrap justify-between gap-2 text-[14px]">
+        <p class="font-semibold text-slate-900">{{ t('ab.view_n', n=v.n) }} · {{ v.variant }} ({{ v.label }})</p>
+        <p class="text-slate-500 text-[13px]">{{ t('admin.viewport', px=v.viewport_w or '-') }}</p>
+    </div>
+    <table class="w-full text-[14px]"><tbody>
+    {% for T in v.tasks %}{% set row = T.row %}{% set key = sid ~ '_' ~ v.n ~ '_' ~ T.task.id %}
+    <tr class="border-b border-slate-200 last:border-0">
+        <td class="{{ td }} w-60"><p class="font-semibold text-slate-900">{{ loop.index }}. {{ T.task.title }}</p>
+            {% if T.task.probe %}<p class="text-[12px] text-slate-500 mt-1">{{ T.task.probe }}</p>{% endif %}</td>
+        {% if row and row.finished_at %}
+        <td class="{{ td }}">
+            {% for f in T.task.fields %}<p><span class="text-slate-500">{{ f.label or t('admin.answer') }}:</span> {{ T.answer.get(f.id) or '-' }}</p>{% endfor %}
+            <p class="text-[13px] mt-1">{{ row.time_ms|secs }} · {{ t('admin.n_clicks', n=row.clicks) }} · {{ t('admin.n_reversals', n=row.scroll_reversals) }}{% if row.ease %} · {{ t('admin.ease') }} {{ row.ease }}/7{% endif %}
+                {% if row.gave_up %} · <span class="text-red-700 font-semibold">{{ t('admin.gave_up') }}</span>{% endif %}
+                {% if row.auto_pass is not none %} · {{ t('admin.key') }}: {% if row.auto_pass %}<span class="text-emerald-700">{{ t('admin.key_match') }}</span>{% else %}<span class="text-red-700">{{ t('admin.key_nomatch') }}</span>{% endif %}{% endif %}</p>
+            {% if T.path %}<details class="mt-1 text-[13px]"><summary class="cursor-pointer text-brand">{{ t('admin.click_path') }} ({{ T.path|length }})</summary><ol class="list-decimal ml-5 mt-1">{% for s in T.path %}<li>{{ s }}</li>{% endfor %}</ol></details>{% endif %}
+        </td>
+        <td class="{{ td }} w-72">
+            <label class="block text-[12px] text-slate-500 mb-1" for="grade_{{ key }}">{{ t('admin.grade') }}</label>
+            <select id="grade_{{ key }}" name="grade_{{ key }}" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[14px]">
+                <option value="">{{ t('admin.grade_auto') }}{% if T.grade and not row.grade %} ({{ t('admin.grade_' ~ T.grade) }}){% elif not T.grade %} ({{ t('admin.grade_none') }}){% endif %}</option>
+                {% for g_ in grades %}<option value="{{ g_ }}" {% if row.grade == g_ %}selected{% endif %}>{{ t('admin.grade_' ~ g_) }}</option>{% endfor %}
+            </select>
+            <label class="block text-[12px] text-slate-500 mt-2 mb-1" for="note_{{ key }}">{{ t('admin.observer_note') }}</label>
+            <textarea id="note_{{ key }}" name="note_{{ key }}" rows="2" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[14px]">{{ row.observer_note or '' }}</textarea>
+        </td>
+        {% else %}
+        <td class="{{ td }} text-slate-500" colspan="2">{{ t('admin.not_done') }}</td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+    </tbody></table>
+    {% if v.survey %}
+    <dl class="px-3 py-2 border-t border-slate-200 text-[14px]">{% for q, text in v.survey %}
+        <div class="py-1 grid sm:grid-cols-3 gap-1 sm:gap-4"><dt class="text-slate-500">{{ q.label }}</dt><dd class="sm:col-span-2 whitespace-pre-line">{{ text }}</dd></div>{% endfor %}</dl>
+    {% endif %}
+</div>
+{% endfor %}
+{% if final_rows %}
+<dl class="text-[14px] border border-slate-200 rounded-lg px-3 py-2">{% for q, text in final_rows %}
+    <div class="py-1 grid sm:grid-cols-3 gap-1 sm:gap-4"><dt class="text-slate-500">{{ q.label }}</dt><dd class="sm:col-span-2 whitespace-pre-line">{{ text }}</dd></div>{% endfor %}</dl>
+{% endif %}
+</div>

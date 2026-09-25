@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Runtime data and secrets
+instance/
+.env
+
+# Projects: only the example is public. Keep real studies in a private repo and point
+# PROJECTS_DIRS at them, or keep them here untracked.
+projects/*
+!projects/example/
+
+# Editors and OS
+.DS_Store
+.vscode/
+.idea/

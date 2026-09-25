@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block width %}max-w-6xl{% endblock %}
+{% block nav_right %}
+<span class="flex items-center gap-3 text-[13px]">
+    <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold">{{ t('admin.badge') }}</span>
+    <a href="{{ url_for('admin.logout', slug=project.slug) }}" class="text-white/70 hover:text-white underline">{{ t('common.logout') }}</a>
+</span>
+{% endblock %}
+{% block main %}
+<div class="bg-slate-50 border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-8 py-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[14px]">
+        <a href="{{ url_for('admin.dashboard', slug=project.slug) }}" class="hover:text-brand {% if request.endpoint == 'admin.dashboard' %}font-semibold text-slate-900{% endif %}">{{ t('admin.overview') }}</a>
+        {% for m in project.modules.values() %}
+        <a href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}" class="hover:text-brand {% if module and module.id == m.id %}font-semibold text-slate-900{% endif %}">{{ m.title }}</a>
+        {% endfor %}
+        <a href="{{ url_for('admin.participants', slug=project.slug) }}" class="hover:text-brand {% if request.endpoint in ('admin.participants', 'admin.participant') %}font-semibold text-slate-900{% endif %}">{{ t('admin.participants') }}</a>
+    </div>
+</div>
+<main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 pt-8 pb-12">
+    {% block content %}{% endblock %}
+</main>
+{% endblock %}

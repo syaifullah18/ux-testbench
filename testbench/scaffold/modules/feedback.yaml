@@ -1,0 +1,18 @@
+type: survey
+title: Quick feedback
+description: Three questions about your experience.
+minutes: 2
+questions:
+  - id: satisfaction
+    type: scale
+    label: How satisfied are you overall?
+    points: 5
+    labels: [Very dissatisfied, Very satisfied]
+  - id: hardest
+    type: single
+    label: Which part was hardest?
+    options: [Finding information, Filling forms, Uploading documents, Nothing in particular]
+  - id: why
+    type: text
+    label: Tell us why.
+    required: false

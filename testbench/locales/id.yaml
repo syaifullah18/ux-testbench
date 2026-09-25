@@ -1,0 +1,196 @@
+common:
+  logout: Keluar
+  step_of: "Langkah {n} dari {total}"
+  optional: opsional
+  next: Lanjut
+  finish: Kirim
+  begin: Mulai
+error:
+  banner: Masih ada jawaban yang kosong atau belum sesuai. Periksa bagian berbingkai merah.
+  choose_one: Pilih salah satu.
+  choose_at_least_one: Pilih minimal satu.
+  choose_at_most: "Pilih paling banyak {max}."
+  answer_every_row: Jawab setiap baris.
+  write_something: Tulis minimal satu kalimat.
+question:
+  max_hint: "Pilih paling banyak {max}."
+login:
+  title: Mulai
+  reassure: Yang kami nilai adalah produknya, bukan Anda. Tidak ada jawaban benar atau salah.
+  code_label: Kode peserta
+  code_hint: Kode yang Anda terima dari koordinator riset.
+  email_label: Email
+  passcode_label: Kode akses
+  passcode_hint: Dibagikan oleh koordinator riset.
+  submit: Mulai
+  resume_hint: Sesi terputus? Masukkan data yang sama untuk melanjutkan dari langkah terakhir.
+  start_new: Mulai
+  resume_summary: Saya sudah punya kode
+  resume_label: Kode Anda
+  resume: Lanjutkan
+  bad_code: Kode tidak dikenali. Periksa kembali dengan koordinator.
+  bad_email: Masukkan alamat email yang valid.
+  bad_domain: "Gunakan email yang berakhiran {domains}."
+  unknown_code: Tidak ada sesi dengan kode tersebut.
+  not_configured: Proyek ini belum dibuka (kode akses belum diatur).
+  bad_passcode: Kode akses tidak cocok.
+  need_consent: Centang persetujuan untuk melanjutkan.
+home:
+  title: Beranda
+  heading: Kegiatan Anda
+  intro: Kerjakan kegiatan di bawah dengan urutan bebas, kecuali yang masih terkunci. Progres Anda tersimpan otomatis.
+  save_code: "Simpan kode Anda {code}. Kode ini diperlukan untuk kembali dan melanjutkan."
+  all_done: Semua selesai. Terima kasih!
+  all_done_sub: Jawaban Anda sudah tersimpan. Anda boleh menutup halaman ini.
+  just_done: "“{title}” selesai."
+  status_new: Belum dimulai
+  status_in_progress: Sedang berjalan
+  status_done: Selesai
+  status_locked: Terkunci
+  minutes: "sekitar {n} menit"
+  requires: "Selesaikan dulu: {names}"
+  start: Mulai
+  continue: Lanjutkan
+  empty: Belum ada kegiatan untuk Anda.
+ab:
+  step_intro: Pengantar
+  step_final: Pertanyaan penutup
+  step_brief: "Tampilan {n}"
+  step_tasks: "Tugas tampilan {n}"
+  step_survey: "Survei tampilan {n}"
+  view_n: "Tampilan {n}"
+  view_of: "Tampilan {n} dari {total}"
+  no_preference: Sama saja
+  preference_q: Jika harus memilih, tampilan mana yang ingin Anda pakai sehari-hari?
+  preference_why: Mengapa?
+  final_title: Pertanyaan penutup
+  survey_title: "Bagaimana pengalaman Anda dengan tampilan {n}?"
+  survey_intro: Nilai tampilan yang baru saja Anda gunakan.
+  intro_default: "Anda akan mencoba {views} versi sebuah halaman. Pada setiap versi Anda mengerjakan {tasks} tugas singkat yang sama, lalu menjawab beberapa pertanyaan."
+  not_you: Yang diuji adalah rancangannya, bukan Anda. Isi halaman dibekukan untuk pengujian, jadi tidak ada yang berubah selama Anda mencoba.
+  how_title: Cara mengerjakan
+  how1_title: Baca tugasnya, lalu tekan Mulai tugas
+  how1_desc: Halaman muncul di bawah panel tugas. Setiap tugas dimulai dari posisi paling atas halaman yang sama.
+  how2_title: Cari jawabannya seperti biasa
+  how2_desc: Gulir, klik menu, dan pakai filter. Jika didampingi moderator, ceritakan dengan suara apa yang sedang Anda cari.
+  how3_title: Tekan Jawab saat sudah menemukannya
+  how3_desc: Tulis jawaban Anda. Jika tidak menemukannya, pilih "Saya tidak menemukannya". Pilihan itu juga berguna bagi kami.
+  how4_title: Nilai seberapa mudah tugas tersebut
+  how4_desc: Satu klik pada skala 1 sampai 7, lalu lanjut ke tugas berikutnya.
+  no_timer: Tidak ada penghitung waktu di layar. Bekerjalah dengan tenang. Waktu tidak dihitung selama tab ini tidak aktif.
+  brief_first_title: Tampilan pertama
+  brief_next_title: "Sekarang tampilan {n}"
+  brief_first: "Kerjakan {tasks} tugas pada tampilan ini."
+  brief_next: "Tugasnya sama, tampilannya berbeda. Cari lagi jawabannya di tampilan ini meskipun Anda sudah ingat."
+  open_view: "Buka tampilan {n}"
+runner:
+  task_of: "Tugas {n} dari {total}"
+  start: Mulai tugas
+  answer: Jawab
+  hide: Sembunyikan
+  show: Lihat tugas
+  your_answer: Jawaban Anda
+  submit: Kirim jawaban
+  gave_up: Saya tidak menemukannya
+  back: Kembali mencari
+  ease_q: Seberapa mudah tugas tadi?
+  ease_low: sangat sulit
+  ease_high: sangat mudah
+  incomplete: Lengkapi jawaban, atau pilih "Saya tidak menemukannya".
+  save_failed: Gagal menyimpan. Coba lagi.
+  offline: Koneksi terputus. Tekan angkanya lagi.
+  out_of_order: Tugas ini sudah dikirim atau belum gilirannya.
+  ease_required: Pilih seberapa mudah tugas ini.
+admin:
+  badge: Admin
+  login_title: Akses admin
+  all_projects: Semua proyek
+  passcode: Kode akses admin
+  open: Buka
+  bad_passcode: Kode akses tidak cocok.
+  super_not_configured: SUPERADMIN_PASSCODE belum diatur, jadi halaman ini nonaktif. Gunakan /<slug>/admin/ tiap proyek.
+  not_configured: "Akses admin nonaktif sampai {env} diatur."
+  config_error: Perubahan konfigurasi terakhir tidak valid. Versi sebelumnya masih berjalan.
+  unlisted: tidak tercantum
+  modules: modul
+  participant_view: Tampilan peserta
+  overview: Ringkasan
+  participants: Peserta
+  n_participants: "{n} peserta"
+  module: Modul
+  type: Jenis
+  started: Dimulai
+  finished: Selesai
+  requires: memerlukan
+  restricted: audiens terbatas
+  reset_title: Hapus seluruh data proyek ini
+  reset_desc: Menghapus semua peserta, jawaban, dan metrik proyek ini. Proyek lain tidak terpengaruh.
+  reset_confirm: Hapus seluruh data proyek ini secara permanen?
+  reset_passcode: Konfirmasi dengan kode akses admin
+  reset_button: Hapus semua
+  reset_failed: Kode akses tidak cocok, tidak ada data yang dihapus.
+  identity: Peserta
+  last_seen: Terakhir aktif
+  first_seen: Pertama masuk
+  delete: Hapus
+  delete_confirm: "Hapus {who} beserta seluruh datanya?"
+  no_participants: Belum ada peserta.
+  saved: Tersimpan.
+  no_answers: Belum ada jawaban.
+  save: Simpan penilaian dan catatan
+  mean: Rata-rata
+  row: Butir
+  picked: Dipilih prioritas
+  top_two: Dua nilai teratas
+  picked_hint: Diurutkan dari butir yang paling sering dipilih sebagai prioritas.
+  n_answers: "{n} jawaban"
+  n_finished: "{n} respons selesai"
+  n_runs: "{n} sesi selesai"
+  ab_note: Tugas tanpa kunci jawaban baru dihitung setelah dinilai di halaman peserta.
+  rule_title: "Ambang keputusan: {challenger} dibanding {baseline}"
+  rule_pairs: "Berdasarkan {n} peserta yang mencoba keduanya."
+  rule_indicative: "Kurang dari {min} peserta, jadi hasil ini masih indikatif."
+  rule_faster: "Total waktu tugas lebih singkat di {challenger} pada mayoritas peserta"
+  rule_success: "Keberhasilan tugas di {challenger} tidak lebih rendah"
+  rule_survey: "Rata-rata {qs} naik paling sedikit {gain}"
+  rule_met: Terpenuhi
+  rule_not_met: Belum
+  task: Tugas
+  variant: Varian
+  success: Berhasil
+  unaided: Tanpa bantuan
+  median_time: Median waktu
+  clicks: Klik
+  reversals: Gulir bolak-balik
+  ease: Kemudahan
+  gave_up: Menyerah
+  first_clicks: Klik pertama terbanyak
+  ungraded: "{n} belum dinilai"
+  total_all_tasks: Median total semua tugas
+  by_device: Per perangkat
+  by_device_hint: "Lebar layar {px} piksel ke bawah dihitung seluler."
+  median_total: Median total
+  desktop: Desktop
+  mobile: Seluler
+  order_effect: Efek urutan
+  order_effect_hint: Median total waktu per urutan. Jika sebuah varian hanya unggul saat muncul kedua, peserta mungkin sekadar sudah hafal tugasnya.
+  order: Urutan
+  preference: Pilihan peserta
+  post_survey: Survei setelah tiap tampilan
+  open_answers: Jawaban terbuka
+  viewport: "Lebar layar {px} px"
+  answer: Jawaban
+  n_clicks: "{n} klik"
+  n_reversals: "{n} gulir bolak-balik"
+  key: kunci jawaban
+  key_match: cocok
+  key_nomatch: tidak cocok
+  click_path: Jejak klik
+  grade: Penilaian koordinator
+  grade_auto: Otomatis
+  grade_none: belum ada
+  grade_success: Berhasil
+  grade_assisted: Berhasil dengan bantuan
+  grade_fail: Gagal
+  observer_note: Catatan pengamat
+  not_done: Belum dikerjakan.

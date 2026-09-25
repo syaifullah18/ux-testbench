@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import input, button %}
+{% block title %}{{ t('login.title') }}{% endblock %}
+{% block width %}max-w-5xl{% endblock %}
+{% block content %}
+<div class="grid md:grid-cols-12 gap-8 lg:gap-12 items-start">
+    <section class="md:col-span-7">
+        <h1 class="text-2xl leading-tight font-bold text-slate-900 mb-3">{{ project.name }}</h1>
+        {% if project.description %}<p class="text-base mb-4 whitespace-pre-line">{{ project.description }}</p>{% endif %}
+        <p class="text-slate-600">{{ t('login.reassure') }}</p>
+    </section>
+    <section class="md:col-span-5 border border-slate-200 rounded-xl p-5 sm:p-6">
+        <h2 class="text-lg font-bold text-slate-900 mb-5">{{ t('login.title') }}</h2>
+        <form method="post" novalidate class="space-y-4">
+            {% if mode == 'code' %}
+                {{ input('identity', t('login.code_label'), value=form.identity, error=errors.identity, hint=project.identity.get('hint') or t('login.code_hint')) }}
+            {% elif mode == 'email' %}
+                {{ input('identity', t('login.email_label'), type='email', value=form.identity, error=errors.identity,
+                         placeholder=('name@' ~ project.identity.domains[0]) if project.identity.domains else '') }}
+            {% endif %}
+            {% if project.access == 'passcode' %}
+                {{ input('passcode', t('login.passcode_label'), type='password', error=errors.passcode, hint=t('login.passcode_hint')) }}
+            {% endif %}
+            {% if project.consent %}
+            <div>
+                <label class="flex items-start gap-2.5 text-[14px] cursor-pointer">
+                    <input type="checkbox" name="consent" value="1" class="mt-1 w-4 h-4 rounded text-brand border-slate-400 focus:ring-brand/30">
+                    <span>{{ project.consent }}</span>
+                </label>
+                {% if errors.consent %}<p class="mt-1.5 text-[13px] text-red-700">{{ errors.consent }}</p>{% endif %}
+            </div>
+            {% endif %}
+            {% if mode == 'anonymous' %}
+                {{ button(t('login.start_new'), 'fa-play', name='action', value='start', cls='w-full') }}
+                <details class="pt-2 text-[14px]" {% if errors.identity %}open{% endif %}>
+                    <summary class="cursor-pointer text-brand">{{ t('login.resume_summary') }}</summary>
+                    <div class="mt-3 space-y-3">
+                        {{ input('identity', t('login.resume_label'), value=form.identity, error=errors.identity, placeholder='ABCD-2345') }}
+                        {{ button(t('login.resume'), 'fa-rotate-right', name='action', value='resume', style='secondary', cls='w-full') }}
+                    </div>
+                </details>
+            {% else %}
+                {{ button(t('login.submit'), 'fa-right-to-bracket', cls='w-full') }}
+                <p class="text-[13px] text-slate-500">{{ t('login.resume_hint') }}</p>
+            {% endif %}
+        </form>
+    </section>
+</div>
+{% endblock %}

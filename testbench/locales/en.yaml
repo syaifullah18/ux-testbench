@@ -1,0 +1,196 @@
+common:
+  logout: Log out
+  step_of: "Step {n} of {total}"
+  optional: optional
+  next: Next
+  finish: Submit
+  begin: Begin
+error:
+  banner: Some answers are missing or not valid. Check the items outlined in red.
+  choose_one: Choose one option.
+  choose_at_least_one: Choose at least one option.
+  choose_at_most: "Choose at most {max}."
+  answer_every_row: Answer every row.
+  write_something: Write at least one sentence.
+question:
+  max_hint: "Choose up to {max}."
+login:
+  title: Start
+  reassure: We are evaluating the product, not you. There are no right or wrong answers.
+  code_label: Participant code
+  code_hint: The code you received from the research coordinator.
+  email_label: Email
+  passcode_label: Access code
+  passcode_hint: Shared by the research coordinator.
+  submit: Start
+  resume_hint: Interrupted earlier? Enter the same details to continue where you left off.
+  start_new: Start
+  resume_summary: I already have a code
+  resume_label: Your code
+  resume: Continue
+  bad_code: That code is not recognised. Check it with the coordinator.
+  bad_email: Enter a valid email address.
+  bad_domain: "Use an address ending in {domains}."
+  unknown_code: No session found for that code.
+  not_configured: This project is not open yet (no access code configured).
+  bad_passcode: The access code does not match.
+  need_consent: Tick the consent box to continue.
+home:
+  title: Home
+  heading: Your activities
+  intro: Complete the activities below in any order unless one is locked. Your progress is saved as you go.
+  save_code: "Save your code {code}. You need it to come back and continue."
+  all_done: All done. Thank you!
+  all_done_sub: Your answers are saved. You can close this page.
+  just_done: "“{title}” is complete."
+  status_new: Not started
+  status_in_progress: In progress
+  status_done: Done
+  status_locked: Locked
+  minutes: "about {n} min"
+  requires: "Finish first: {names}"
+  start: Start
+  continue: Continue
+  empty: There is nothing for you here yet.
+ab:
+  step_intro: Introduction
+  step_final: Final questions
+  step_brief: "View {n}"
+  step_tasks: "Tasks, view {n}"
+  step_survey: "Survey, view {n}"
+  view_n: "View {n}"
+  view_of: "View {n} of {total}"
+  no_preference: No preference
+  preference_q: If you had to choose, which view would you use every day?
+  preference_why: Why?
+  final_title: Final questions
+  survey_title: "How was view {n}?"
+  survey_intro: Rate the view you just used.
+  intro_default: "You will try {views} versions of a page. On each one you do the same {tasks} short tasks, then answer a few questions."
+  not_you: We are testing the design, not you. The content is frozen for the test, so nothing changes while you work.
+  how_title: How it works
+  how1_title: Read the task, then press Start task
+  how1_desc: The page opens below the task panel. Every task starts from the top of the same page.
+  how2_title: Look for the answer as you normally would
+  how2_desc: Scroll, click menus and use filters. If a moderator is with you, think aloud.
+  how3_title: Press Answer when you have found it
+  how3_desc: Type your answer. If you cannot find it, choose "I couldn't find it"; that is useful too.
+  how4_title: Rate how easy it was
+  how4_desc: One click on a 1 to 7 scale, then on to the next task.
+  no_timer: There is no timer on screen. Work at your own pace; time is not counted while this tab is hidden.
+  brief_first_title: First view
+  brief_next_title: "Now view {n}"
+  brief_first: "Do the {tasks} tasks on this view."
+  brief_next: "The tasks are the same, the page is different. Look for the answers again on this view, even if you remember them."
+  open_view: "Open view {n}"
+runner:
+  task_of: "Task {n} of {total}"
+  start: Start task
+  answer: Answer
+  hide: Hide
+  show: Show task
+  your_answer: Your answer
+  submit: Submit answer
+  gave_up: I couldn't find it
+  back: Keep looking
+  ease_q: How easy was that task?
+  ease_low: very difficult
+  ease_high: very easy
+  incomplete: Fill in every answer, or choose "I couldn't find it".
+  save_failed: Could not save. Try again.
+  offline: Connection lost. Press the number again.
+  out_of_order: This task was already submitted or is not next.
+  ease_required: Choose how easy the task was.
+admin:
+  badge: Admin
+  login_title: Admin access
+  all_projects: All projects
+  passcode: Admin passcode
+  open: Open
+  bad_passcode: The passcode does not match.
+  super_not_configured: SUPERADMIN_PASSCODE is not set, so this page is disabled. Use each project's /<slug>/admin/.
+  not_configured: "Admin access is disabled until {env} is set."
+  config_error: The latest configuration change is invalid. The previous version is still running.
+  unlisted: unlisted
+  modules: modules
+  participant_view: Participant view
+  overview: Overview
+  participants: Participants
+  n_participants: "{n} participants"
+  module: Module
+  type: Type
+  started: Started
+  finished: Finished
+  requires: requires
+  restricted: restricted audience
+  reset_title: Delete all data of this project
+  reset_desc: Deletes every participant, answer and metric of this project. Other projects are not affected.
+  reset_confirm: Delete all data of this project permanently?
+  reset_passcode: Confirm with the admin passcode
+  reset_button: Delete everything
+  reset_failed: Passcode did not match; nothing was deleted.
+  identity: Participant
+  last_seen: Last seen
+  first_seen: First seen
+  delete: Delete
+  delete_confirm: "Delete {who} and all their data?"
+  no_participants: No participants yet.
+  saved: Saved.
+  no_answers: No answers yet.
+  save: Save grades and notes
+  mean: Mean
+  row: Item
+  picked: Picked as priority
+  top_two: Top two
+  picked_hint: Sorted by how often respondents picked the item as a priority.
+  n_answers: "{n} answers"
+  n_finished: "{n} finished responses"
+  n_runs: "{n} completed runs"
+  ab_note: Tasks without an answer key count once graded on the participant page.
+  rule_title: "Decision rule: {challenger} against {baseline}"
+  rule_pairs: "Based on {n} participants who tried both."
+  rule_indicative: "Fewer than {min} participants, so treat this as indicative."
+  rule_faster: "Total task time is shorter on {challenger} for most participants"
+  rule_success: "Task success on {challenger} is not lower"
+  rule_survey: "Mean of {qs} rises by at least {gain}"
+  rule_met: Met
+  rule_not_met: Not met
+  task: Task
+  variant: Variant
+  success: Success
+  unaided: Unaided
+  median_time: Median time
+  clicks: Clicks
+  reversals: Scroll back-and-forth
+  ease: Ease
+  gave_up: Gave up
+  first_clicks: Most common first clicks
+  ungraded: "{n} ungraded"
+  total_all_tasks: Median total, all tasks
+  by_device: By device
+  by_device_hint: "Viewports {px}px wide or narrower count as mobile."
+  median_total: Median total
+  desktop: Desktop
+  mobile: Mobile
+  order_effect: Order effect
+  order_effect_hint: Median total time per order. If a variant only wins when it comes second, participants may simply have learned the tasks.
+  order: Order
+  preference: Preference
+  post_survey: Survey after each view
+  open_answers: Open answers
+  viewport: "Viewport {px}px"
+  answer: Answer
+  n_clicks: "{n} clicks"
+  n_reversals: "{n} scroll reversals"
+  key: answer key
+  key_match: match
+  key_nomatch: no match
+  click_path: Click path
+  grade: Coordinator grade
+  grade_auto: Automatic
+  grade_none: none yet
+  grade_success: Success
+  grade_assisted: Success with help
+  grade_fail: Failed
+  observer_note: Observer note
+  not_done: Not done yet.

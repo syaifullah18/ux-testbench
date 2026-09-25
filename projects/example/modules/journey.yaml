@@ -1,0 +1,67 @@
+type: survey
+title: Where things are hard
+description: Rate each part of the portal and tell us what gets in your way.
+minutes: 6
+requires: [profile]
+pages:
+  - title: Rate each step
+    intro: Answer from your own experience. Choose "Never done" for anything you have not tried.
+    questions:
+      - id: member_steps
+        type: matrix
+        label: How difficult is each of these for you?
+        show_if: { ref: profile.role, in: [member, visitor] }
+        points: 5
+        labels: [Very easy, Very hard]
+        na_label: Never done
+        rows:
+          find_event: Finding an event
+          book_event: Booking a seat at an event
+          search_catalog: Searching the catalogue
+          renew: Renewing a loan
+          account: Managing my account
+      - id: staff_steps
+        type: matrix
+        label: How difficult is each of these for you?
+        show_if: { ref: profile.role, equals: staff }
+        points: 5
+        labels: [Very easy, Very hard]
+        na_label: Never done
+        rows:
+          publish_event: Publishing an event
+          manage_bookings: Managing bookings
+          reports: Getting attendance reports
+      - id: priorities
+        type: multi
+        label: Which should we fix first?
+        show_if: { ref: profile.role, in: [member, visitor] }
+        options_from: member_steps
+        max: 2
+      - id: staff_priorities
+        type: multi
+        label: Which should we fix first?
+        show_if: { ref: profile.role, equals: staff }
+        options_from: staff_steps
+        max: 2
+  - title: Your story
+    questions:
+      - id: stuck
+        type: multi
+        label: When you get stuck, what do you usually do?
+        required: false
+        columns: 2
+        options: [Ask staff, Search the help page, Try until it works, Give up]
+      - id: story
+        type: text
+        label: Describe the last time the portal got in your way.
+        hint: What were you trying to do, where did you get stuck, and how did it end?
+      - id: interview
+        type: single
+        label: Would you join a 20-minute follow-up interview?
+        options: { "yes": "Yes", "no": "No" }
+      - id: contact
+        type: text
+        long: false
+        label: Email or phone for scheduling
+        hint: Used only to schedule the interview, then deleted.
+        show_if: { ref: interview, equals: "yes" }

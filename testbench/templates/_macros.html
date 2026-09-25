@@ -1,0 +1,31 @@
+{% macro button(label, icon=None, type='submit', name=None, value=None, style='primary', cls='') -%}
+<button type="{{ type }}" {% if name %}name="{{ name }}" value="{{ value }}"{% endif %}
+        class="inline-flex items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 focus:outline-none focus:ring-4 focus:ring-brand/30
+               {% if style == 'primary' %}text-white bg-brand hover:bg-brand/90{% elif style == 'danger' %}text-white bg-red-600 hover:bg-red-700{% else %}border border-slate-300 text-slate-800 hover:bg-slate-50{% endif %} {{ cls }}">
+    {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</button>
+{%- endmacro %}
+
+{% macro link_button(href, label, icon=None, style='primary') -%}
+<a href="{{ href }}" class="inline-flex items-center justify-center gap-2 font-semibold rounded-lg text-[14px] px-4 py-2 focus:outline-none focus:ring-4 focus:ring-brand/30
+   {% if style == 'primary' %}text-white bg-brand hover:bg-brand/90{% else %}border border-slate-300 text-slate-800 hover:bg-slate-50{% endif %}">
+   {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</a>
+{%- endmacro %}
+
+{% macro error_banner(errors, t) -%}
+{% if errors %}
+<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-red-800 rounded-lg bg-red-50 border border-red-300" role="alert">
+    <i class="fa-solid fa-circle-exclamation mt-1"></i><span>{{ t('error.banner') }}</span>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro input(id, label, type='text', value='', error=None, hint=None, placeholder='') -%}
+<div>
+    <label for="{{ id }}" class="block mb-1.5 font-semibold text-slate-900">{{ label }}</label>
+    <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="off" {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if error or hint %}aria-describedby="{{ id }}-msg"{% endif %} {% if error %}aria-invalid="true"{% endif %}
+           class="{% if error %}bg-red-50 border-red-400{% else %}bg-white border-slate-400{% endif %} border rounded-lg block w-full px-3.5 py-2.5 text-slate-900 focus:ring-brand focus:border-brand">
+    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-red-700">{{ error }}</p>
+    {% elif hint %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-slate-500">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}

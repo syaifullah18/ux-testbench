@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ t('admin.all_projects') }}{% endblock %}
+{% block width %}max-w-4xl{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-6">{{ t('admin.all_projects') }}</h1>
+{% if config_error %}
+<div class="p-4 mb-6 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]">
+    <p class="font-semibold mb-1">{{ t('admin.config_error') }}</p>
+    <ul class="list-disc ml-5">{% for p in config_error.problems %}<li>{{ p }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+<ul class="space-y-3">
+    {% for p in projects %}
+    <li class="border border-slate-200 rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="font-semibold text-slate-900">{{ p.name }} <span class="text-slate-500 font-normal">/{{ p.slug }}/</span>{% if not p.listed %} <span class="text-[12px] px-1.5 py-0.5 rounded bg-slate-200">{{ t('admin.unlisted') }}</span>{% endif %}</p>
+            <p class="text-[13px] text-slate-500">{{ p.modules|length }} {{ t('admin.modules') }} · {{ p.identity.mode }} · {{ p.locale }}</p>
+        </div>
+        <div class="flex gap-3 text-[14px]">
+            <a class="text-brand hover:underline" href="{{ url_for('web.home', slug=p.slug) }}">{{ t('admin.participant_view') }}</a>
+            <a class="text-brand hover:underline font-semibold" href="{{ url_for('admin.dashboard', slug=p.slug) }}">{{ t('admin.badge') }}</a>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

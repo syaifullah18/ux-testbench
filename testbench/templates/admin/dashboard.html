@@ -1,0 +1,41 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ t('admin.overview') }}{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">{{ project.name }}</h1>
+        <p class="text-[14px] text-slate-500">{{ t('admin.n_participants', n=n_participants) }} · <a class="text-brand hover:underline" href="{{ url_for('web.home', slug=project.slug) }}">/{{ project.slug }}/</a></p>
+    </div>
+</div>
+<div class="border border-slate-200 rounded-xl overflow-x-auto mb-8">
+    <table class="w-full text-[14px]">
+        <thead><tr class="border-b border-slate-200 text-left text-slate-500">
+            <th class="px-4 py-2 font-semibold">{{ t('admin.module') }}</th><th class="px-4 py-2 font-semibold">{{ t('admin.type') }}</th>
+            <th class="px-4 py-2 font-semibold">{{ t('admin.started') }}</th><th class="px-4 py-2 font-semibold">{{ t('admin.finished') }}</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for m in project.modules.values() %}
+        <tr class="border-b border-slate-200 last:border-0">
+            <td class="px-4 py-2.5"><a class="font-semibold text-slate-900 hover:text-brand" href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}">{{ m.title }}</a>
+                {% if m.requires %}<span class="text-[12px] text-slate-500"> · {{ t('admin.requires') }} {{ m.requires|join(', ') }}</span>{% endif %}
+                {% if m.audience %}<span class="text-[12px] text-slate-500"> · {{ t('admin.restricted') }}</span>{% endif %}</td>
+            <td class="px-4 py-2.5 text-slate-500">{{ m.type }}</td>
+            <td class="px-4 py-2.5">{{ stats[m.id].started }}</td>
+            <td class="px-4 py-2.5">{{ stats[m.id].finished }}</td>
+            <td class="px-4 py-2.5 text-right"><a class="text-brand hover:underline" href="{{ url_for('admin.module_export', slug=project.slug, mid=m.id) }}"><i class="fa-solid fa-download mr-1"></i>CSV</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<details class="border border-red-300 rounded-xl p-4" {% if reset_failed %}open{% endif %}>
+    <summary class="font-semibold text-red-700 cursor-pointer">{{ t('admin.reset_title') }}</summary>
+    <p class="text-[14px] mt-2">{{ t('admin.reset_desc') }}</p>
+    <form method="post" action="{{ url_for('admin.reset', slug=project.slug) }}" class="mt-3 flex flex-wrap gap-3 items-end" onsubmit="return confirm({{ t('admin.reset_confirm')|tojson }})">
+        <div><label for="rp" class="block text-[13px] mb-1">{{ t('admin.reset_passcode') }}</label>
+            <input id="rp" type="password" name="passcode" class="border border-slate-400 rounded-lg px-3 py-2 text-[14px]"></div>
+        <button class="px-4 py-2 rounded-lg bg-red-600 text-white text-[14px] font-semibold hover:bg-red-700">{{ t('admin.reset_button') }}</button>
+        {% if reset_failed %}<p class="w-full text-[13px] text-red-700">{{ t('admin.reset_failed') }}</p>{% endif %}
+    </form>
+</details>
+{% endblock %}

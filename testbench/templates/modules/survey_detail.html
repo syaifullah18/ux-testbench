@@ -1,0 +1,5 @@
+<dl class="text-[14px] divide-y divide-slate-100">
+    {% for q, text in rows %}
+    <div class="py-2 grid sm:grid-cols-3 gap-1 sm:gap-4"><dt class="text-slate-500">{{ q.label }}</dt><dd class="sm:col-span-2 text-slate-900 whitespace-pre-line">{{ text }}</dd></div>
+    {% endfor %}
+</dl>

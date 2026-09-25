@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import link_button %}
+{% block title %}{{ t('home.title') }}{% endblock %}
+{% block content %}
+{% if just_done %}
+<div class="flex gap-3 p-4 mb-6 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200" role="status">
+    <i class="fa-solid fa-circle-check mt-1"></i><span>{{ t('home.just_done', title=just_done.title) }}</span>
+</div>
+{% endif %}
+<h1 class="text-2xl leading-tight font-bold text-slate-900 mb-2">{{ t('home.heading') }}</h1>
+<p class="mb-2">{{ t('home.intro') }}</p>
+{% if project.identity.mode == 'anonymous' %}
+<p class="mb-6 text-[14px] p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900"><i class="fa-solid fa-key mr-1.5"></i>{{ t('home.save_code', code=participant.identity) }}</p>
+{% else %}<div class="mb-6"></div>{% endif %}
+
+{% if all_done %}
+<div class="p-5 mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-center">
+    <p class="font-semibold text-emerald-900">{{ t('home.all_done') }}</p>
+    <p class="text-[14px] text-emerald-800">{{ t('home.all_done_sub') }}</p>
+</div>
+{% endif %}
+
+<ul class="space-y-3">
+{% for c in cards %}{% set m = c.m %}
+    <li class="border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 {% if c.status == 'locked' %}border-slate-200 bg-slate-50{% else %}border-slate-200{% endif %}">
+        <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+                <p class="font-semibold text-slate-900">{{ m.title }}</p>
+                {% set badge = {'new': 'bg-sky-100 text-sky-800', 'in_progress': 'bg-amber-100 text-amber-900', 'done': 'bg-emerald-100 text-emerald-800', 'locked': 'bg-slate-200 text-slate-600'}[c.status] %}
+                <span class="text-[12px] font-semibold px-2 py-0.5 rounded {{ badge }}">{{ t('home.status_' ~ c.status) }}</span>
+                {% if m.minutes %}<span class="text-[12px] text-slate-500"><i class="fa-regular fa-clock mr-1"></i>{{ t('home.minutes', n=m.minutes) }}</span>{% endif %}
+            </div>
+            {% if m.description %}<p class="text-[14px] text-slate-600">{{ m.description }}</p>{% endif %}
+            {% if c.status == 'locked' %}<p class="text-[13px] text-slate-500 mt-1"><i class="fa-solid fa-lock mr-1"></i>{{ t('home.requires', names=c.requires|join(', ')) }}</p>{% endif %}
+        </div>
+        <div class="flex-none">
+            {% if c.status == 'new' %}{{ link_button(url_for('web.module_start', slug=project.slug, mid=m.id), t('home.start'), 'fa-play') }}
+            {% elif c.status == 'in_progress' %}{{ link_button(url_for('web.module_start', slug=project.slug, mid=m.id), t('home.continue'), 'fa-arrow-right') }}
+            {% elif c.status == 'done' %}<span class="text-emerald-700 text-[14px] font-semibold"><i class="fa-solid fa-check mr-1"></i>{{ t('home.status_done') }}</span>{% endif %}
+        </div>
+    </li>
+{% else %}
+    <li class="text-slate-500">{{ t('home.empty') }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

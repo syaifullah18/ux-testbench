@@ -1,0 +1,24 @@
+# Project settings. The folder name is the URL slug: /<slug>/
+name: __NAME__
+description: One or two sentences participants see on the home screen.
+locale: en                 # UI language: en or id (see testbench/locales/)
+listed: true               # show on the index page at /
+
+identity:
+  mode: code               # code | email | anonymous
+  pattern: "^P\\d{2}$"      # code mode: codes you hand out, e.g. P01
+  # domains: [example.com] # email mode: restrict to these domains
+
+access: passcode           # passcode | open. Passcodes come from env vars, never from this file:
+                           # <SLUG>_PASSCODE and <SLUG>_ADMIN_PASSCODE (override with passcode_env / admin_passcode_env)
+
+consent: >-
+  I agree that my answers are recorded for this research. My name is not collected.
+
+brand:
+  primary: "#2563EB"       # buttons and links
+  nav: "#0F172A"           # top bar
+
+# Home-screen order. Each id is a file under modules/.
+modules:
+  - feedback

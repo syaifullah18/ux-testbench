@@ -1,0 +1,61 @@
+type: ab_test
+title: Try two events pages
+description: Find three things on two versions of the events page.
+minutes: 12
+requires: [profile]
+
+variants:
+  A: { label: Current list, file: prototypes/events-list.html }
+  B: { label: Search and filters, file: prototypes/events-filter.html }
+baseline: A
+order: rotate               # rotate | code_parity | random | fixed
+
+intro: >-
+  You will try two versions of the library's events page. On each one you will look for the
+  same three things.
+
+tasks:
+  - id: date
+    title: Find a workshop date
+    prompt: On which date is the "Intro to Spreadsheets" workshop?
+    fields: [{ id: date, label: Date, placeholder: "e.g. 3 March" }]
+    accept: { date: ["14 March", "March 14", "14 Mar", "14/3"] }
+    probe: Scanning a long list versus searching.
+  - id: seats
+    title: Check availability
+    prompt: How many seats are left for "Storytime for Kids"?
+    fields: [{ id: seats, label: Seats left }]
+    accept: { seats: ["6"] }
+    probe: Whether seat counts are visible without opening the event.
+  - id: sunday
+    title: Weekend options
+    prompt: Is there any event on a Sunday this month?
+    fields:
+      - { id: sunday, label: Your answer, kind: choice, options: ["Yes", "No", "Not sure"] }
+    accept: { sunday: ["No"] }
+    probe: Confirming that something does not exist.
+
+post_survey:
+  - id: find_easy
+    type: scale
+    label: I found what I was looking for easily.
+    labels: [Strongly disagree, Strongly agree]
+  - id: confident
+    type: scale
+    label: I am confident my answers were correct.
+    labels: [Strongly disagree, Strongly agree]
+  - id: comment
+    type: text
+    label: What helped or confused you most on this page?
+    required: false
+
+final_survey:
+  - id: other_ideas
+    type: text
+    label: Anything else the events page should do?
+    required: false
+
+decision_rule:
+  min_participants: 8
+  survey_questions: [find_easy]
+  min_survey_gain: 0.5

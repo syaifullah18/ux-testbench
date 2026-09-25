@@ -1,0 +1,26 @@
+type: survey
+title: About you
+description: Four quick questions so we can read your other answers in context.
+minutes: 1
+questions:
+  - id: role
+    type: single
+    label: How do you mainly use the library?
+    options:
+      member: I borrow books or join events
+      staff: I work at the library
+      visitor: I only visit the website
+  - id: frequency
+    type: single
+    label: How often do you use the online portal?
+    options: [Weekly, Monthly, A few times a year, Never]
+  - id: device
+    type: single
+    label: Which device do you use most for the portal?
+    options: { desktop: Laptop or desktop, mobile: Phone, both: Both equally }
+  - id: age_band
+    type: single
+    label: Your age
+    required: false
+    columns: 3
+    options: [Under 18, 18-34, 35-54, 55+, Prefer not to say]

@@ -1,0 +1,25 @@
+# A fictional project that shows every feature. Copy it, or run `python -m testbench new <slug>`.
+name: City Library Portal (demo)
+description: >-
+  Help us improve the library's online portal. Tell us where things are hard today,
+  then try two versions of the events page.
+locale: en
+listed: true
+
+identity:
+  mode: anonymous          # participants get a code like K7Q2-9FXA to resume later
+
+access: open               # no passcode for the demo; real studies should use `passcode`
+
+consent: >-
+  I agree that my answers and my interactions with the test pages (time, clicks, scrolling)
+  are recorded for this research. No name or contact details are collected unless I offer them.
+
+brand:
+  primary: "#0F766E"
+  nav: "#134E4A"
+
+modules:
+  - profile
+  - journey
+  - events-ab

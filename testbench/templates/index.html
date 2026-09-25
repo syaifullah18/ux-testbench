@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-2">Research projects</h1>
+<p class="mb-8 text-slate-600">Choose the project you were invited to. If you received a direct link, use that instead.</p>
+<ul class="space-y-3">
+    {% for p in projects %}
+    <li><a href="{{ url_for('web.home', slug=p.slug) }}" class="block border border-slate-200 rounded-xl p-5 hover:border-slate-400">
+        <p class="font-semibold text-slate-900">{{ p.name }}</p>
+        {% if p.description %}<p class="text-[14px] text-slate-600 mt-1">{{ p.description }}</p>{% endif %}
+    </a></li>
+    {% else %}
+    <li class="text-slate-500">No public projects.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

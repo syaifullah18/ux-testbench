@@ -1,0 +1,62 @@
+{%- set brand = project.brand if project else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
+{%- macro rgb(hex) %}{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}{% endmacro -%}
+<!DOCTYPE html>
+<html lang="{{ project.locale if project else 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}{% if project %} · {{ project.name }}{% endif %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>:root { --brand-rgb: {{ rgb(brand.primary) }}; --nav-rgb: {{ rgb(brand.nav) }}; }</style>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                fontFamily: { sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+                // Brand colours come from project.yaml, so one set of templates serves every project.
+                colors: { brand: 'rgb(var(--brand-rgb) / <alpha-value>)', nav: 'rgb(var(--nav-rgb) / <alpha-value>)' },
+            } }
+        }
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-white font-sans text-[15px] leading-relaxed text-slate-700 antialiased min-h-screen flex flex-col {% block body_class %}{% endblock %}">
+    <nav class="bg-nav text-white flex-none">
+        <div class="{% block width %}max-w-3xl{% endblock %} mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
+            {% if project %}<a href="{{ url_for('web.home', slug=project.slug) }}" class="text-base font-bold tracking-wide">{{ project.name }}</a>
+            {% else %}<span class="text-base font-bold tracking-wide">UX Testbench</span>{% endif %}
+            {% block nav_right %}
+            {% if participant and not (ctx and ctx.admin) %}
+            <span class="flex flex-none items-center gap-3 text-[13px]">
+                <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold whitespace-nowrap">{{ participant.identity }}</span>
+                <a href="{{ url_for('web.logout', slug=project.slug) }}" class="text-white/70 hover:text-white underline whitespace-nowrap">{{ t('common.logout') }}</a>
+            </span>
+            {% endif %}
+            {% endblock %}
+        </div>
+    </nav>
+
+    {% if progress and not hide_progress %}
+    <div class="bg-white border-b border-slate-200 flex-none">
+        <div class="{{ self.width() }} mx-auto px-4 sm:px-8 py-3">
+            <div class="flex items-baseline justify-between gap-4 text-[13px] mb-2">
+                <span><span class="text-slate-500">{{ progress.module }} ·</span> <span class="font-semibold text-slate-900">{{ progress.label }}</span></span>
+                <span class="text-slate-500 whitespace-nowrap">{{ t('common.step_of', n=progress.index, total=progress.total) }}</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-1.5" role="progressbar" aria-valuemin="1" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.index }}">
+                <div class="bg-brand h-1.5 rounded-full" style="width: {{ (progress.index / progress.total * 100)|round(1) }}%"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% block main %}
+    <main class="flex-1 w-full {{ self.width() }} mx-auto px-4 sm:px-8 pt-8 pb-12">
+        {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,46 @@
+{#- Aggregates for any list of questions, from questions.summarize(). -#}
+{% macro summary_block(items, t) %}
+{% for s in items %}{% set q = s.q %}
+<section class="border border-slate-200 rounded-xl p-4 overflow-x-auto">
+    <p class="font-semibold text-slate-900">{{ q.label }}</p>
+    <p class="text-[12px] text-slate-500 mb-3">{{ q.type }} · n = {{ s.n }}</p>
+    {% if q.type in ('single', 'multi') %}
+        {% set top = (s.counts|map(attribute=1)|max) or 1 %}
+        <ul class="space-y-1.5 text-[14px]">
+        {% for label, n in s.counts %}
+            <li class="grid grid-cols-[minmax(0,1fr)_8rem_3rem] items-center gap-3">
+                <span>{{ label }}</span>
+                <span class="h-2 rounded bg-slate-100"><span class="block h-2 rounded bg-brand" style="width: {{ (n / top * 100)|round(1) }}%"></span></span>
+                <span class="text-right font-semibold">{{ n }}</span>
+            </li>
+        {% endfor %}
+        </ul>
+    {% elif q.type == 'scale' %}
+        <p class="text-[14px] mb-2">{{ t('admin.mean') }} <strong>{{ s.mean|num(2) }}</strong> / {{ q.points }}</p>
+        <div class="flex gap-1 text-[12px]">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-slate-100 py-1"><strong>{{ n }}</strong></div><div class="text-slate-500 mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
+    {% elif q.type == 'matrix' %}
+        <table class="w-full text-[14px]">
+            <thead><tr class="text-left text-slate-500 border-b border-slate-200">
+                <th class="py-1.5 pr-3 font-semibold">{{ t('admin.row') }}</th>
+                {% if s.has_picks %}<th class="py-1.5 px-3 font-semibold">{{ t('admin.picked') }}</th>{% endif %}
+                <th class="py-1.5 px-3 font-semibold">{{ t('admin.mean') }} (1-{{ q.points }})</th>
+                <th class="py-1.5 px-3 font-semibold">{{ t('admin.top_two') }}</th><th class="py-1.5 px-3 font-semibold">n</th>
+                {% if q.na_label %}<th class="py-1.5 px-3 font-semibold">{{ q.na_label }}</th>{% endif %}
+            </tr></thead>
+            <tbody>{% for r in s.rows %}
+            <tr class="border-b border-slate-100 last:border-0">
+                <td class="py-1.5 pr-3">{{ r.label }}</td>
+                {% if s.has_picks %}<td class="py-1.5 px-3 font-semibold">{{ r.picks }}</td>{% endif %}
+                <td class="py-1.5 px-3">{{ r.mean|num(2) }}</td><td class="py-1.5 px-3">{{ r.top_pct|pct }}</td><td class="py-1.5 px-3">{{ r.n }}</td>
+                {% if q.na_label %}<td class="py-1.5 px-3">{{ r.na }}</td>{% endif %}
+            </tr>{% endfor %}</tbody>
+        </table>
+        {% if s.has_picks %}<p class="mt-2 text-[12px] text-slate-500">{{ t('admin.picked_hint') }}</p>{% endif %}
+    {% elif q.type == 'text' %}
+        <details {% if s.texts|length <= 5 %}open{% endif %}><summary class="cursor-pointer text-[14px] text-brand">{{ t('admin.n_answers', n=s.texts|length) }}</summary>
+        <ul class="mt-2 space-y-2 text-[14px]">{% for who, text in s.texts %}<li class="border-l-2 border-slate-200 pl-3"><span class="text-slate-500 text-[12px]">{{ who }}</span><br><span class="whitespace-pre-line">{{ text }}</span></li>{% endfor %}</ul>
+        </details>
+    {% endif %}
+</section>
+{% endfor %}
+{% endmacro %}

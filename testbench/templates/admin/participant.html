@@ -1,0 +1,21 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ person.identity }}{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 mb-1">{{ person.identity }}</h1>
+<p class="text-[14px] text-slate-500 mb-6">{{ t('admin.first_seen') }} {{ person.created_at[:16].replace('T', ' ') }} · {{ t('admin.last_seen') }} {{ person.last_seen_at[:16].replace('T', ' ') }}</p>
+{% if saved %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('admin.saved') }}</div>{% endif %}
+<form method="post" class="space-y-6">
+    {% for b in blocks %}
+    <section class="border border-slate-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between gap-2">
+            <p class="font-semibold text-slate-900">{{ b.m.title }}</p>
+            <p class="text-[13px] text-slate-500">{% if b.s.finished_at %}{{ t('home.status_done') }} {{ b.s.finished_at[:16].replace('T', ' ') }}{% else %}{{ t('home.status_in_progress') }} · {{ b.s.step }}{% endif %}</p>
+        </div>
+        <div class="p-4">{{ b.html or t('admin.no_answers') }}</div>
+    </section>
+    {% else %}
+    <p class="text-slate-500">{{ t('admin.no_answers') }}</p>
+    {% endfor %}
+    {% if blocks %}<button class="inline-flex items-center gap-2 text-white bg-brand hover:bg-brand/90 font-semibold rounded-lg px-5 py-2.5"><i class="fa-solid fa-floppy-disk"></i>{{ t('admin.save') }}</button>{% endif %}
+</form>
+{% endblock %}

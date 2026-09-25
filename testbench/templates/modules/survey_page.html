@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import error_banner, button %}
+{% from "_questions.html" import question, question_script %}
+{% block title %}{{ page.title or module.title }}{% endblock %}
+{% block content %}
+<h1 class="text-2xl leading-tight font-bold text-slate-900 mb-2">{{ page.title or module.title }}</h1>
+{% if page.intro %}<p class="text-base mb-6 whitespace-pre-line">{{ page.intro }}</p>{% elif page_no == 1 and module.description %}<p class="text-base mb-6">{{ module.description }}</p>{% else %}<div class="mb-6"></div>{% endif %}
+{{ error_banner(errors, t) }}
+<form method="post" novalidate class="space-y-5" data-questions>
+    {% set page_ids = page.questions|map(attribute='id')|list %}
+    {% for q in page.questions %}
+        {% set cond = Q.client_condition(q, page_ids) %}
+        {% if cond or Q.visible(q, prior, ctx.lookup) %}
+            {{ question(q, answers.get(q.id), errors.get(q.id), t, cond=cond) }}
+        {% endif %}
+    {% endfor %}
+    <div class="border-t border-slate-200 pt-6">
+        {{ button(t('common.finish') if last else t('common.next'), 'fa-paper-plane' if last else 'fa-arrow-right') }}
+    </div>
+</form>
+{{ question_script() }}
+{% endblock %}

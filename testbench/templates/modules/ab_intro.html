@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import button %}
+{% block title %}{{ module.title }}{% endblock %}
+{% block content %}
+<h1 class="text-2xl leading-tight font-bold text-slate-900 mb-3">{{ module.title }}</h1>
+<p class="text-base mb-3 whitespace-pre-line">{{ intro or t('ab.intro_default', views=n_views, tasks=n_tasks) }}</p>
+<p class="mb-8">{{ t('ab.not_you') }}</p>
+<h2 class="text-lg font-bold text-slate-900 mb-3">{{ t('ab.how_title') }}</h2>
+<ol class="space-y-4 mb-8">
+    {% for i in range(1, 5) %}
+    <li class="flex gap-3.5">
+        <span class="flex-none w-7 h-7 rounded-full bg-nav text-white text-[13px] font-bold flex items-center justify-center" aria-hidden="true">{{ i }}</span>
+        <div class="pt-0.5"><p class="font-semibold text-slate-900">{{ t('ab.how' ~ i ~ '_title') }}</p><p class="text-[14px]">{{ t('ab.how' ~ i ~ '_desc') }}</p></div>
+    </li>
+    {% endfor %}
+</ol>
+<div class="flex gap-3 p-4 mb-8 rounded-lg bg-brand/10 text-slate-900 text-[14px]"><i class="fa-solid fa-circle-info mt-1"></i><span>{{ t('ab.no_timer') }}</span></div>
+<form method="post">{{ button(t('common.begin'), 'fa-play') }}</form>
+{% endblock %}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events · City Library</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; color: #1f2937; background: #fff; }
+  header { background: #1e3a5f; color: #fff; padding: 12px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header a { color: #cbd5e1; font-size: 14px; text-decoration: none; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+  input[type=search] { flex: 1 1 240px; padding: 10px 12px; border: 1px solid #94a3b8; border-radius: 8px; font-size: 15px; }
+  select { padding: 10px; border: 1px solid #94a3b8; border-radius: 8px; font-size: 15px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { border: 1px solid #94a3b8; background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 14px; cursor: pointer; }
+  .chip[aria-pressed=true] { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .date { font-size: 13px; font-weight: 600; color: #1e3a5f; }
+  .card h2 { font-size: 17px; margin: 0; }
+  .seats { font-size: 13px; font-weight: 600; }
+  .seats.low { color: #b45309; } .seats.full { color: #b91c1c; }
+  .card button { margin-top: auto; padding: 8px; border-radius: 8px; border: 0; background: #1e3a5f; color: #fff; font-weight: 600; }
+  .empty { padding: 24px; text-align: center; color: #64748b; border: 1px dashed #cbd5e1; border-radius: 12px; }
+</style>
+</head>
+<body>
+<header><strong>City Library</strong><a href="#">Home</a><a href="#">Catalogue</a><a href="#events">Events</a><a href="#">My account</a></header>
+<main id="events">
+  <h1>Events in March</h1>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search events" aria-label="Search events">
+    <select id="day" aria-label="Day of week">
+      <option value="">Any day</option>
+      <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option>
+      <option>Friday</option><option>Saturday</option><option>Sunday</option>
+    </select>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+</main>
+<script src="events.js"></script>
+<script>
+  const cats = ['All', ...new Set(EVENTS.map(e => e.cat))];
+  let cat = 'All';
+  const chips = document.getElementById('chips');
+  chips.innerHTML = cats.map(c => `<button class="chip" aria-pressed="${c === cat}">${c}</button>`).join('');
+  chips.addEventListener('click', e => {
+    if (!e.target.matches('.chip')) return;
+    cat = e.target.textContent;
+    chips.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', b.textContent === cat));
+    render();
+  });
+  function render() {
+    const q = document.getElementById('q').value.toLowerCase(), day = document.getElementById('day').value;
+    const rows = EVENTS.filter(e => (cat === 'All' || e.cat === cat) && (!day || e.day === day)
+      && (!q || (e.title + ' ' + e.text).toLowerCase().includes(q)));
+    document.getElementById('grid').innerHTML = rows.length ? rows.map(e => `
+      <article class="card">
+        <span class="date">${e.day}, ${e.date}</span>
+        <h2>${e.title}</h2>
+        <span class="seats ${e.seats === 0 ? 'full' : e.seats < 7 ? 'low' : ''}">${e.seats === 0 ? 'Full, join waiting list' : e.seats + ' seats left'}</span>
+        <p style="margin:0;font-size:14px;color:#475569">${e.text}</p>
+        <button>${e.seats === 0 ? 'Join waiting list' : 'Book'}</button>
+      </article>`).join('') : '<p class="empty">No events match. Try another day or clear the search.</p>';
+  }
+  document.getElementById('q').addEventListener('input', render);
+  document.getElementById('day').addEventListener('change', render);
+  render();
+</script>
+</body>
+</html>

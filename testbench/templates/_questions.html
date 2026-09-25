@@ -1,0 +1,98 @@
+{#- Renders one question from the question engine. Conditions on questions of the same page are
+    toggled client-side through data-show-if; other conditions were already resolved server-side. -#}
+{% macro question(q, value, error, t, number=None, cond=None) -%}
+{% set boxed = 'border rounded-xl p-5 sm:p-6 ' ~ ('border-red-400' if error else 'border-slate-200') %}
+{% set card = 'flex items-center gap-2.5 h-full px-3.5 py-2.5 border border-slate-300 rounded-lg cursor-pointer text-[14px] leading-snug hover:border-brand hover:bg-brand/5 has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand/30' %}
+<fieldset class="{{ boxed }}" data-q="{{ q.id }}" {% if cond %}data-show-if='{{ cond|tojson }}'{% endif %}>
+    <legend class="sr-only">{{ q.label }}</legend>
+    <p class="text-base font-semibold text-slate-900 mb-1" aria-hidden="true">{% if number %}{{ number }}. {% endif %}{{ q.label }}{% if not q.required %} <span class="font-normal text-slate-500 text-[14px]">({{ t('common.optional') }})</span>{% endif %}</p>
+    {% if q.hint %}<p class="text-slate-500 text-[14px] mb-3">{{ q.hint }}</p>{% endif %}
+    <div class="mt-3">
+    {% if q.type == 'single' %}
+        <ul class="grid grid-cols-1 {% if q.columns >= 2 %}sm:grid-cols-{{ q.columns }}{% endif %} gap-2.5">
+        {% for v, label in q.options %}
+            <li><label class="{{ card }}"><input type="radio" name="{{ q.id }}" value="{{ v }}" {% if value == v %}checked{% endif %} class="w-4 h-4 text-brand border-slate-400 focus:ring-0">{{ label }}</label></li>
+        {% endfor %}
+        </ul>
+    {% elif q.type == 'multi' %}
+        <ul class="grid grid-cols-1 {% if q.columns >= 2 %}sm:grid-cols-{{ q.columns }}{% endif %} gap-2.5" {% if q.max %}data-max="{{ q.max }}"{% endif %}>
+        {% for v, label in q.options %}
+            <li><label class="{{ card }}"><input type="checkbox" name="{{ q.id }}" value="{{ v }}" {% if value and v in value %}checked{% endif %} class="w-4 h-4 rounded text-brand border-slate-400 focus:ring-brand/30">{{ label }}</label></li>
+        {% endfor %}
+        </ul>
+        {% if q.max %}<p class="mt-2 text-[13px] text-slate-500">{{ t('question.max_hint', max=q.max) }}</p>{% endif %}
+    {% elif q.type == 'scale' %}
+        <ul class="grid grid-cols-1 gap-2.5" style="grid-template-columns: repeat({{ q.points }}, minmax(0, 1fr))">
+        {% for label in q.labels %}{% set v = loop.index %}
+            <li><label class="flex flex-col items-center justify-start gap-1 h-full px-1.5 py-3 border border-slate-300 rounded-lg cursor-pointer text-center hover:border-brand hover:bg-brand/5 has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand/30">
+                <input type="radio" name="{{ q.id }}" value="{{ v }}" {% if value == v %}checked{% endif %} class="sr-only">
+                <span class="text-base font-bold text-slate-900 leading-none">{{ v }}</span>
+                {% if label %}<span class="text-[12px] leading-tight text-slate-600 hidden sm:block">{{ label }}</span>{% endif %}
+            </label></li>
+        {% endfor %}
+        </ul>
+        {% if q.labels[0] or q.labels[-1] %}<p class="sm:hidden mt-2 flex justify-between text-[12px] text-slate-500"><span>1 = {{ q.labels[0] }}</span><span>{{ q.points }} = {{ q.labels[-1] }}</span></p>{% endif %}
+    {% elif q.type == 'matrix' %}
+        {% if q.labels[0] or q.labels[-1] %}<p class="mb-3 text-[13px] text-slate-500">1 = {{ q.labels[0] }}, {{ q.points }} = {{ q.labels[-1] }}</p>{% endif %}
+        <div class="space-y-4">
+        {% for rv, rlabel in q.rows %}{% set cur = (value or {}).get(rv) %}
+            <div role="radiogroup" aria-label="{{ rlabel }}">
+                <p class="text-[14px] font-semibold text-slate-900 mb-1.5">{{ rlabel }}</p>
+                <div class="flex flex-wrap gap-1.5">
+                {% for label in q.labels %}{% set v = loop.index %}
+                    <label class="inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-1.5 border border-slate-300 rounded-lg cursor-pointer text-[13px] hover:border-brand has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:checked]:font-semibold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand/30" title="{{ label }}">
+                        <input type="radio" name="{{ q.id }}.{{ rv }}" value="{{ v }}" {% if cur == v %}checked{% endif %} class="sr-only">{{ v }}
+                    </label>
+                {% endfor %}
+                {% if q.na_label %}
+                    <label class="inline-flex items-center px-2.5 py-1.5 border border-slate-300 rounded-lg cursor-pointer text-[13px] text-slate-500 hover:border-brand has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand/30">
+                        <input type="radio" name="{{ q.id }}.{{ rv }}" value="na" {% if cur == 'na' %}checked{% endif %} class="sr-only">{{ q.na_label }}
+                    </label>
+                {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% elif q.type == 'text' %}
+        {% if q.long %}
+        <textarea name="{{ q.id }}" rows="4" maxlength="{{ q.max_length }}" aria-label="{{ q.label }}" placeholder="{{ q.placeholder }}"
+                  class="block px-3.5 py-2.5 w-full text-slate-900 bg-white rounded-lg border border-slate-300 focus:ring-brand focus:border-brand">{{ value or '' }}</textarea>
+        {% else %}
+        <input type="text" name="{{ q.id }}" value="{{ value or '' }}" maxlength="{{ q.max_length }}" aria-label="{{ q.label }}" placeholder="{{ q.placeholder }}" autocomplete="off"
+               class="block px-3.5 py-2.5 w-full text-slate-900 bg-white rounded-lg border border-slate-300 focus:ring-brand focus:border-brand">
+        {% endif %}
+    {% endif %}
+    </div>
+    {% if error %}<p class="mt-2.5 text-[13px] text-red-700">{{ t('error.' ~ error, max=q.max) }}</p>{% endif %}
+</fieldset>
+{%- endmacro %}
+
+{#- Toggles same-page show_if conditions and enforces multi `max` in the browser. The server
+    re-checks both, so this is only for convenience. -#}
+{% macro question_script() -%}
+<script>
+(function () {
+  document.querySelectorAll('form[data-questions]').forEach(function (form) {
+    function values(id) {
+        return [...form.querySelectorAll(`[name="${id}"]`)].filter(el => (el.type === 'radio' || el.type === 'checkbox') ? el.checked : el.value).map(el => el.value);
+    }
+    function holds(c) {
+        const v = values(c.ref);
+        if ('equals' in c) return v.includes(String(c.equals));
+        if ('in' in c) return v.some(x => c.in.map(String).includes(x));
+        if ('not_in' in c) return v.length > 0 && !v.some(x => c.not_in.map(String).includes(x));
+        return true;
+    }
+    function sync() {
+        form.querySelectorAll('[data-show-if]').forEach(el => { el.hidden = !holds(JSON.parse(el.dataset.showIf)); });
+        form.querySelectorAll('[data-max]').forEach(list => {
+            const boxes = [...list.querySelectorAll('input[type=checkbox]')], max = +list.dataset.max;
+            const n = boxes.filter(b => b.checked).length;
+            boxes.forEach(b => { b.disabled = !b.checked && n >= max; b.closest('label').classList.toggle('opacity-50', b.disabled); });
+        });
+    }
+    form.addEventListener('change', sync); sync();
+  });
+})();
+</script>
+{%- endmacro %}
