@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Study unavailable{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-sm">
+    <div class="size-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl">
+        <i class="fa-solid fa-circle-pause"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-2 text-balance">This study is unavailable</h1>
+    <p class="text-slate-600 text-[15px] leading-relaxed mb-6 text-pretty">
+        It is not accepting participants at the moment. If someone invited you to take part, please contact them directly.
+    </p>
+    <a href="/" class="text-sm font-semibold text-brand underline">Back to the home page</a>
+</div>
+{% endblock %}

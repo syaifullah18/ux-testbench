@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ t('admin.all_projects') }}{% endblock %}
 {% block width %}max-w-5xl{% endblock %}
+{% block nav_right %}
+<span class="flex items-center gap-3 text-[13px]">
+    <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold">Superadmin</span>
+    <a href="{{ url_for('admin.super_logout') }}" class="text-white/70 hover:text-white underline">{{ t('common.logout') }}</a>
+</span>
+{% endblock %}
 {% block content %}
 {% set btn = 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-semibold bg-brand text-white hover:bg-brand/90' %}
 {% set field = 'border border-slate-400 rounded-lg px-3 py-2 text-[14px] w-full' %}
@@ -38,6 +44,7 @@
         <h2 class="text-lg font-bold text-slate-900 mb-1">{{ t('studio.new_project') }}</h2>
         <p class="text-[13px] text-slate-500 mb-4">{{ t('studio.new_project_hint', dir=studio_dir) }}</p>
         <form method="post" action="{{ url_for('studio.new_project') }}" class="space-y-3">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div><label class="block text-[13px] font-semibold mb-1" for="np-slug">{{ t('studio.slug') }}</label>
                 <input id="np-slug" name="slug" required pattern="[a-z0-9][a-z0-9-]*" placeholder="checkout-2026" class="{{ field }}">
                 <p class="text-[12px] text-slate-500 mt-1">{{ t('studio.slug_hint') }}</p></div>
@@ -63,6 +70,7 @@
         <h2 class="text-lg font-bold text-slate-900 mb-1">{{ t('studio.import') }}</h2>
         <p class="text-[13px] text-slate-500 mb-4">{{ t('studio.import_hint') }}</p>
         <form method="post" action="{{ url_for('studio.import_project') }}" enctype="multipart/form-data" class="space-y-3">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div><label class="block text-[13px] font-semibold mb-1" for="im-file">{{ t('studio.zip_file') }}</label>
                 <input id="im-file" type="file" name="archive" accept=".zip" required class="block w-full text-[13px]"></div>
             <div><label class="block text-[13px] font-semibold mb-1" for="im-slug">{{ t('studio.slug') }}</label>

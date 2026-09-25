@@ -1,0 +1,85 @@
+{#- Shared <head> for every page: the stylesheets, the Tailwind theme, and the brand palette.
+
+    Both the CDN build and the compiled build (LOCAL_ASSETS=1) read their theme from the same CSS
+    custom properties, so one definition serves every page and each project's own colour reaches
+    all of them. tailwind.config.js maps the same names for the compiled build; keep the two in
+    step when adding a token.
+
+    A project sets one primary colour in project.yaml. The 50–950 steps below are tints and
+    shades of it, computed here, so a page can reach for a lighter or darker version of the brand
+    without hard-coding a second palette that stops matching. `brand` on its own means 500. -#}
+
+{%- set brand = project.brand if project else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
+
+{%- macro rgb(hex) -%}
+{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}
+{%- endmacro -%}
+
+{#- tint mixes the colour with white, shade with black; `p` is how much of that is mixed in. -#}
+{%- macro tint(hex, p) -%}
+{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}
+{{ (r + (255 - r) * p)|round|int }} {{ (g + (255 - g) * p)|round|int }} {{ (b + (255 - b) * p)|round|int }}
+{%- endmacro -%}
+
+{%- macro shade(hex, p) -%}
+{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}
+{{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}
+{%- endmacro -%}
+
+{% if config.LOCAL_ASSETS %}
+{#- Every asset served from this instance, so a participant's browser contacts nobody else and
+    their IP address reaches no third party. Build them with scripts/build-assets.sh. -#}
+<link href="{{ url_for('static', filename='vendor/tailwind.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='vendor/icons.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='vendor/fonts.css') }}" rel="stylesheet">
+{% else %}
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script>
+    tailwind.config = {
+        theme: { extend: {
+            fontFamily: { sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+            colors: {
+                brand: {
+                    DEFAULT: 'rgb(var(--brand-500) / <alpha-value>)',
+                    50: 'rgb(var(--brand-50) / <alpha-value>)',
+                    100: 'rgb(var(--brand-100) / <alpha-value>)',
+                    200: 'rgb(var(--brand-200) / <alpha-value>)',
+                    300: 'rgb(var(--brand-300) / <alpha-value>)',
+                    400: 'rgb(var(--brand-400) / <alpha-value>)',
+                    500: 'rgb(var(--brand-500) / <alpha-value>)',
+                    600: 'rgb(var(--brand-600) / <alpha-value>)',
+                    700: 'rgb(var(--brand-700) / <alpha-value>)',
+                    800: 'rgb(var(--brand-800) / <alpha-value>)',
+                    900: 'rgb(var(--brand-900) / <alpha-value>)',
+                    950: 'rgb(var(--brand-950) / <alpha-value>)',
+                },
+                nav: 'rgb(var(--nav-rgb) / <alpha-value>)',
+            },
+            height: { 18: '4.5rem' },
+            spacing: { 18: '4.5rem' },
+        } }
+    }
+</script>
+{% endif %}
+
+<style>
+    :root {
+        --brand-rgb: {{ rgb(brand.primary) }};
+        --nav-rgb: {{ rgb(brand.nav) }};
+        --brand-50:  {{ tint(brand.primary, 0.95) }};
+        --brand-100: {{ tint(brand.primary, 0.89) }};
+        --brand-200: {{ tint(brand.primary, 0.76) }};
+        --brand-300: {{ tint(brand.primary, 0.60) }};
+        --brand-400: {{ tint(brand.primary, 0.33) }};
+        --brand-500: {{ rgb(brand.primary) }};
+        --brand-600: {{ shade(brand.primary, 0.12) }};
+        --brand-700: {{ shade(brand.primary, 0.27) }};
+        --brand-800: {{ shade(brand.primary, 0.42) }};
+        --brand-900: {{ shade(brand.primary, 0.55) }};
+        --brand-950: {{ shade(brand.primary, 0.72) }};
+    }
+</style>

@@ -22,9 +22,9 @@ import yaml
 from flask import (Blueprint, abort, current_app, redirect, render_template, request, send_file,
                    send_from_directory, session as cookie, url_for)
 
-from . import passcodes, storage
+from . import limits, passcodes, storage
 from .config import SLUG_RE, ID_RE, RESERVED_SLUGS, Problems, env_prefix, load_project
-from .context import Ctx, is_admin
+from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import available as available_locales, translator
 from .modules import MODULE_TYPES
 from .web import get_project, registry
@@ -44,16 +44,17 @@ SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 # ---------------------------------------------------------------- helpers
 
-def is_super():
-    return "*" in (cookie.get("tb_admin") or [])
-
 
 def studio_project(slug, write=True):
     project = get_project(slug)
-    if not is_admin(slug):
-        abort(403)
-    if write and not project.editable:
-        abort(403)
+    if write:
+        if not can_edit(slug):
+            abort(403)
+        if not project.editable:
+            abort(403)
+    else:
+        if not is_admin(slug):
+            abort(403)
     return project
 
 
@@ -295,6 +296,7 @@ def extract_zip(stream, dest, allowed_ext, strip_single_root=False):
 
 # ---------------------------------------------------------------- project studio
 
+@bp.route("/app/p/<slug>/studio/")
 @bp.route("/<slug>/admin/studio/")
 def home(slug):
     project = studio_project(slug, write=False)
@@ -315,6 +317,7 @@ def home(slug):
                       created=request.args.get("created"))
 
 
+@bp.route("/app/p/<slug>/studio/edit", methods=["GET", "POST"])
 @bp.route("/<slug>/admin/studio/edit", methods=["GET", "POST"])
 def edit(slug):
     project = studio_project(slug, write=request.method == "POST")
@@ -329,6 +332,8 @@ def edit(slug):
         if not problems and request.form.get("action") == "save":
             write_text(project.dir, rel, text)
             reload()
+            with storage.connect(slug) as conn:
+                storage.audit(conn, "edit_file", request.remote_addr, {"file": rel})
             return redirect(url_for("studio.edit", slug=slug, file=rel, saved=1))
         status = "invalid" if problems else "valid"
     else:
@@ -406,6 +411,12 @@ def files_upload(slug):
     for f in request.files.getlist("files"):
         if not f or not f.filename:
             continue
+        f.stream.seek(0, 2)
+        size = f.stream.tell()
+        f.stream.seek(0)
+        over = limits.check_upload(project.dir, size)
+        if over:
+            return redirect(url_for("studio.home", slug=slug, error=over))
         if f.filename.lower().endswith(".zip") and request.form.get("extract", "1") == "1":
             base.mkdir(parents=True, exist_ok=True)
             try:
@@ -422,6 +433,8 @@ def files_upload(slug):
         f.save(target)
         written.append("/".join(parts))
     msg = t("studio.uploaded", n=len(written)) + (" " + t("studio.skipped", files=", ".join(skipped[:5])) if skipped else "")
+    with storage.connect(slug) as conn:
+        storage.audit(conn, "upload_files", request.remote_addr, {"written": written})
     return redirect(url_for("studio.home", slug=slug, notice=msg))
 
 
@@ -440,9 +453,12 @@ def files_delete(slug):
     target = inside(project.dir, rel)
     if target.is_file():
         target.unlink()
+        with storage.connect(slug) as conn:
+            storage.audit(conn, "delete_file", request.remote_addr, {"file": rel})
     return redirect(url_for("studio.home", slug=slug, notice=t("studio.file_deleted", file=rel)))
 
 
+@bp.route("/app/p/<slug>/studio/files/raw/<path:rel>")
 @bp.route("/<slug>/admin/studio/files/raw/<path:rel>")
 def files_raw(slug, rel):
     project = studio_project(slug, write=False)
@@ -452,6 +468,7 @@ def files_raw(slug, rel):
     return send_from_directory(project.dir, "/".join(parts), max_age=0)
 
 
+@bp.post("/app/p/<slug>/studio/passcodes")
 @bp.post("/<slug>/admin/studio/passcodes")
 def set_passcodes(slug):
     project = studio_project(slug, write=False)  # read-only projects can still get passcodes
@@ -468,9 +485,13 @@ def set_passcodes(slug):
                 return redirect(url_for("studio.home", slug=slug, error=t("studio.passcode_short")))
             passcodes.set_passcode(slug, kind, value)
             changed.append(kind)
+    if changed:
+        with storage.connect(slug) as conn:
+            storage.audit(conn, "set_passcodes", request.remote_addr, {"changed": changed})
     return redirect(url_for("studio.home", slug=slug, notice=t("studio.passcodes_saved") if changed else None))
 
 
+@bp.route("/app/p/<slug>/studio/export.zip")
 @bp.route("/<slug>/admin/studio/export.zip")
 def export_zip(slug):
     project = studio_project(slug, write=False)

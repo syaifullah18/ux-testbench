@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Forgot Password{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-8 sm:my-14 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <h1 class="text-xl font-bold text-slate-900 mb-1.5 text-center">Reset your password</h1>
+    
+    {% if sent %}
+    <div class="bg-emerald-50 text-emerald-800 p-4 rounded-lg text-[14px] text-center mt-4">
+        If an account exists for that email, we have sent a password reset link. Check your inbox.
+    </div>
+    <div class="mt-6 text-center">
+        <a href="{{ url_for('auth.login') }}" class="text-brand hover:underline font-medium">Return to login</a>
+    </div>
+    {% else %}
+    <p class="text-slate-500 text-[14px] mb-6 text-center">Enter your email and we'll send you a link to reset your password.</p>
+    <form method="post" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="fp-email">Email</label>
+            <input id="fp-email" name="email" type="email" required
+                   class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+        </div>
+        <button type="submit" class="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition-colors">
+            Send reset link
+        </button>
+    </form>
+    <p class="text-center text-[14px] text-slate-500 mt-5"><a href="{{ url_for('auth.login') }}" class="hover:underline">Cancel</a></p>
+    {% endif %}
+</div>
+{% endblock %}

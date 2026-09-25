@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Create New Study{% endblock %}
+{% block width %}max-w-2xl{% endblock %}
+
+{% block content %}
+<div class="my-6">
+    <div class="mb-6">
+        <a href="{{ url_for('public.dashboard') }}" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1.5 mb-2">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Create New Research Study</h1>
+        <p class="text-slate-500 text-sm mt-1">
+            New studies start in <strong class="text-slate-700">draft mode</strong>, unlisted, and passcode-protected for safe piloting.
+        </p>
+    </div>
+
+    <!-- Error/Notice alerts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="p-4 mb-5 rounded-xl text-sm {% if category == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="post" enctype="multipart/form-data" class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <!-- Study Name -->
+        <div>
+            <label for="p-name" class="block text-sm font-semibold text-slate-800 mb-1">Study Name</label>
+            <input id="p-name" name="name" type="text" placeholder="e.g. Mobile Checkout Usability Test" required
+                   class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-all">
+            <span class="text-xs text-slate-400 mt-1 block">Displayed to participants on the introduction screen.</span>
+        </div>
+
+        <!-- Slug -->
+        <div>
+            <label for="p-slug" class="block text-sm font-semibold text-slate-800 mb-1">URL Identifier (Slug)</label>
+            <div class="flex items-center">
+                <span class="bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl px-3 py-2.5 text-xs text-slate-500 font-mono">/s/</span>
+                <input id="p-slug" name="slug" type="text" placeholder="checkout-v2" required pattern="[a-z0-9][a-z0-9-]{0,39}"
+                       class="w-full border border-slate-300 rounded-r-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none transition-all">
+            </div>
+            <span class="text-xs text-slate-400 mt-1 block">1-40 lowercase letters, digits, and hyphens. Permanent URL for your study.</span>
+        </div>
+
+        <!-- Creation Source -->
+        <div>
+            <label class="block text-sm font-semibold text-slate-800 mb-2">Initial Setup</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label class="relative flex flex-col p-3.5 border border-slate-200 rounded-xl cursor-pointer hover:border-brand/60 has-[:checked]:border-brand has-[:checked]:bg-brand/5 transition-all">
+                    <input type="radio" name="source" value="blank" checked class="peer sr-only">
+                    <span class="text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                        Blank Study
+                        <i class="fa-solid fa-file-circle-plus text-slate-400 peer-checked:text-brand"></i>
+                    </span>
+                    <span class="text-[11px] text-slate-500 leading-tight">Start with a single feedback screener.</span>
+                </label>
+
+                <label class="relative flex flex-col p-3.5 border border-slate-200 rounded-xl cursor-pointer hover:border-brand/60 has-[:checked]:border-brand has-[:checked]:bg-brand/5 transition-all">
+                    <input type="radio" name="source" value="example" class="peer sr-only">
+                    <span class="text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                        Clone Example
+                        <i class="fa-solid fa-copy text-slate-400 peer-checked:text-brand"></i>
+                    </span>
+                    <span class="text-[11px] text-slate-500 leading-tight">Full demo (A/B test, card sort, tree test).</span>
+                </label>
+
+                <label class="relative flex flex-col p-3.5 border border-slate-200 rounded-xl cursor-pointer hover:border-brand/60 has-[:checked]:border-brand has-[:checked]:bg-brand/5 transition-all">
+                    <input type="radio" name="source" value="import" id="source-import" class="peer sr-only">
+                    <span class="text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                        Import ZIP
+                        <i class="fa-solid fa-file-zipper text-slate-400 peer-checked:text-brand"></i>
+                    </span>
+                    <span class="text-[11px] text-slate-500 leading-tight">Upload an exported study package.</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- File Upload for ZIP -->
+        <div id="zip-field" class="hidden">
+            <label for="p-archive" class="block text-sm font-semibold text-slate-800 mb-1">Study Archive (.zip)</label>
+            <input id="p-archive" name="archive" type="file" accept=".zip"
+                   class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20">
+        </div>
+
+        <!-- Locale Selector -->
+        <div>
+            <label for="p-locale" class="block text-sm font-semibold text-slate-800 mb-1">Study Language</label>
+            <select id="p-locale" name="locale" class="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none">
+                {% for loc in locales %}
+                <option value="{{ loc }}" {% if loc == 'en' %}selected{% endif %}>{{ loc|upper }}</option>
+                {% endfor %}
+            </select>
+            <span class="text-xs text-slate-400 mt-1 block">UI button labels, error prompts, and dates will use this locale.</span>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+            <a href="{{ url_for('public.dashboard') }}" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                Cancel
+            </a>
+            <button type="submit" class="bg-brand text-white font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-brand/90 transition-all shadow-sm">
+                Create Study &rarr;
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.querySelectorAll('input[name="source"]').forEach(el => {
+        el.addEventListener('change', () => {
+            const isImport = document.getElementById('source-import').checked;
+            document.getElementById('zip-field').classList.toggle('hidden', !isImport);
+        });
+    });
+</script>
+{% endblock %}

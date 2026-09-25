@@ -11,13 +11,13 @@
     {% if q.type == 'single' %}
         <ul class="grid grid-cols-1 {% if q.columns >= 2 %}sm:grid-cols-{{ q.columns }}{% endif %} gap-2.5">
         {% for v, label in q.options %}
-            <li><label class="{{ card }}"><input type="radio" name="{{ q.id }}" value="{{ v }}" {% if value == v %}checked{% endif %} class="w-4 h-4 text-brand border-slate-400 focus:ring-0">{{ label }}</label></li>
+            <li><label class="{{ card }}"><input type="radio" name="{{ q.id }}" value="{{ v }}" {% if value == v %}checked{% endif %} class="size-4 text-brand border-slate-400 focus:ring-0">{{ label }}</label></li>
         {% endfor %}
         </ul>
     {% elif q.type == 'multi' %}
         <ul class="grid grid-cols-1 {% if q.columns >= 2 %}sm:grid-cols-{{ q.columns }}{% endif %} gap-2.5" {% if q.max %}data-max="{{ q.max }}"{% endif %}>
         {% for v, label in q.options %}
-            <li><label class="{{ card }}"><input type="checkbox" name="{{ q.id }}" value="{{ v }}" {% if value and v in value %}checked{% endif %} class="w-4 h-4 rounded text-brand border-slate-400 focus:ring-brand/30">{{ label }}</label></li>
+            <li><label class="{{ card }}"><input type="checkbox" name="{{ q.id }}" value="{{ v }}" {% if value and v in value %}checked{% endif %} class="size-4 rounded text-brand border-slate-400 focus:ring-brand/30">{{ label }}</label></li>
         {% endfor %}
         </ul>
         {% if q.max %}<p class="mt-2 text-[13px] text-slate-500">{{ t('question.max_hint', max=q.max) }}</p>{% endif %}

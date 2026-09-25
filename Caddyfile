@@ -1,0 +1,46 @@
+# Caddy obtains and renews TLS certificates for both domains on its own.
+{
+	email {$ACME_EMAIL}
+}
+
+# ---- the application ----
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Caddy terminates TLS, so the app needs to know the original scheme and client IP.
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output file /data/access.log
+		format json
+	}
+}
+
+# ---- researcher-uploaded prototypes ----
+# A separate registrable domain, so nothing served here shares an origin or a cookie with the
+# app. Prototypes are static files that participants interact with inside a frame on the app.
+{$USERCONTENT_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy app:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+		header_up X-Testbench-Usercontent "1"
+	}
+
+	header {
+		# Only our app may frame a prototype, and nothing here may be sniffed into a script.
+		Content-Security-Policy "frame-ancestors https://{$APP_DOMAIN}; base-uri 'none'"
+		X-Content-Type-Options "nosniff"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

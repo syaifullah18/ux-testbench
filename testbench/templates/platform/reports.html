@@ -1,0 +1,52 @@
+{% extends "platform/_layout.html" %}
+{% set heading = "Abuse reports" %}
+{% set subheading = "Filed from /report by anyone, including participants." %}
+
+{% block panel %}
+<div class="flex flex-wrap gap-2">
+    <a href="{{ url_for('platform.report_list') }}"
+       class="px-3 py-1.5 text-xs font-semibold rounded-lg border {% if not status %}bg-slate-900 text-white border-slate-900{% else %}bg-white border-slate-300 text-slate-700 hover:bg-slate-50{% endif %}">All</a>
+    {% for s in statuses %}
+    <a href="{{ url_for('platform.report_list', status=s) }}"
+       class="px-3 py-1.5 text-xs font-semibold rounded-lg border {% if status == s %}bg-slate-900 text-white border-slate-900{% else %}bg-white border-slate-300 text-slate-700 hover:bg-slate-50{% endif %}">{{ s }}</a>
+    {% endfor %}
+</div>
+
+<div class="space-y-4">
+{% for r in reports %}
+<div class="bg-white border rounded-2xl p-5 shadow-sm {% if r.status == 'open' %}border-amber-300{% else %}border-slate-200/90{% endif %}">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span class="text-xs font-bold text-slate-400">#{{ r.id }}</span>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full
+            {% if r.status == 'open' %}bg-amber-100 text-amber-700
+            {% elif r.status == 'actioned' %}bg-red-100 text-red-700
+            {% elif r.status == 'dismissed' %}bg-slate-200 text-slate-600
+            {% else %}bg-blue-100 text-blue-700{% endif %}">{{ r.status }}</span>
+        {% if r.project_slug %}<code class="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">{{ r.project_slug }}</code>{% endif %}
+        <span class="text-xs text-slate-400">{{ r.at[:16].replace('T', ' ') }} UTC</span>
+    </div>
+    <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ r.reason }}</p>
+    {% if r.contact %}<p class="text-xs text-slate-500 mt-2">Reporter contact: {{ r.contact }}</p>{% endif %}
+    {% if r.note %}<p class="text-xs text-slate-600 mt-2 bg-slate-50 rounded-lg p-2.5"><span class="font-semibold">Note:</span> {{ r.note }}</p>{% endif %}
+
+    <form method="post" action="{{ url_for('platform.handle_report', report_id=r.id) }}"
+          class="mt-4 flex flex-col sm:flex-row gap-2 pt-4 border-t border-slate-100">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input name="note" placeholder="What you did about it" maxlength="2000" value="{{ r.note }}"
+               class="flex-1 text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand/30 focus:outline-none">
+        <select name="status" class="text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white">
+            {% for s in statuses %}<option value="{{ s }}" {% if s == r.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+        <button class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 whitespace-nowrap">Save</button>
+    </form>
+</div>
+{% else %}
+<div class="text-center py-16 bg-slate-50 border border-dashed border-slate-300 rounded-3xl">
+    <div class="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-xl">
+        <i class="fa-solid fa-check"></i>
+    </div>
+    <p class="text-slate-600 text-sm">Nothing to review{% if status %} with status "{{ status }}"{% endif %}.</p>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

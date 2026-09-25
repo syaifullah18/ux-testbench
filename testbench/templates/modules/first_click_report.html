@@ -1,0 +1,61 @@
+<div class="space-y-12">
+    <div>
+        <h2 class="text-xl font-bold mb-4">First-Click Results <span class="text-gray-500 font-normal ml-2">n={{ n }}</span></h2>
+        
+        {% if n == 0 %}
+        <p class="text-gray-500">No participants have finished this module yet.</p>
+        {% else %}
+        
+        {% for tc in task_clicks %}
+        <div class="mb-12 border rounded shadow-sm bg-white overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b">
+                <h3 class="font-bold text-lg">{{ tc.task.prompt }}</h3>
+                <p class="text-sm text-gray-500">{{ tc.clicks|length }} clicks recorded</p>
+            </div>
+            
+            <div class="p-4 overflow-auto bg-gray-100 flex justify-center">
+                {% if tc.clicks %}
+                <div class="relative inline-block border shadow-sm bg-white">
+                    {% set img_src = url_for('admin.module_action', slug=ctx.project.slug, mid=ctx.module.id, path=tc.task.image) if '://' not in tc.task.image else tc.task.image %}
+                    <!-- We scale down the image for the report, but plot the clicks proportionally -->
+                    <img src="{{ img_src }}" alt="Task image" style="max-width: 800px; max-height: 600px; display: block;" id="img-{{ tc.task.id }}">
+                    
+                    {% for c in tc.clicks %}
+                    {% if c.w and c.h %}
+                    <div class="absolute size-4 -ml-2 -mt-2 bg-red-500 rounded-full border-2 border-white opacity-70 cursor-pointer hover:opacity-100 hover:scale-150 transition-transform"
+                         style="left: {{ (c.x / c.w * 100)|round(2) }}%; top: {{ (c.y / c.h * 100)|round(2) }}%; box-shadow: 0 0 3px rgba(0,0,0,0.5);"
+                         title="Time: {{ (c.time_ms / 1000)|round(1) }}s"></div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic py-8">No clicks yet.</p>
+                {% endif %}
+            </div>
+            
+            {% if tc.clicks %}
+            <div class="p-4 border-t text-sm text-gray-700 bg-gray-50 flex justify-between">
+                <div>
+                    <strong>Average time:</strong>
+                    {% set times = tc.clicks | map(attribute='time_ms') | list %}
+                    {% if times %}
+                        {{ (times | sum / times | length / 1000) | round(1) }}s
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        {% if post_summary or final_summary %}
+        <div class="mt-8 space-y-8">
+            <h3 class="font-bold text-lg border-b pb-2">Survey Responses</h3>
+            {% include "modules/survey_report.html" with context %}
+        </div>
+        {% endif %}
+        
+        {% endif %}
+    </div>
+</div>

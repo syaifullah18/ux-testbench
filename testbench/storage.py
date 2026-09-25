@@ -55,7 +55,22 @@ CREATE TABLE IF NOT EXISTS task_results (
     updated_at TEXT NOT NULL,
     PRIMARY KEY (session_id, position, task_id)
 );
+CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    action TEXT NOT NULL,
+    admin_ip TEXT,
+    details TEXT
+);
 """
+
+def audit(conn, action, ip=None, details=None):
+    import json
+    if details is not None and not isinstance(details, str):
+        details = json.dumps(details)
+    conn.execute("INSERT INTO audit_log (timestamp, action, admin_ip, details) VALUES (?, ?, ?, ?)",
+                 (now_iso(), action, ip, details))
+    conn.commit()
 
 
 def now_iso():
@@ -88,6 +103,8 @@ def connect(slug):
         conn = sqlite3.connect(path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 5000")
         conn.executescript(SCHEMA)
         conn.execute("INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', ?)", (str(SCHEMA_VERSION),))
         conn.commit()
@@ -120,6 +137,40 @@ def module_answers(conn, session_id):
     for row in conn.execute("SELECT data FROM answers WHERE session_id = ? ORDER BY updated_at", (session_id,)):
         merged.update(loads(row["data"], {}))
     return merged
+
+
+def bulk_module_answers(conn, session_ids):
+    if not session_ids:
+        return {}
+    placeholders = ",".join("?" for _ in session_ids)
+    rows = conn.execute(f"SELECT session_id, data FROM answers WHERE session_id IN ({placeholders}) ORDER BY session_id, updated_at", tuple(session_ids)).fetchall()
+    out = {sid: {} for sid in session_ids}
+    for row in rows:
+        out[row["session_id"]].update(loads(row["data"], {}))
+    return out
+
+
+def bulk_answers_by_page(conn, session_ids):
+    if not session_ids:
+        return {}
+    placeholders = ",".join("?" for _ in session_ids)
+    rows = conn.execute(f"SELECT session_id, page, data FROM answers WHERE session_id IN ({placeholders})", tuple(session_ids)).fetchall()
+    out = {sid: {} for sid in session_ids}
+    for row in rows:
+        out[row["session_id"]][row["page"]] = loads(row["data"], {})
+    return out
+
+
+def bulk_task_results(conn, session_ids):
+    if not session_ids:
+        return {}
+    placeholders = ",".join("?" for _ in session_ids)
+    rows = conn.execute(f"SELECT * FROM task_results WHERE session_id IN ({placeholders})", tuple(session_ids)).fetchall()
+    out = {sid: {} for sid in session_ids}
+    for r in rows:
+        sid, pos, tid = r["session_id"], r["position"], r["task_id"]
+        out[sid].setdefault(pos, {})[tid] = r
+    return out
 
 
 def page_answers(conn, session_id, page):

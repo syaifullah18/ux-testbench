@@ -1,0 +1,44 @@
+type: tree_test
+title: Information Architecture
+instructions: Please find where you would look for the following items in the library.
+tree:
+  - id: catalog
+    label: Catalog
+    children:
+      - id: books
+        label: Books
+      - id: audiobooks
+        label: Audiobooks
+      - id: dvds
+        label: DVDs
+  - id: resources
+    label: Research & Resources
+    children:
+      - id: databases
+        label: Databases
+      - id: genealogy
+        label: Genealogy
+      - id: local_history
+        label: Local History
+  - id: services
+    label: Services
+    children:
+      - id: computers
+        label: Computers & WiFi
+      - id: printing
+        label: Printing & Copying
+      - id: rooms
+        label: Meeting Rooms
+tasks:
+  - id: task1
+    prompt: Where would you go to reserve a space for your study group?
+    accept: ["rooms"]
+  - id: task2
+    prompt: Where would you look for historical newspaper clippings?
+    accept: ["local_history", "genealogy"]
+post:
+  - id: ease
+    type: scale
+    label: How easy was it to find these items?
+    low: Very difficult
+    high: Very easy

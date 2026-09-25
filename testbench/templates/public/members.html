@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Team · {{ project.name }}{% endblock %}
+{% block width %}max-w-4xl{% endblock %}
+
+{% block content %}
+<div class="space-y-7 py-4">
+    <div class="pb-5 border-b border-slate-200">
+        <a href="{{ url_for('public.dashboard') }}" class="text-xs text-slate-500 hover:text-slate-800 underline">← My studies</a>
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2 text-balance">Team</h1>
+        <p class="text-slate-500 text-sm mt-1 text-pretty">
+            Who may work on <span class="font-semibold text-slate-700">{{ project.name }}</span>.
+            Removing someone takes their access away immediately, without changing anything for anyone else.
+        </p>
+    </div>
+
+    <div class="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100">
+            <h2 class="font-bold text-slate-900">Members</h2>
+        </div>
+        <table class="w-full text-sm">
+            <tbody class="divide-y divide-slate-100">
+            {% for m in members %}
+            <tr>
+                <td class="px-5 sm:px-6 py-3.5">
+                    <p class="font-semibold text-slate-900">{{ m.name or m.email }}</p>
+                    <p class="text-xs text-slate-500">{{ m.email }}</p>
+                </td>
+                <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                    <form method="post" class="inline-flex items-center gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="set_role">
+                        <input type="hidden" name="user_id" value="{{ m.user_id }}">
+                        <select name="role" class="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white">
+                            {% for r in roles %}<option value="{{ r }}" {% if r == m.role %}selected{% endif %}>{{ r }}</option>{% endfor %}
+                        </select>
+                        <button class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Save</button>
+                    </form>
+                    <form method="post" class="inline"
+                          onsubmit="return confirm('Remove {{ m.email }} from this study?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="user_id" value="{{ m.user_id }}">
+                        <button class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 space-y-1">
+            <p><span class="font-semibold text-slate-700">owner</span> — everything, including the team, passcodes, deleting the study and resetting data.</p>
+            <p><span class="font-semibold text-slate-700">editor</span> — edit the study in the Studio, upload prototypes, read results.</p>
+            <p><span class="font-semibold text-slate-700">viewer</span> — read results and export them.</p>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <h2 class="font-bold text-slate-900 mb-1">Invite a teammate</h2>
+        <p class="text-xs text-slate-500 mb-4">
+            They receive a link that expires in 7 days. If they have no account yet, it offers to create one.
+        </p>
+        <form method="post" class="flex flex-col sm:flex-row gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="invite">
+            <input name="email" type="email" required placeholder="teammate@example.org"
+                   class="flex-1 border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-brand/30 focus:border-brand outline-none">
+            <select name="role" class="border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white">
+                {% for r in roles %}<option value="{{ r }}" {% if r == 'editor' %}selected{% endif %}>{{ r }}</option>{% endfor %}
+            </select>
+            <button class="px-4 py-2 text-sm font-semibold text-white bg-brand hover:bg-brand/90 rounded-xl shadow-sm whitespace-nowrap">
+                <i class="fa-solid fa-paper-plane text-xs"></i> Send invitation
+            </button>
+        </form>
+
+        {% if invitations %}
+        <div class="mt-5 pt-5 border-t border-slate-100">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Waiting to be accepted</p>
+            <ul class="space-y-2">
+                {% for inv in invitations %}
+                <li class="flex items-center justify-between gap-3 text-sm">
+                    <span class="text-slate-700 min-w-0 truncate">
+                        {{ inv.email }} <span class="text-xs text-slate-400">as {{ inv.role }}, expires {{ inv.expires_at[:10] }}</span>
+                    </span>
+                    <form method="post" class="flex-none">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="revoke_invite">
+                        <input type="hidden" name="invitation_id" value="{{ inv.id }}">
+                        <button class="text-xs font-semibold text-slate-500 hover:text-red-600 underline">Revoke</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

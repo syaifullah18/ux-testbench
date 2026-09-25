@@ -1,0 +1,67 @@
+{% extends "platform/_layout.html" %}
+{% set heading = "Accounts" %}
+{% set subheading = "Disabling an account signs it out everywhere and blocks any new login." %}
+
+{% block panel %}
+<div class="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+    <table class="w-full min-w-[46rem] text-sm">
+        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+                <th class="px-5 py-3 font-semibold">Account</th>
+                <th class="px-5 py-3 font-semibold">Status</th>
+                <th class="px-5 py-3 font-semibold">Studies</th>
+                <th class="px-5 py-3 font-semibold">Last login</th>
+                <th class="px-5 py-3 font-semibold text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+        {% for row in rows %}
+        {% set u = row.u %}
+        <tr class="{% if u.disabled_at %}bg-red-50/40{% endif %}">
+            <td class="px-5 py-3.5">
+                <p class="font-semibold text-slate-900">{{ u.name or '—' }}</p>
+                <p class="text-xs text-slate-500">{{ u.email }}</p>
+            </td>
+            <td class="px-5 py-3.5 space-x-1.5 whitespace-nowrap">
+                {% if u.disabled_at %}<span class="text-[11px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">disabled</span>{% endif %}
+                {% if u.is_platform_admin %}<span class="text-[11px] font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">admin</span>{% endif %}
+                {% if u.email_verified_at %}<span class="text-[11px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">verified</span>
+                {% else %}<span class="text-[11px] font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unverified</span>{% endif %}
+            </td>
+            <td class="px-5 py-3.5 text-slate-600 text-xs">
+                {{ row.projects|join(', ') if row.projects else '—' }}
+            </td>
+            <td class="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">
+                {{ u.last_login_at[:16].replace('T', ' ') if u.last_login_at else 'never' }}
+            </td>
+            <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                {% if u.id != user.id %}
+                <form method="post" action="{{ url_for('platform.disable_user', user_id=u.id) }}" class="inline"
+                      {% if not u.disabled_at %}onsubmit="return confirm('Disable {{ u.email }}? They are signed out everywhere and cannot log in again.');"{% endif %}>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="enable" value="{{ '1' if u.disabled_at else '0' }}">
+                    <button class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border {% if u.disabled_at %}border-emerald-300 text-emerald-700 hover:bg-emerald-50{% else %}border-red-300 text-red-700 hover:bg-red-50{% endif %}">
+                        {{ 'Enable' if u.disabled_at else 'Disable' }}
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('platform.toggle_admin', user_id=u.id) }}" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="grant" value="{{ '0' if u.is_platform_admin else '1' }}">
+                    <button class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
+                        {{ 'Revoke admin' if u.is_platform_admin else 'Make admin' }}
+                    </button>
+                </form>
+                {% else %}
+                <span class="text-xs text-slate-400">you</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="px-5 py-10 text-center text-slate-500">No accounts yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

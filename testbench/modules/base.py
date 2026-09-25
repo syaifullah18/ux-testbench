@@ -60,3 +60,7 @@ class ModuleType:
     def export(self, ctx):
         """Return (header, rows) for the module's CSV export."""
         return [], []
+
+    def export_cols(self, ctx, session_ids):
+        """For combined export: returns (headers, dict mapping session_id to dict of col->val)"""
+        return [], {}

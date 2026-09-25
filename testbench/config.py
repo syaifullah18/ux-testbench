@@ -7,6 +7,7 @@ testbench check` can report a whole broken config in one pass.
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,11 +17,23 @@ log = logging.getLogger(__name__)
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
-RESERVED_SLUGS = {"static", "admin", "api", "health"}
+# A study lives at /s/<slug>/ but is also reachable at /<slug>/ for links sent out before that
+# move, so no study may be named after one of the app's own pages.
+RESERVED_SLUGS = {"static", "admin", "api", "health", "login", "signup", "logout",
+                   "forgot", "reset", "verify", "account", "app", "s", "about",
+                   "docs", "privacy", "terms", "explore", "report", "invite"}
 IDENTITY_MODES = {"code", "email", "anonymous"}
 ACCESS_MODES = {"passcode", "open"}
 DEFAULT_BRAND = {"primary": "#2563EB", "nav": "#0F172A"}
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+# ---- input caps (Phase 0.3: treat researcher YAML as untrusted) ----
+MAX_REGEX_LEN = 200
+MAX_YAML_BYTES = 256 * 1024          # 256 KB per YAML file
+MAX_MODULES_PER_PROJECT = 30
+MAX_QUESTIONS_PER_MODULE = 100
+MAX_OPTIONS_PER_QUESTION = 80
+MAX_ROWS_PER_MATRIX = 50
 
 
 class ConfigError(Exception):
@@ -64,8 +77,10 @@ class Project:
     consent: str
     passcode_env: str
     admin_passcode_env: str
+    notifications: dict
     modules: dict            # id -> Module, in home-screen order
     editable: bool = False   # lives in the Studio folder, so the admin site may change it
+    status: str = "live"     # draft | live | closed
 
     def module(self, module_id):
         return self.modules.get(module_id)
@@ -77,6 +92,10 @@ def env_prefix(slug):
 
 def read_yaml(path, problems):
     try:
+        size = Path(path).stat().st_size
+        if size > MAX_YAML_BYTES:
+            problems.at(path, f"file is {size} bytes, maximum is {MAX_YAML_BYTES}")
+            return None
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     except (OSError, yaml.YAMLError) as exc:
@@ -86,6 +105,16 @@ def read_yaml(path, problems):
         problems.at(path, "top level must be a mapping")
         return None
     return data
+
+
+def _safe_regex(pattern, max_len=MAX_REGEX_LEN):
+    """Compile a regex after capping its length. Returns (compiled, error_msg | None)."""
+    if len(pattern) > max_len:
+        return None, f"pattern is {len(pattern)} chars, maximum is {max_len}"
+    try:
+        return re.compile(pattern), None
+    except re.error as exc:
+        return None, f"not a valid regex ({exc})"
 
 
 def as_text(value, default=""):
@@ -112,10 +141,9 @@ def load_project(pdir, module_types, problems):
         problems.at(where, f"identity.mode must be one of {sorted(IDENTITY_MODES)}")
     if mode == "code":
         pattern = identity.get("pattern", r"^[A-Z0-9-]{2,20}$")
-        try:
-            re.compile(pattern)
-        except re.error as exc:
-            problems.at(where, f"identity.pattern is not a valid regex ({exc})")
+        compiled, err = _safe_regex(pattern)
+        if err:
+            problems.at(where, f"identity.pattern: {err}")
         identity["pattern"] = pattern
     if mode == "email":
         domains = identity.get("domains") or []
@@ -132,6 +160,10 @@ def load_project(pdir, module_types, problems):
             problems.at(where, f"brand.{key} must be a #RRGGBB colour")
 
     prefix = env_prefix(slug)
+    status = as_text(raw.get("status"), "live").lower()
+    if status not in ("draft", "live", "closed"):
+        problems.at(where, "status must be draft, live or closed")
+        status = "live"
     project = Project(
         slug=slug, dir=pdir,
         name=as_text(raw.get("name"), slug),
@@ -144,12 +176,17 @@ def load_project(pdir, module_types, problems):
         consent=as_text(raw.get("consent")),
         passcode_env=as_text(raw.get("passcode_env"), f"{prefix}_PASSCODE"),
         admin_passcode_env=as_text(raw.get("admin_passcode_env"), f"{prefix}_ADMIN_PASSCODE"),
+        notifications=raw.get("notifications") or {},
         modules={},
+        status=status,
     )
 
     order = raw.get("modules")
     if not isinstance(order, list) or not order:
         problems.at(where, "modules must be a non-empty list of module ids (file names under modules/)")
+        return project
+    if len(order) > MAX_MODULES_PER_PROJECT:
+        problems.at(where, f"project has {len(order)} modules, maximum is {MAX_MODULES_PER_PROJECT}")
         return project
     for mid in order:
         mid = str(mid)
@@ -170,10 +207,9 @@ def load_project(pdir, module_types, problems):
         requires = [str(r) for r in (mraw.get("requires") or [])]
         audience = mraw.get("audience") or {}
         if "identity_pattern" in audience:
-            try:
-                re.compile(audience["identity_pattern"])
-            except re.error as exc:
-                problems.at(mwhere, f"audience.identity_pattern is not a valid regex ({exc})")
+            _, err = _safe_regex(audience["identity_pattern"])
+            if err:
+                problems.at(mwhere, f"audience.identity_pattern: {err}")
         module = Module(
             id=mid, type=mtype,
             title=as_text(mraw.get("title"), mid),
@@ -276,6 +312,7 @@ class Registry:
         self.projects = load_all(module_types, dirs)
         self.signature = self._signature()
         self.last_error = None
+        self._last_check = time.monotonic()
 
     def _signature(self):
         sig = []
@@ -295,6 +332,12 @@ class Registry:
         return self.dirs[-1]
 
     def refresh(self, force=False):
+        now = time.monotonic()
+        from flask import current_app
+        if not force and now - self._last_check < 2.0:
+            if not (current_app and current_app.testing):
+                return
+        self._last_check = now
         sig = self._signature()
         if sig == self.signature and not force:
             return

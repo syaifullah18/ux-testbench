@@ -1,0 +1,14 @@
+.git/
+.venv/
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+instance/
+backups/
+.env
+.coverage
+tests/
+projects/*
+!projects/example/
+testbench/static/vendor/

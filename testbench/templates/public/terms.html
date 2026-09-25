@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Terms of Use{% endblock %}
+{% block width %}max-w-4xl{% endblock %}
+
+{% block content %}
+<div class="py-8 space-y-8">
+    <div class="border-b border-slate-200 pb-6">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Terms of Use</h1>
+        <p class="text-slate-500 text-sm mt-2">
+            Standards for ethical, secure, and compliant research on UX Testbench.
+        </p>
+    </div>
+
+    <div class="prose prose-slate max-w-none space-y-6 text-slate-700 leading-relaxed text-[15px]">
+        <h2 class="text-xl font-bold text-slate-900">1. Acceptable Research Use</h2>
+        <p>
+            UX Testbench is intended exclusively for ethical user research, usability testing, and product evaluation. The following activities are strictly prohibited:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li><strong>Phishing & Credential Harvesting:</strong> Uploading prototypes or forms that simulate login portals or solicit passwords, private keys, or payment card credentials.</li>
+            <li><strong>Unethical Data Collection:</strong> Soliciting sensitive personal data (e.g. government IDs, biometric data, health records) without explicit ethical board / IRB approval.</li>
+            <li><strong>Testing on Minors:</strong> Conducting research with minors without documented parental or guardian consent.</li>
+            <li><strong>Malware Distribution:</strong> Uploading prototype archives containing executable scripts, malware, or exploiting browser vulnerabilities.</li>
+        </ul>
+
+        <h2 class="text-xl font-bold text-slate-900">2. Researcher Ethical Responsibilities</h2>
+        <p>
+            As a researcher running studies on UX Testbench, you agree to:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li>Clearly disclose the purpose of the study to participants before participation.</li>
+            <li>Provide an honest estimate of the time required.</li>
+            <li>Honor participants' rights to withdraw consent and request data deletion.</li>
+        </ul>
+
+        <h2 class="text-xl font-bold text-slate-900">3. Moderation & Termination</h2>
+        <p>
+            The platform operators reserve the right to suspend accounts or take studies offline immediately if they violate these terms, generate abuse reports, or present a threat to participant safety.
+        </p>
+
+        <h2 class="text-xl font-bold text-slate-900">4. Disclaimer of Warranty</h2>
+        <p class="text-sm text-slate-500">
+            UX Testbench is provided "as is", without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim or damages arising from the use of this software.
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -61,8 +61,9 @@ class Survey(ModuleType):
     def _responses(self, ctx, finished_only=True):
         sql = ("SELECT s.id, p.identity FROM sessions s JOIN participants p ON p.id = s.participant_id "
                "WHERE s.module_id = ?" + (" AND s.finished_at IS NOT NULL" if finished_only else "") + " ORDER BY p.identity")
-        return [(r["identity"], storage.module_answers(ctx.conn, r["id"]))
-                for r in ctx.conn.execute(sql, (self.m.id,)).fetchall()]
+        sessions = ctx.conn.execute(sql, (self.m.id,)).fetchall()
+        answers_by_sid = storage.bulk_module_answers(ctx.conn, [r["id"] for r in sessions])
+        return [(r["identity"], answers_by_sid.get(r["id"], {})) for r in sessions]
 
     def report(self, ctx):
         responses = self._responses(ctx)
@@ -79,11 +80,36 @@ class Survey(ModuleType):
             "SELECT s.*, p.identity FROM sessions s JOIN participants p ON p.id = s.participant_id "
             "WHERE s.module_id = ? ORDER BY p.identity", (self.m.id,)).fetchall()
         qs = self.m.conf["questions"]
+        answers_by_sid = storage.bulk_module_answers(ctx.conn, [s["id"] for s in sessions])
         header = None
         rows = []
         for s in sessions:
-            cols = Q.flatten(qs, storage.module_answers(ctx.conn, s["id"]))
+            cols = Q.flatten(qs, answers_by_sid.get(s["id"], {}))
             if header is None:
                 header = ["participant", "started_at", "finished_at"] + list(cols)
             rows.append([s["identity"], s["started_at"], s["finished_at"] or ""] + list(cols.values()))
         return header or ["participant", "started_at", "finished_at"] + list(Q.flatten(qs, {})), rows
+
+    def export_cols(self, ctx, session_ids):
+        if not session_ids:
+            return [], {}
+        qs = self.m.conf["questions"]
+        headers = [f"{self.m.id}.started_at", f"{self.m.id}.finished_at"] + [f"{self.m.id}.{k}" for k in Q.flatten(qs, {})]
+        
+        placeholders = ",".join("?" * len(session_ids))
+        sessions = ctx.conn.execute(
+            f"SELECT id, started_at, finished_at FROM sessions WHERE id IN ({placeholders})", session_ids
+        ).fetchall()
+        
+        answers_by_sid = storage.bulk_module_answers(ctx.conn, session_ids)
+        out = {}
+        for s in sessions:
+            cols = {
+                f"{self.m.id}.started_at": s["started_at"],
+                f"{self.m.id}.finished_at": s["finished_at"] or ""
+            }
+            flat_q = Q.flatten(qs, answers_by_sid.get(s["id"], {}))
+            for k, v in flat_q.items():
+                cols[f"{self.m.id}.{k}"] = v
+            out[s["id"]] = cols
+        return headers, out

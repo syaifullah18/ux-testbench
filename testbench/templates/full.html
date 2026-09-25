@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Enough responses collected{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-sm">
+    <div class="size-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl">
+        <i class="fa-solid fa-users"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-2 text-balance">Thank you, we have enough responses</h1>
+    <p class="text-slate-600 text-[15px] leading-relaxed mb-6 text-pretty">
+        This study has reached the number of participants it was set up for, so it is not taking new
+        sign-ins. If you had already started, use the code you were given to continue where you left off.
+    </p>
+    {% if project %}
+    <p class="text-xs text-slate-500">{{ project.name }}</p>
+    {% endif %}
+</div>
+{% endblock %}

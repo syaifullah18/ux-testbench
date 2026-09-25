@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Reset Password{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-8 sm:my-14 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <h1 class="text-xl font-bold text-slate-900 mb-1.5 text-center">Set new password</h1>
+    <p class="text-slate-500 text-[14px] mb-6 text-center">Enter your new password below.</p>
+    
+    <form method="post" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="rp-pw">New password</label>
+            <input id="rp-pw" name="password" type="password" required minlength="10"
+                   class="w-full border {{ 'border-red-400' if errors.password else 'border-slate-300' }} rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+            <p class="text-slate-500 text-[12px] mt-1">At least 10 characters.</p>
+            {% if errors.password %}<p class="text-red-600 text-[13px] mt-1">{{ errors.password }}</p>{% endif %}
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="rp-pw2">Confirm new password</label>
+            <input id="rp-pw2" name="confirm" type="password" required
+                   class="w-full border {{ 'border-red-400' if errors.confirm else 'border-slate-300' }} rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+            {% if errors.confirm %}<p class="text-red-600 text-[13px] mt-1">{{ errors.confirm }}</p>{% endif %}
+        </div>
+        <button type="submit" class="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition-colors mt-2">
+            Reset password
+        </button>
+    </form>
+</div>
+{% endblock %}

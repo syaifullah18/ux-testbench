@@ -53,10 +53,13 @@ Each project's admin shows:
 
 ## Quick start
 
+> [View the Live Demo](https://example.com/demo) | [Watch 10-second overview](#)
+
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env              # set SECRET_KEY and SUPERADMIN_PASSCODE
+python -m testbench demo          # seeds synthetic participant data for the example project
 python -m testbench run --debug   # http://127.0.0.1:5000/admin/
 ```
 
@@ -121,7 +124,29 @@ gunicorn -w 2 -b 0.0.0.0:8000 "testbench:create_app()"
 - Put it behind HTTPS and set `SESSION_COOKIE_SECURE=1`.
 - Persist and back up `DATA_DIR`. It holds all studies and all responses.
 - SQLite fits research-sized traffic (dozens of concurrent participants).
-- Participant pages load Tailwind, fonts and icons from public CDNs, so participants need internet access.
+- Participant pages load Tailwind, fonts and icons from public CDNs, so participants need internet access. Set `LOCAL_ASSETS=1` and run `./scripts/build-assets.sh` to serve them from your own instance instead, which also means no participant IP address reaches a third party.
+- `scripts/backup.sh` copies every SQLite file with `sqlite3 .backup` and tars the Studio's projects folder. Cron it nightly.
+- `/health` returns JSON and a 503 when the configuration is broken, the data directory is unwritable, or the disk is nearly full.
+
+### As a public service
+
+Two modes share one codebase. Unset, `TESTBENCH_MODE` keeps the behaviour above: one operator, a
+passcode per study, no accounts. With `TESTBENCH_MODE=public` the app becomes a service people can
+sign up for themselves:
+
+- researcher accounts with email verification, password reset and per-study roles (owner, editor, viewer), so a teammate is invited by email instead of being handed a shared passcode;
+- a landing page at `/`, a dashboard at `/app/`, studies at `/s/<slug>/`, and platform administration at `/app/admin/`;
+- quotas, abuse reports, the ability to take a study offline, and an audit log;
+- `SIGNUP_MODE=invite` for a private beta, `open` once you are ready, `closed` to stop.
+
+```bash
+docker compose up -d          # app + Caddy for automatic HTTPS + nightly backups
+docker compose exec app python -m testbench create-admin you@example.org
+```
+
+Participants still need no account in either mode. Read **[docs/operations.md](docs/operations.md)**
+before running a public instance: it covers the two domains a public deployment needs, every
+environment variable, the nightly jobs, moderation, and what must be true before opening sign-ups.
 
 ## Security and privacy
 
@@ -130,6 +155,7 @@ gunicorn -w 2 -b 0.0.0.0:8000 "testbench:create_app()"
 - **Prototypes run with the app's permissions.** Uploaded prototypes are served from the same origin as the app, so the task runner can measure interactions inside them. Their scripts can therefore do anything a logged-in page can. Only give Studio access (superadmin or project admin) to people you would trust to deploy code.
 - **What is collected.** No names are collected unless a project asks for them. A/B tests record time, clicks, labels of clicked elements, scroll direction changes and viewport width inside the prototype. Text typed into a prototype is never recorded.
 - **Consent and deletion.** Tell participants what is recorded through the `consent` text. Delete a project's data from its admin, or delete the project with its data from the Studio, when the study ends.
+- **In public mode**, treat every account as untrusted toward the others. Prototype scripts sharing the app's origin is then a real problem, not an accepted trade-off: serve them from a separate domain, as `docker-compose.yml` and `Caddyfile` are set up to do. `python -m testbench retention` clears stored IP addresses and spent tokens, and lists studies whose data is old enough to delete.
 
 ---
 

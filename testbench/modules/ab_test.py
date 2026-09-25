@@ -4,12 +4,101 @@ Each participant works through the same timed tasks on every variant, in a count
 order, then answers a short survey per variant and an optional final survey. Prototypes are
 served under neutral URLs (view/1, view/2) so the file name never hints which is which.
 """
+import math
 import random
 import re
 import statistics
 from collections import Counter
 
-from flask import abort, jsonify, request, send_from_directory
+
+def sign_test(wins, losses):
+    n = wins + losses
+    k = max(wins, losses)
+    if n == 0:
+        return 1.0
+    return min(1.0, 2 * sum(math.comb(n, i) for i in range(k, n + 1)) / 2 ** n)
+
+
+def bootstrap_interval(differences, iterations=1000):
+    if not differences:
+        return None, None
+    n = len(differences)
+    means = []
+    for _ in range(iterations):
+        sample = [random.choice(differences) for _ in range(n)]
+        means.append(sum(sample) / n)
+    means.sort()
+    return means[int(iterations * 0.025)], means[int(iterations * 0.975)]
+
+
+def paired_time_check(pairs, base, k):
+    faster = sum(1 for p in pairs if p[k]["total"] < p[base]["total"])
+    slower = sum(1 for p in pairs if p[k]["total"] > p[base]["total"])
+    time_p = sign_test(faster, slower)
+    if time_p < 0.05:
+        verdict = "evidence for" if faster > slower else "evidence against"
+        ok = faster > slower
+    else:
+        verdict = "not enough evidence yet"
+        ok = False
+    return faster, time_p, verdict, ok
+
+
+def paired_success_check(pairs, base, k):
+    srb = success_rate([effective_grade(x) for p in pairs for x in p[base]["rows"].values()])
+    srk = success_rate([effective_grade(x) for p in pairs for x in p[k]["rows"].values()])
+    diffs = []
+    for p in pairs:
+        sb_i = success_rate([effective_grade(x) for x in p[base]["rows"].values()])
+        sk_i = success_rate([effective_grade(x) for x in p[k]["rows"].values()])
+        if sb_i is not None and sk_i is not None:
+            diffs.append(sk_i - sb_i)
+    if not diffs:
+        return srb, srk, None, None, "not enough evidence yet", False
+
+    lo, hi = bootstrap_interval(diffs)
+    if lo > 0:
+        verdict = "evidence for"
+        ok = True
+    elif hi < 0:
+        verdict = "evidence against"
+        ok = False
+    else:
+        verdict = "not enough evidence yet"
+        ok = False
+    return srb, srk, lo, hi, verdict, ok
+
+
+def paired_survey_check(pairs, base, k, by_variant, survey_questions, min_gain):
+    if not survey_questions:
+        return None
+    sb = [by_variant[base]["survey"].get(q) for q in survey_questions]
+    sk = [by_variant[k]["survey"].get(q) for q in survey_questions]
+    sb, sk = mean(sb), mean(sk)
+    gain = (sk - sb) if sk is not None and sb is not None else None
+
+    diffs = []
+    for p in pairs:
+        sb_i = mean([p[base]["survey"].get(q) for q in survey_questions])
+        sk_i = mean([p[k]["survey"].get(q) for q in survey_questions])
+        if sb_i is not None and sk_i is not None:
+            diffs.append(sk_i - sb_i)
+    if not diffs:
+        return sb, sk, gain, None, None, "not enough evidence yet", False
+
+    lo, hi = bootstrap_interval(diffs)
+    if lo > min_gain:
+        verdict = "evidence for"
+        ok = True
+    elif hi < min_gain:
+        verdict = "evidence against"
+        ok = False
+    else:
+        verdict = "not enough evidence yet"
+        ok = False
+    return sb, sk, gain, lo, hi, verdict, ok
+
+from flask import abort, jsonify, request, send_from_directory, session
 
 from .. import questions as Q
 from .. import storage
@@ -83,6 +172,8 @@ class ABTest(ModuleType):
                 scope.add(f"variants.{key}.file '{v.get('file')}' does not exist under {project_dir.name}/")
             elif project_dir not in path.parents:
                 scope.add(f"variants.{key}.file must stay inside the project folder")
+            elif path.parent == project_dir:
+                scope.add(f"variants.{key}.file must not sit at the project root")
             variants[key] = {"label": str(v.get("label") or key), "path": path}
         keys = list(variants)
         baseline = str(raw.get("baseline") or (keys[0] if keys else ""))
@@ -134,7 +225,7 @@ class ABTest(ModuleType):
             "variants": variants, "baseline": baseline, "order": order, "intro": str(raw.get("intro") or ""),
             "tasks": tasks, "ease": bool(raw.get("ease_question", True)), "post": post, "final": final,
             "preference": bool(raw.get("preference", len(variants) > 1)),
-            "rule": {"min_participants": int(rule.get("min_participants", 8)),
+            "rule": {"min_participants": int(rule.get("min_participants", 20)),
                      "survey_questions": list(rule.get("survey_questions") or []),
                      "min_survey_gain": float(rule.get("min_survey_gain", 0.5))},
         }
@@ -230,6 +321,7 @@ class ABTest(ModuleType):
                 "frameUrl": ctx.action_url(f"view/{n}/"),
                 "metricsUrl": ctx.action_url(f"api/{n}/__T__/metrics"),
                 "submitUrl": ctx.action_url(f"api/{n}/__T__/submit"),
+                "csrfToken": session.get("csrf_token", ""),
                 "strings": {k: ctx.t(f"runner.{k}") for k in (
                     "task_of", "start", "answer", "hide", "show", "your_answer", "submit", "gave_up", "back",
                     "ease_q", "ease_low", "ease_high", "incomplete", "save_failed", "offline")},
@@ -275,6 +367,10 @@ class ABTest(ModuleType):
         path = self.m.conf["variants"][variant]["path"]
         if not asset:
             return send_from_directory(path.parent, path.name, mimetype="text/html", max_age=0)
+        from pathlib import Path
+        from ..studio import PROTOTYPE_EXT
+        if Path(asset).suffix.lower() not in PROTOTYPE_EXT:
+            abort(404)
         return send_from_directory(path.parent, asset, max_age=0)
 
     def _save_metrics(self, conn, session_id, position, variant, task_id, m):
@@ -354,13 +450,15 @@ class ABTest(ModuleType):
         sessions = conn.execute("SELECT s.*, p.identity FROM sessions s JOIN participants p ON p.id = s.participant_id "
                                 "WHERE s.module_id = ?", (self.m.id,)).fetchall()
         task_ids = [t["id"] for t in self.m.conf["tasks"]]
+        session_ids = [s["id"] for s in sessions]
+        answers_by_sid = storage.bulk_answers_by_page(conn, session_ids)
+        task_results_by_sid = storage.bulk_task_results(conn, session_ids)
         runs = []
         for s in sessions:
             state = storage.loads(s["state"], {})
-            answers = {r["page"]: storage.loads(r["data"], {}) for r in
-                       conn.execute("SELECT page, data FROM answers WHERE session_id = ?", (s["id"],))}
+            answers = answers_by_sid.get(s["id"], {})
             for n, variant in enumerate(state.get("order", []), start=1):
-                rows = self._rows(conn, s["id"], n)
+                rows = task_results_by_sid.get(s["id"], {}).get(n, {})
                 if not all(rows.get(t) and rows[t]["finished_at"] for t in task_ids):
                     continue
                 vw = next((r["viewport_w"] for r in rows.values() if r["viewport_w"]), None)
@@ -408,20 +506,19 @@ class ABTest(ModuleType):
             if k == base:
                 continue
             pairs = [p for p in people.values() if base in p and k in p]
-            faster = sum(1 for p in pairs if p[k]["total"] < p[base]["total"])
-            sb = [by_variant[base]["survey"].get(q) for q in c["rule"]["survey_questions"]]
-            sk = [by_variant[k]["survey"].get(q) for q in c["rule"]["survey_questions"]]
-            sb, sk = mean(sb), mean(sk)
-            srb, srk = success_rate([effective_grade(x) for p in pairs for x in p[base]["rows"].values()]), \
-                success_rate([effective_grade(x) for p in pairs for x in p[k]["rows"].values()])
+            faster, time_p, time_verdict, time_ok = paired_time_check(pairs, base, k)
+            srb, srk, succ_lo, succ_hi, succ_verdict, succ_ok = paired_success_check(pairs, base, k)
+
             checks = [
-                {"key": "faster", "value": f"{faster}/{len(pairs)}", "ok": bool(pairs) and faster > len(pairs) / 2},
-                {"key": "success", "a": srb, "b": srk, "ok": srb is not None and srk is not None and srk >= srb},
+                {"key": "faster", "value": f"{faster}/{len(pairs)}", "p_value": time_p, "verdict": time_verdict, "ok": time_ok},
+                {"key": "success", "a": srb, "b": srk, "interval": (succ_lo, succ_hi), "verdict": succ_verdict, "ok": succ_ok},
             ]
-            if c["rule"]["survey_questions"]:
-                gain = (sk - sb) if sk is not None and sb is not None else None
-                checks.append({"key": "survey", "a": sb, "b": sk, "gain": gain,
-                               "ok": gain is not None and gain >= c["rule"]["min_survey_gain"]})
+            
+            surv = paired_survey_check(pairs, base, k, by_variant, c["rule"]["survey_questions"], c["rule"]["min_survey_gain"])
+            if surv:
+                sb, sk, gain, surv_lo, surv_hi, surv_verdict, surv_ok = surv
+                checks.append({"key": "survey", "a": sb, "b": sk, "gain": gain, "interval": (surv_lo, surv_hi),
+                               "verdict": surv_verdict, "ok": surv_ok})
             rules.append({"variant": k, "n": len(pairs), "checks": checks, "all_ok": all(x["ok"] for x in checks),
                           "enough": len(pairs) >= c["rule"]["min_participants"]})
 
@@ -518,3 +615,61 @@ class ABTest(ModuleType):
                                 (x["observer_note"] or "") if x else "",
                                 " > ".join(storage.loads(x["click_path"], [])) if x else ""] + post + final_cols)
         return header, out
+
+    def export_cols(self, ctx, session_ids):
+        if not session_ids:
+            return [], {}
+        c = self.m.conf
+        headers = []
+        for n in range(1, len(c.get("variants", {})) + 1):
+            for t in c.get("tasks", []):
+                for col in ["variant", "time_s", "clicks", "scroll_reversals", "first_click", "gave_up", "ease", "auto_pass", "grade", "answer"]:
+                    headers.append(f"{self.m.id}.task{n}_{t['id']}.{col}")
+            for k in Q.flatten(c.get("post", []), {}):
+                headers.append(f"{self.m.id}.task{n}.post.{k}")
+                
+        headers += [f"{self.m.id}.preference_variant", f"{self.m.id}.preference_reason"]
+        for k in Q.flatten(c.get("final", []), {}):
+            headers.append(f"{self.m.id}.final.{k}")
+            
+        placeholders = ",".join("?" * len(session_ids))
+        sessions = ctx.conn.execute(
+            f"SELECT id, state FROM sessions WHERE id IN ({placeholders})", session_ids
+        ).fetchall()
+        
+        out = {}
+        for s in sessions:
+            cols = {}
+            order = storage.loads(s["state"], {}).get("order", [])
+            final = storage.page_answers(ctx.conn, s["id"], "final")
+            choice = final.get("_preference", "")
+            pref_variant = order[int(choice) - 1] if choice.isdigit() and int(choice) <= len(order) else choice
+            cols[f"{self.m.id}.preference_variant"] = pref_variant
+            cols[f"{self.m.id}.preference_reason"] = final.get("_preference_reason", "")
+            
+            for k, v in Q.flatten(c.get("final", []), final).items():
+                cols[f"{self.m.id}.final.{k}"] = v
+                
+            for n, variant in enumerate(order, start=1):
+                rows = self._rows(ctx.conn, s["id"], n)
+                post = Q.flatten(c.get("post", []), storage.page_answers(ctx.conn, s["id"], f"survey{n}"))
+                
+                for t in c.get("tasks", []):
+                    x = rows.get(t["id"])
+                    pfx = f"{self.m.id}.task{n}_{t['id']}"
+                    cols[f"{pfx}.variant"] = variant
+                    cols[f"{pfx}.time_s"] = round(x["time_ms"] / 1000, 1) if x and x.get("time_ms") is not None else ""
+                    cols[f"{pfx}.clicks"] = x["clicks"] if x else ""
+                    cols[f"{pfx}.scroll_reversals"] = x["scroll_reversals"] if x else ""
+                    cols[f"{pfx}.first_click"] = (x["first_click"] or "") if x else ""
+                    cols[f"{pfx}.gave_up"] = x["gave_up"] if x else ""
+                    cols[f"{pfx}.ease"] = (x["ease"] or "") if x else ""
+                    cols[f"{pfx}.auto_pass"] = ("" if not x or x.get("auto_pass") is None else x["auto_pass"])
+                    cols[f"{pfx}.grade"] = (effective_grade(x) or "") if x else ""
+                    cols[f"{pfx}.answer"] = (x["answer"] or "") if x else ""
+                    
+                for k, v in post.items():
+                    cols[f"{self.m.id}.task{n}.post.{k}"] = v
+                    
+            out[s["id"]] = cols
+        return headers, out

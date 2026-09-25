@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block width %}max-w-6xl{% endblock %}
+{% block title %}{{ heading }} · Platform{% endblock %}
+
+{% macro tab(endpoint, label, icon, badge=0) %}
+{%- set active = request.endpoint == endpoint -%}
+<a href="{{ url_for(endpoint) }}" class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border transition-all
+   {% if active %}bg-slate-900 text-white border-slate-900{% else %}bg-white text-slate-700 border-slate-300 hover:bg-slate-50{% endif %}">
+    <i class="fa-solid {{ icon }} text-xs {% if not active %}text-slate-400{% endif %}"></i>{{ label }}
+    {%- if badge %}<span class="ml-0.5 bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">{{ badge }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% block content %}
+<div class="space-y-7 py-4">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-5 border-b border-slate-200">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-1">
+                <i class="fa-solid fa-shield-halved"></i> Platform administration
+            </p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight text-balance">{{ heading }}</h1>
+            {% if subheading %}<p class="text-slate-500 text-sm mt-1 text-pretty">{{ subheading }}</p>{% endif %}
+        </div>
+        <a href="{{ url_for('public.dashboard') }}" class="text-sm text-slate-500 hover:text-slate-800 underline whitespace-nowrap">
+            Back to my studies
+        </a>
+    </div>
+
+    <nav class="flex flex-wrap gap-2">
+        {{ tab('platform.home', 'Overview', 'fa-gauge-high') }}
+        {{ tab('platform.user_list', 'Accounts', 'fa-users') }}
+        {{ tab('platform.project_list', 'Studies', 'fa-flask-vial') }}
+        {{ tab('platform.report_list', 'Reports', 'fa-flag', open_reports) }}
+        {{ tab('platform.audit_list', 'Audit log', 'fa-scroll') }}
+    </nav>
+
+    {% block panel %}{% endblock %}
+</div>
+{% endblock %}

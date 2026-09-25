@@ -28,8 +28,10 @@ def test_logins_passcodes_and_data_are_separate(tmp_path, make_app):
     assert c.get("/beta/admin/participants").status_code == 302  # alpha admin is not beta admin
     assert c.post("/beta/admin/", data={"passcode": "aa"}).status_code == 200  # wrong project's code refused
 
+    # Participant data lives in one file per project, so only the project that was used has one.
+    # _system.db is the shared file for hashed passcodes, accounts and moderation, never answers.
     data = Path(app.config["DATA_DIR"])
-    assert sorted(p.name for p in data.glob("*.db")) == ["alpha.db"]
+    assert sorted(p.name for p in data.glob("*.db") if p.name != "_system.db") == ["alpha.db"]
 
 
 def test_audience_hides_module_and_blocks_direct_access(tmp_path, make_app):

@@ -5,6 +5,7 @@
 <p class="text-[14px] text-slate-500 mb-6">{{ t('admin.first_seen') }} {{ person.created_at[:16].replace('T', ' ') }} · {{ t('admin.last_seen') }} {{ person.last_seen_at[:16].replace('T', ' ') }}</p>
 {% if saved %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('admin.saved') }}</div>{% endif %}
 <form method="post" class="space-y-6">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% for b in blocks %}
     <section class="border border-slate-200 rounded-xl overflow-hidden">
         <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between gap-2">

@@ -1,0 +1,74 @@
+{% extends "platform/_layout.html" %}
+{% set heading = "Overview" %}
+{% set subheading = "The health of this instance at a glance." %}
+
+{% block panel %}
+{% if config_error %}
+<div class="rounded-2xl border border-amber-300 bg-amber-50 p-5">
+    <p class="font-semibold text-amber-900 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> A project's YAML is broken</p>
+    <p class="text-sm text-amber-800">The previous working configuration is still running. Fix the file, then reload.</p>
+    <pre class="mt-3 text-xs bg-white/60 rounded-lg p-3 overflow-x-auto text-amber-900">{{ config_error }}</pre>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    {% for label, value, hint in [
+        ("Accounts", counts.users, "registered researchers"),
+        ("Verified", counts.verified, "email confirmed"),
+        ("Disabled", counts.disabled, "blocked accounts"),
+        ("Studies", counts.projects, "loaded from YAML"),
+        ("Offline", counts.offline, "taken down"),
+    ] %}
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">{{ label }}</span>
+        <div class="text-2xl font-bold tabular-nums {% if label in ('Disabled', 'Offline') and value %}text-red-600{% else %}text-slate-900{% endif %}">{{ value }}</div>
+        <span class="text-xs text-slate-500 mt-1 block">{{ hint }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+    <div class="min-w-0 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900 mb-1">Quotas in force</h2>
+        <p class="text-xs text-slate-500 mb-4">Each one is an environment variable. A dash means no limit.</p>
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs uppercase tracking-wider text-slate-400 border-b border-slate-200">
+                <th class="pb-2 font-semibold">Limit</th><th class="pb-2 font-semibold">Value</th><th class="pb-2 font-semibold">Variable</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-100">
+            {% for name, value in limits.items() %}
+            <tr>
+                <td class="py-2 text-slate-700">{{ name.replace('_', ' ') }}</td>
+                <td class="py-2 font-semibold text-slate-900 tabular-nums">{{ value or '—' }}</td>
+                <td class="py-2"><code class="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">LIMIT_{{ name.upper() }}</code></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="min-w-0 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold text-slate-900">Latest admin actions</h2>
+            <a href="{{ url_for('platform.audit_list') }}" class="text-xs text-brand underline">Full log</a>
+        </div>
+        {% if not recent %}
+        <p class="text-sm text-slate-500">Nothing has been done here yet.</p>
+        {% else %}
+        <ul class="space-y-2.5">
+            {% for e in recent %}
+            <li class="text-sm flex gap-3">
+                <code class="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded h-fit whitespace-nowrap">{{ e.action }}</code>
+                <span class="text-slate-600">
+                    {{ e.actor or 'system' }}{% if e.project_slug %} · <span class="font-medium text-slate-800">{{ e.project_slug }}</span>{% endif %}
+                    <span class="text-slate-400 text-xs block">{{ e.at[:16].replace('T', ' ') }} UTC</span>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

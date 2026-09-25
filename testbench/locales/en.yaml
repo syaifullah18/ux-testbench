@@ -279,3 +279,23 @@ studio:
   no_project_yaml: The zip has no project.yaml at its root.
   bad_slug: "URL names use lowercase letters, digits and hyphens, and cannot be admin, api, health or static."
   slug_taken: "A project named '{slug}' already exists."
+auth:
+  invalid_email: Enter a valid email address.
+  name_required: Tell us your name.
+  password_too_short: Use at least 10 characters.
+  passwords_mismatch: The passwords do not match.
+  password_common: That password is too common. Please choose a safer one.
+  rate_limited: Too many attempts. Try again later.
+  signup_check_email: Check your email for a verification link.
+  verify_failed_title: Verification failed
+  verify_failed: The link is invalid or has expired.
+  verify_ok_title: Email verified
+  verify_ok: Your account is ready.
+  login_failed: Incorrect email or password.
+  account_disabled: This account has been disabled.
+  reset_failed_title: Reset failed
+  reset_failed: The link is invalid or has expired. Request a new one.
+  reset_ok_title: Password reset
+  reset_ok: Your password has been changed successfully.
+  wrong_password: Incorrect current password.
+  confirm_email_mismatch: The email does not match.

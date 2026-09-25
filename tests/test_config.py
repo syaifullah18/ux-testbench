@@ -8,7 +8,7 @@ from .conftest import PROTO, write_project
 
 def test_example_project_is_valid(projects_dir):
     projects = load_all(MODULE_TYPES, [projects_dir])
-    assert list(projects["example"].modules) == ["profile", "journey", "events-ab"]
+    assert list(projects["example"].modules) == ["profile", "journey", "info-arch", "events-ab"]
 
 
 def test_reports_every_problem_at_once(tmp_path):

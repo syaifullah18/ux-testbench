@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 flex flex-col h-[90vh]">
+    <div class="mb-4 bg-white p-4 shadow rounded-lg sticky top-4 z-10 text-center">
+        <h2 class="text-xl font-bold text-gray-900">{{ task.prompt }}</h2>
+        <p class="text-sm text-gray-500 mt-1">Click anywhere on the image below to complete this task.</p>
+    </div>
+    
+    <div class="flex-grow relative overflow-auto border border-gray-300 rounded shadow-inner bg-gray-50" id="image-container">
+        <!-- We use an img tag with crosshair cursor -->
+        <img src="{{ url_for('web.module_action', slug=ctx.project.slug, mid=ctx.module.id, path=task.image) if '://' not in task.image else task.image }}" 
+             id="task-image"
+             alt="Task image" 
+             class="cursor-crosshair max-w-none block"
+             draggable="false">
+    </div>
+    
+    <form method="POST" id="click-form" class="hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="x" id="inp-x">
+        <input type="hidden" name="y" id="inp-y">
+        <input type="hidden" name="w" id="inp-w">
+        <input type="hidden" name="h" id="inp-h">
+        <input type="hidden" name="time_ms" id="inp-time">
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const img = document.getElementById("task-image");
+    const form = document.getElementById("click-form");
+    const startTime = performance.now();
+    
+    img.addEventListener("click", (e) => {
+        // Prevent double clicks
+        if (form.submitted) return;
+        form.submitted = true;
+        
+        // Calculate relative coordinates
+        const rect = img.getBoundingClientRect();
+        
+        // The intrinsic dimensions
+        const naturalW = img.naturalWidth;
+        const naturalH = img.naturalHeight;
+        
+        // Rendered dimensions
+        const renderW = img.width;
+        const renderH = img.height;
+        
+        // Scaling factors
+        const scaleX = naturalW / renderW;
+        const scaleY = naturalH / renderH;
+        
+        // Click position on the rendered image
+        const xRender = e.clientX - rect.left;
+        const yRender = e.clientY - rect.top;
+        
+        // Map to natural image dimensions
+        const x = Math.round(xRender * scaleX);
+        const y = Math.round(yRender * scaleY);
+        const timeMs = Math.round(performance.now() - startTime);
+        
+        document.getElementById("inp-x").value = x;
+        document.getElementById("inp-y").value = y;
+        document.getElementById("inp-w").value = naturalW;
+        document.getElementById("inp-h").value = naturalH;
+        document.getElementById("inp-time").value = timeMs;
+        
+        // Show a visual indicator where clicked
+        const dot = document.createElement("div");
+        dot.style.position = "absolute";
+        dot.style.left = e.clientX + "px";
+        dot.style.top = e.clientY + "px";
+        dot.style.width = "16px";
+        dot.style.height = "16px";
+        dot.style.marginLeft = "-8px";
+        dot.style.marginTop = "-8px";
+        dot.style.backgroundColor = "rgba(239, 68, 68, 0.8)"; // Red
+        dot.style.border = "2px solid white";
+        dot.style.borderRadius = "50%";
+        dot.style.boxShadow = "0 0 4px rgba(0,0,0,0.5)";
+        dot.style.zIndex = "50";
+        document.body.appendChild(dot);
+        
+        // Brief delay for visual feedback
+        setTimeout(() => form.submit(), 300);
+    });
+});
+</script>
+{% endblock %}

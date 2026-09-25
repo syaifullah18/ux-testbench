@@ -52,7 +52,28 @@ class Ctx:
         self.conn.execute("UPDATE sessions SET step = 'done', finished_at = ? WHERE id = ?",
                           (storage.now_iso(), self.session["id"]))
         self.conn.commit()
+        self._check_notifications()
         return self.home_url(done=self.module.id)
+        
+    def _check_notifications(self):
+        notifs = getattr(self.project, "notifications", {})
+        if not notifs or not isinstance(notifs, dict):
+            return
+        url = notifs.get("webhook")
+        threshold = notifs.get("threshold", 10)
+        if not url or not isinstance(threshold, int) or threshold <= 0:
+            return
+            
+        completed = self.conn.execute("SELECT COUNT(finished_at) FROM sessions WHERE module_id = ?",
+                                      (self.module.id,)).fetchone()[0]
+        if completed > 0 and completed % threshold == 0:
+            import urllib.request, json
+            try:
+                data = json.dumps({"event": "module_completed", "project": self.project.slug, "module": self.module.id, "count": completed}).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=3)
+            except Exception:
+                pass # Fire and forget, ignore errors
 
     # ---- rendering
     def progress(self):
@@ -113,5 +134,31 @@ def set_participant(slug, pid):
 
 
 def is_admin(slug):
+    import os
+    if os.environ.get("TESTBENCH_MODE", "internal") == "public":
+        if slug == "example":
+            return True
+        from . import auth, users
+        user = auth.current_user()
+        return users.can(user, slug, "view")
+    
     granted = cookie.get("tb_admin") or []
     return "*" in granted or slug in granted
+
+
+def can_edit(slug):
+    import os
+    if os.environ.get("TESTBENCH_MODE", "internal") == "public":
+        from . import auth, users
+        user = auth.current_user()
+        return users.can(user, slug, "edit")
+    return is_admin(slug)
+
+
+def is_super():
+    import os
+    if os.environ.get("TESTBENCH_MODE", "internal") == "public":
+        from . import auth
+        user = auth.current_user()
+        return user is not None and user["is_platform_admin"]
+    return "*" in (cookie.get("tb_admin") or [])

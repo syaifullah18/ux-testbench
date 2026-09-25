@@ -1,0 +1,49 @@
+
+
+<div class="mb-8">
+    <h2 class="text-lg font-bold text-slate-900 mb-4">Tree Test Tasks</h2>
+    <div class="space-y-4">
+        {% for tr in task_results %}{% set t = tr.task %}{% set r = tr.result %}
+        <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="font-semibold text-slate-900 mb-2">{{ loop.index }}. {{ t.prompt }}</h3>
+            {% if not r %}
+            <p class="text-sm text-slate-500">This participant did not reach this task.</p>
+            {% else %}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                <div>
+                    <p class="text-slate-500">Status</p>
+                    {% if r.success %}
+                    <p class="font-semibold text-emerald-600"><i class="fa-solid fa-check mr-1"></i> Success</p>
+                    {% elif r.gave_up %}
+                    <p class="font-semibold text-slate-600"><i class="fa-solid fa-ban mr-1"></i> Gave Up</p>
+                    {% else %}
+                    <p class="font-semibold text-red-600"><i class="fa-solid fa-xmark mr-1"></i> Failed</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <p class="text-slate-500">Time</p>
+                    <p class="font-medium text-slate-900">{{ (r.time_ms / 1000)|round(1) }}s</p>
+                </div>
+                <div class="col-span-2">
+                    <p class="text-slate-500">Selected Node</p>
+                    <p class="font-medium text-slate-900">{{ r.final_node or '(None)' }}</p>
+                </div>
+            </div>
+            
+            <div>
+                <p class="text-slate-500 text-sm mb-1">Path Taken ({{ r.path_taken|length }} nodes visited)</p>
+                {% if r.path_taken %}
+                <div class="text-sm text-slate-700 bg-slate-50 p-2 rounded border border-slate-200 font-mono overflow-x-auto whitespace-nowrap">
+                    {{ r.path_taken|join(' > ') }}
+                </div>
+                {% else %}
+                <p class="text-sm text-slate-400 italic">No nodes clicked.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+

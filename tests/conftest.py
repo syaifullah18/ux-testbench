@@ -48,6 +48,10 @@ def projects_dir(tmp_path):
 @pytest.fixture
 def make_app(tmp_path, monkeypatch):
     def factory(projects_dir, **env):
+        import os
+        for k in list(os.environ):
+            if k.endswith("_PASSCODE"):
+                monkeypatch.delenv(k, raising=False)
         for k, v in env.items():
             monkeypatch.setenv(k, v)
         app = create_app({"TESTING": True, "SECRET_KEY": "test", "DATA_DIR": str(tmp_path / "data"),

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Draft Preview Only{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-white border border-amber-200/80 rounded-3xl p-8 sm:p-10 shadow-sm bg-amber-50/30">
+    <div class="size-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl">
+        <i class="fa-solid fa-flask"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-2">Draft Mode</h1>
+    <p class="text-slate-600 text-[15px] leading-relaxed mb-6 text-pretty">
+        This research study is currently being prepared and is not yet open to public participants.
+    </p>
+    <div class="bg-white/80 border border-amber-100 rounded-xl p-4 text-xs text-slate-500 text-left mb-6">
+        <div class="flex items-center gap-2 font-semibold text-amber-800 mb-1">
+            <i class="fa-solid fa-lock"></i> Researcher Access Only
+        </div>
+        If you are the researcher running this study, please log in with your account to preview and pilot test the flow.
+    </div>
+    <a href="{{ url_for('auth.login') }}" class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm">
+        <i class="fa-solid fa-right-to-bracket text-sm"></i> Researcher Log in
+    </a>
+</div>
+{% endblock %}

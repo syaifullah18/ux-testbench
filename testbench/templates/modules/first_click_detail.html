@@ -1,0 +1,56 @@
+<div class="space-y-6">
+    {% for tc in task_clicks %}
+    <div class="border rounded shadow-sm bg-white overflow-hidden">
+        <div class="p-3 bg-gray-50 border-b flex justify-between items-center">
+            <h4 class="font-bold">{{ tc.task.prompt }}</h4>
+            {% if tc.click %}
+            <span class="text-sm text-gray-500">{{ (tc.click.time_ms / 1000)|round(1) }}s</span>
+            {% endif %}
+        </div>
+        
+        <div class="p-4 bg-gray-100 flex justify-center overflow-auto">
+            {% if tc.click %}
+            <div class="relative inline-block border shadow-sm bg-white">
+                {% set img_src = url_for('admin.module_action', slug=ctx.project.slug, mid=ctx.module.id, path=tc.task.image) if '://' not in tc.task.image else tc.task.image %}
+                <img src="{{ img_src }}" alt="Task image" style="max-width: 600px; max-height: 400px; display: block;">
+                
+                {% if tc.click.w and tc.click.h %}
+                <div class="absolute size-4 -ml-2 -mt-2 bg-red-500 rounded-full border-2 border-white opacity-90 shadow"
+                     style="left: {{ (tc.click.x / tc.click.w * 100)|round(2) }}%; top: {{ (tc.click.y / tc.click.h * 100)|round(2) }}%;"></div>
+                {% endif %}
+            </div>
+            {% else %}
+            <span class="text-gray-500 italic py-4">Did not complete this task.</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if post %}
+    <div class="mt-6">
+        <h4 class="font-bold mb-2">Follow-up Survey</h4>
+        <div class="bg-white border rounded shadow-sm">
+            {% for q, val in post %}
+            <div class="p-3 border-b last:border-0 flex justify-between gap-4">
+                <span class="text-gray-600 font-medium">{{ q.label }}</span>
+                <span class="text-gray-900 text-right">{{ val }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if final %}
+    <div class="mt-6">
+        <h4 class="font-bold mb-2">Final Questions</h4>
+        <div class="bg-white border rounded shadow-sm">
+            {% for q, val in final %}
+            <div class="p-3 border-b last:border-0 flex justify-between gap-4">
+                <span class="text-gray-600 font-medium">{{ q.label }}</span>
+                <span class="text-gray-900 text-right">{{ val }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>

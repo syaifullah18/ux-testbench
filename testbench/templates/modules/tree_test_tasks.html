@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-sm">
+        <div class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            Task {{ task_idx + 1 }} of {{ total }}
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 mb-4">{{ task.prompt }}</h2>
+        {% if conf.instructions %}<p class="text-slate-600 mb-6">{{ conf.instructions }}</p>{% endif %}
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 md:p-6 mb-8 max-h-[500px] overflow-y-auto">
+            {% macro render_tree(nodes) %}
+            <ul class="space-y-1">
+                {% for node in nodes %}
+                <li>
+                    {% if node.children %}
+                        <details class="group">
+                            <summary class="cursor-pointer px-3 py-2 hover:bg-slate-200/50 rounded-lg flex items-center gap-2 font-medium select-none" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}')">
+                                <i class="fa-solid fa-chevron-right text-slate-400 text-[10px] w-3 transition-transform group-open:rotate-90"></i>
+                                {{ node.label }}
+                            </summary>
+                            <div class="pl-4 ml-2.5 border-l-2 border-slate-200 mt-1 mb-2">
+                                {{ render_tree(node.children) }}
+                            </div>
+                        </details>
+                    {% else %}
+                        <div class="cursor-pointer px-3 py-2 hover:bg-brand/10 hover:text-brand rounded-lg flex items-center gap-2 select-none leaf-node" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}'); selectNode('{{ node.id }}', '{{ node.label|replace("'", "\\'") }}')">
+                            <i class="fa-regular fa-file text-slate-400 w-3 text-center"></i>
+                            {{ node.label }}
+                        </div>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endmacro %}
+
+            {{ render_tree(conf.tree) }}
+        </div>
+        
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+            <button type="button" class="text-slate-500 hover:text-slate-800 text-sm font-medium" onclick="submitResult(null, true)">
+                I'd give up / I can't find it
+            </button>
+            <div class="flex items-center gap-4">
+                <span id="selected-label" class="text-slate-700 font-medium hidden">Selected: <span class="text-brand"></span></span>
+                <button type="button" id="btn-submit" class="btn btn-primary px-8 disabled:opacity-50" disabled onclick="submitResult()">
+                    Confirm Choice
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const startTime = Date.now();
+    const pathTaken = [];
+    let selectedNodeId = null;
+
+    function recordClick(nodeId) {
+        if (pathTaken[pathTaken.length - 1] !== nodeId) {
+            pathTaken.push(nodeId);
+        }
+    }
+
+    function selectNode(nodeId, label) {
+        selectedNodeId = nodeId;
+        
+        // Update UI
+        document.querySelectorAll('.leaf-node').forEach(el => {
+            el.classList.remove('bg-brand', 'text-white');
+            el.classList.add('hover:bg-brand/10', 'hover:text-brand');
+            el.querySelector('i').classList.remove('text-white');
+            el.querySelector('i').classList.add('text-slate-400');
+        });
+        
+        const selectedEl = document.querySelector(`[data-node-id="${nodeId}"]`);
+        if (selectedEl) {
+            selectedEl.classList.remove('hover:bg-brand/10', 'hover:text-brand');
+            selectedEl.classList.add('bg-brand', 'text-white');
+            selectedEl.querySelector('i').classList.remove('text-slate-400');
+            selectedEl.querySelector('i').classList.add('text-white');
+        }
+        
+        const labelEl = document.getElementById('selected-label');
+        labelEl.classList.remove('hidden');
+        labelEl.querySelector('span').textContent = label;
+        
+        document.getElementById('btn-submit').disabled = false;
+    }
+
+    function submitResult(nodeId = null, gaveUp = false) {
+        const timeMs = Date.now() - startTime;
+        const btn = document.getElementById('btn-submit');
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                path_taken: pathTaken,
+                final_node: gaveUp ? null : (nodeId || selectedNodeId),
+                gave_up: gaveUp,
+                time_ms: timeMs
+            })
+        }).then(r => {
+            if (r.ok) {
+                window.location.reload();
+            } else {
+                alert("Error saving.");
+                btn.disabled = false;
+                btn.textContent = "Confirm Choice";
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -49,11 +49,7 @@
     function flush(beacon) {
         if (!m) return;
         const body = JSON.stringify(snapshot());
-        if (beacon && navigator.sendBeacon) {
-            navigator.sendBeacon(url(cfg.metricsUrl), new Blob([body], { type: 'application/json' }));
-        } else {
-            fetch(url(cfg.metricsUrl), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
-        }
+        fetch(url(cfg.metricsUrl), { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': cfg.csrfToken }, body, keepalive: true }).catch(() => {});
     }
 
     function describe(el) {
@@ -232,7 +228,7 @@
         const errBox = cfg.ease ? 'ease-error' : 'd-error';
         try {
             const res = await fetch(url(cfg.submitUrl), {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': cfg.csrfToken },
                 body: JSON.stringify({ answer, gave_up: gaveUp, ease, metrics: snapshot() }),
             });
             const data = await res.json().catch(() => ({}));

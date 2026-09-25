@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Study Completed{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-sm">
+    <div class="size-16 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl">
+        <i class="fa-solid fa-flag-checkered"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-2">Study Completed</h1>
+    <p class="text-slate-600 text-[15px] leading-relaxed mb-6 text-pretty">
+        This study is no longer accepting responses. Thank you very much for your time and contribution to this research.
+    </p>
+    {% if project and project.description %}
+    <div class="bg-slate-50 rounded-xl p-4 text-xs text-slate-500 border border-slate-100 text-left mb-6">
+        <strong class="text-slate-700 block mb-1">{{ project.name }}</strong>
+        {{ project.description }}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

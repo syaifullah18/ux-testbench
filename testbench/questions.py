@@ -6,6 +6,8 @@ Answers are stored as {question_id: value}; a matrix stores {row_value: int | "n
 """
 from statistics import mean
 
+from .config import MAX_OPTIONS_PER_QUESTION, MAX_QUESTIONS_PER_MODULE, MAX_ROWS_PER_MATRIX
+
 TYPES = {"single", "multi", "scale", "matrix", "text"}
 NA = "na"
 
@@ -17,6 +19,9 @@ def normalize_options(raw, scope, where):
         raw = [{"value": k, "label": v} for k, v in raw.items()]
     if not isinstance(raw, list) or not raw:
         scope.add(f"{where}: needs a non-empty options list")
+        return out
+    if len(raw) > MAX_OPTIONS_PER_QUESTION:
+        scope.add(f"{where}: has {len(raw)} options, maximum is {MAX_OPTIONS_PER_QUESTION}")
         return out
     for item in raw:
         if isinstance(item, dict):
@@ -52,6 +57,9 @@ def normalize(questions, scope, where="questions"):
     if not isinstance(questions, list):
         scope.add(f"{where} must be a list")
         return []
+    if len(questions) > MAX_QUESTIONS_PER_MODULE:
+        scope.add(f"{where}: has {len(questions)} questions, maximum is {MAX_QUESTIONS_PER_MODULE}")
+        return []
     out, seen = [], set()
     for i, raw in enumerate(questions):
         w = f"{where}[{i}]"
@@ -84,6 +92,9 @@ def normalize(questions, scope, where="questions"):
                 q["points"] = 5
             q["labels"] = scale_labels(raw, q["points"], scope, w)
         if qtype == "matrix":
+            rows = raw.get("rows")
+            if isinstance(rows, dict) and len(rows) > MAX_ROWS_PER_MATRIX:
+                scope.add(f"{w}: has {len(rows)} rows, maximum is {MAX_ROWS_PER_MATRIX}")
             q["rows"] = normalize_options(raw.get("rows"), scope, f"{w}.rows")
             q["na_label"] = str(raw["na_label"]) if raw.get("na_label") else None
         if qtype == "text":
@@ -221,7 +232,12 @@ def summarize(questions, responses):
             s["counts"] = sorted(((label, counts[v]) for v, label in q["options"]), key=lambda x: -x[1]) \
                 if t == "multi" else [(label, counts[v]) for v, label in q["options"]]
         elif t == "scale":
-            vals = [v for _, v in answered]
+            vals = []
+            for _, v in answered:
+                try:
+                    vals.append(float(v))
+                except (ValueError, TypeError):
+                    pass
             s["mean"] = mean(vals) if vals else None
             s["dist"] = [sum(1 for v in vals if v == i) for i in range(1, q["points"] + 1)]
         elif t == "matrix":
@@ -233,7 +249,13 @@ def summarize(questions, responses):
             rows = []
             top = q["points"] - 1  # "top two" boxes
             for rv, label in q["rows"]:
-                vals = [a[rv] for _, a in answered if rv in a and a[rv] != NA]
+                vals = []
+                for _, a in answered:
+                    if rv in a and a[rv] != NA:
+                        try:
+                            vals.append(float(a[rv]))
+                        except (ValueError, TypeError):
+                            pass
                 rows.append({"label": label, "n": len(vals),
                              "na": sum(1 for _, a in answered if a.get(rv) == NA),
                              "mean": mean(vals) if vals else None,

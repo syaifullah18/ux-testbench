@@ -1,0 +1,68 @@
+
+<div class="mb-8 p-6 bg-white border border-slate-200 rounded-xl">
+    <h2 class="text-xl font-bold text-slate-900 mb-6">Task Results</h2>
+    
+    <div class="space-y-8">
+        {% for tr in task_results %}
+        <div>
+            <h3 class="font-semibold text-lg text-slate-900 mb-4">{{ loop.index }}. {{ tr.task.prompt }}</h3>
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                    <p class="text-sm text-slate-500 font-medium mb-1">Success Rate</p>
+                    <p class="text-2xl font-bold text-slate-900">{{ (tr.success_rate * 100)|round(1) }}%</p>
+                </div>
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                    <p class="text-sm text-slate-500 font-medium mb-1">Avg Time</p>
+                    <p class="text-2xl font-bold text-slate-900">{{ (tr.avg_time_ms / 1000)|round(1) }}s</p>
+                </div>
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                    <p class="text-sm text-slate-500 font-medium mb-1">Gave Up</p>
+                    <p class="text-2xl font-bold text-slate-900">{{ (tr.gave_up_rate * 100)|round(1) }}%</p>
+                </div>
+            </div>
+            
+            <!-- Simple Destinations Table -->
+            <div class="overflow-hidden border border-slate-200 rounded-lg">
+                <table class="w-full text-left text-[14px]">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-2 font-semibold text-slate-700">Destination Selected</th>
+                            <th class="px-4 py-2 font-semibold text-slate-700 w-24">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {# Count destinations #}
+                        {% set dests = {} %}
+                        {% for r in tr.results %}
+                            {% set key = r.final_node or '(Gave up)' %}
+                            {% if dests.update({key: dests.get(key, 0) + 1}) %}{% endif %}
+                        {% endfor %}
+                        
+                        {% for dest, count in dests|dictsort(by='value', reverse=true) %}
+                        <tr>
+                            <td class="px-4 py-2 flex items-center gap-2">
+                                {% if dest in tr.task.accept %}
+                                <i class="fa-solid fa-check text-emerald-600"></i>
+                                {% elif dest == '(Gave up)' %}
+                                <i class="fa-solid fa-ban text-slate-400"></i>
+                                {% else %}
+                                <i class="fa-solid fa-xmark text-red-600"></i>
+                                {% endif %}
+                                <span class="font-medium text-slate-900">{{ dest }}</span>
+                            </td>
+                            <td class="px-4 py-2 text-slate-600">{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if not dests %}
+                        <tr><td colspan="2" class="px-4 py-8 text-center text-slate-500">No participants have completed this task yet.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if not loop.last %}<hr class="border-slate-200">{% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+

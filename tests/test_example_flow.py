@@ -77,6 +77,19 @@ def test_full_participant_and_admin_flow(projects_dir, make_app):
         r = c.post("/example/m/journey/s/p2", data={"story": "Could not find the date", "interview": "yes", "contact": "me@x.org"})
         assert r.status_code == 302
 
+        # Drive info-arch
+        assert c.get("/example/m/info-arch/").status_code == 302 # start (goes to t1)
+        r = c.get("/example/m/info-arch/s/t1")
+        assert r.status_code == 200
+        r = c.post("/example/m/info-arch/s/t1", json={"path_taken": ["catalog", "books"], "final_node": "books", "time_ms": 5000})
+        assert r.status_code == 302 and "t2" in r.location
+        r = c.post("/example/m/info-arch/s/t2", json={"path_taken": ["services", "rooms"], "final_node": "rooms", "time_ms": 3000})
+        assert r.status_code == 302 and "post1" in r.location
+        r = c.post("/example/m/info-arch/s/post1", data={"ease": "5"})
+        assert r.status_code == 302 and "post2" in r.location
+        r = c.post("/example/m/info-arch/s/post2", data={"ease": "4"})
+        assert r.status_code == 302 and "done=info-arch" in r.location
+
         orders.append(finish_ab(c, "/example/m/events-ab", answers))
         home = c.get("/example/").get_data(as_text=True)
         assert "All done" in home

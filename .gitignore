@@ -19,3 +19,8 @@ projects/*
 .DS_Store
 .vscode/
 .idea/
+
+# Built assets and the downloaded Tailwind binary (scripts/build-assets.sh)
+testbench/static/vendor/
+.cache/
+backups/

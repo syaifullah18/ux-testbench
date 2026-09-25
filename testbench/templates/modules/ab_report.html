@@ -17,11 +17,18 @@
         <tr class="border-b border-slate-200 last:border-0">
             <td class="{{ td }}">{{ t('admin.rule_' ~ chk.key, challenger=r.variant, gain=c.rule.min_survey_gain, qs=c.rule.survey_questions|join(', ')) }}</td>
             <td class="{{ td }} whitespace-nowrap">
-                {% if chk.key == 'faster' %}{{ chk.value }}
+                {% if chk.key == 'faster' %}{{ chk.value }} (p={{ chk.p_value|num(3) }})
                 {% elif chk.key == 'success' %}{{ c.baseline }} {{ chk.a|pct }}, {{ r.variant }} {{ chk.b|pct }}
-                {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}{% if chk.gain is not none %} ({{ '%+.2f'|format(chk.gain) }}){% endif %}{% endif %}
+                <br><span class="text-[12px] text-slate-500">Δ 95% CI: [{% if chk.interval[0] is not none %}{{ chk.interval[0]|pct }}{% else %}-{% endif %}, {% if chk.interval[1] is not none %}{{ chk.interval[1]|pct }}{% else %}-{% endif %}]</span>
+                {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}
+                <br><span class="text-[12px] text-slate-500">Δ 95% CI: [{% if chk.interval[0] is not none %}{{ chk.interval[0]|num(2) }}{% else %}-{% endif %}, {% if chk.interval[1] is not none %}{{ chk.interval[1]|num(2) }}{% else %}-{% endif %}]</span>
+                {% endif %}
             </td>
-            <td class="{{ td }}">{{ ok(chk.ok) }}</td>
+            <td class="{{ td }}">
+                {% if chk.verdict == 'evidence for' %}<span class="text-emerald-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>evidence for</span>
+                {% elif chk.verdict == 'evidence against' %}<span class="text-red-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>evidence against</span>
+                {% else %}<span class="text-slate-500 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-question mr-1"></i>not enough evidence yet</span>{% endif %}
+            </td>
         </tr>
     {% endfor %}
     </tbody></table>

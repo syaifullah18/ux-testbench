@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Explore Public Studies{% endblock %}
+{% block width %}max-w-5xl{% endblock %}
+
+{% block content %}
+<div class="py-8 space-y-8">
+    <div class="border-b border-slate-200 pb-6">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Public Studies Gallery</h1>
+        <p class="text-slate-500 text-sm mt-2">
+            Participate in open usability evaluations and community research studies.
+        </p>
+    </div>
+
+    {% if not studies %}
+    <div class="text-center py-16 bg-slate-50 border border-slate-200 rounded-3xl">
+        <i class="fa-solid fa-compass text-3xl text-slate-400 mb-3 block"></i>
+        <h3 class="text-base font-bold text-slate-800">No public studies listed</h3>
+        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto text-pretty">
+            A study appears here once its researcher lists it publicly and we have reviewed it,
+            so this page stays empty most of the time. Most people arrive through a direct link
+            from whoever invited them.
+        </p>
+        <a href="{{ url_for('public.docs') }}" class="inline-block mt-4 text-xs font-semibold text-brand underline">
+            Read how studies work
+        </a>
+    </div>
+    {% else %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% for p in studies %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:border-slate-300 transition-all">
+            <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h2 class="text-base font-bold text-slate-900">{{ p.name }}</h2>
+                    <span class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Live Study
+                    </span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                    {{ p.description or 'No description provided.' }}
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-xs text-slate-400">{{ p.modules|length }} module{% if p.modules|length != 1 %}s{% endif %}</span>
+                <a href="{{ url_for('web.home', slug=p.slug) }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
+                    Participate &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

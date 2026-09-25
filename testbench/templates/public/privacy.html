@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy{% endblock %}
+{% block width %}max-w-4xl{% endblock %}
+
+{% block content %}
+<div class="py-8 space-y-8">
+    <div class="border-b border-slate-200 pb-6">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Privacy Policy</h1>
+        <p class="text-slate-500 text-sm mt-2">
+            Last updated: September 2026 · Committed to transparency and data minimization.
+        </p>
+    </div>
+
+    <div class="prose prose-slate max-w-none space-y-6 text-slate-700 leading-relaxed text-[15px]">
+        <h2 class="text-xl font-bold text-slate-900">1. Roles and Responsibilities</h2>
+        <p>
+            When utilizing UX Testbench, data protection roles are distinct:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li><strong>Researchers (Account Holders):</strong> Act as the <strong>Data Controller</strong> for any participant data collected through their studies. Researchers determine the purpose of the study, the consent wording, and what information is solicited.</li>
+            <li><strong>Platform Operator:</strong> Acts as the <strong>Data Processor</strong> providing hosting, isolation, and processing infrastructure.</li>
+        </ul>
+
+        <h2 class="text-xl font-bold text-slate-900">2. Participant Privacy & Isolation</h2>
+        <p>
+            We take exceptional precautions to protect participants who complete usability evaluations:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li><strong>No Cross-Study Profiling:</strong> Each study operates in a dedicated, isolated SQLite database file. Data is not joined across studies.</li>
+            <li><strong>No Ad Trackers:</strong> Participant pages load no advertising pixels, behavioral trackers, or external profiling scripts.</li>
+            <li><strong>Anonymous Modes:</strong> Studies default to pseudonymous random codes (e.g. <code>ABC4-DEF7</code>) or anonymous sessions.</li>
+        </ul>
+
+        <h2 class="text-xl font-bold text-slate-900">3. Researcher Account Data</h2>
+        <p>
+            For researchers creating accounts, we store only:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-sm">
+            <li>Full Name and Email Address.</li>
+            <li>Cryptographically salted and hashed passwords (using industry-standard Argon2/PBKDF2 algorithms).</li>
+            <li>Authentication session timestamps and IP address for session security and abuse prevention (truncated after 30 days).</li>
+        </ul>
+
+        <h2 class="text-xl font-bold text-slate-900">4. Retention & Deletion</h2>
+        <p>
+            When a researcher deletes a project or account, the associated SQLite database files and prototype assets are purged from the server filesystem. We do not retain shadow copies of participant responses.
+        </p>
+
+        <h2 class="text-xl font-bold text-slate-900">5. Self-Hosting Freedom</h2>
+        <p>
+            Organizations with strict data residency regulations (e.g. Indonesian UU PDP cross-border limitations or European GDPR requirements) are encouraged to deploy UX Testbench on their own sovereign infrastructure using our open-source release.
+        </p>
+    </div>
+</div>
+{% endblock %}

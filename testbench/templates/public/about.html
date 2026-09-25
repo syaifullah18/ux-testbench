@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}About UX Testbench{% endblock %}
+{% block width %}max-w-4xl{% endblock %}
+
+{% block content %}
+<div class="py-8 space-y-8">
+    <div class="border-b border-slate-200 pb-6">
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">About UX Testbench</h1>
+        <p class="text-slate-500 text-base mt-2">
+            An open-source usability testing and behavioral research bench for ethical designers and product teams.
+        </p>
+    </div>
+
+    <div class="prose prose-slate max-w-none space-y-6 text-slate-700 leading-relaxed text-[15px]">
+        <h2 class="text-xl font-bold text-slate-900">Our Mission</h2>
+        <p>
+            Modern UX research tools have become increasingly extractive: bundling dark patterns, aggressive tracking cookies, bloated client-side JavaScript, and pricing models that make usability testing inaccessible to independent researchers, non-profits, and educational institutions.
+        </p>
+        <p>
+            <strong>UX Testbench</strong> was built on a different premise: research tooling should be transparent, lightweight, self-hostable, and grounded in sound statistical decision theory.
+        </p>
+
+        <h2 class="text-xl font-bold text-slate-900">Architectural Principles</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 not-prose my-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-brand"></i> SQLite-Per-Project Isolation
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Every study runs against its own isolated SQLite database file. Participant responses never leak into a shared multi-tenant table.
+                </p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-code text-brand-600"></i> Human-Readable YAML Config
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Studies can be fully versioned in Git. Every step, question, prototype asset, and branching condition is transparent and reproducible.
+                </p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-emerald-600"></i> Statistical Honesty
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    No deceptive vanity metrics. We report adjusted Wald/Wilson score confidence intervals, median completion durations, and Bayesian probability of superiority.
+                </p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-brand-600"></i> Zero Third-Party Trackers
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Participant IP addresses and interactions are never broadcast to ad brokers or third-party behavioral analytics firms.
+                </p>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-slate-900">License & Open Source</h2>
+        <p>
+            UX Testbench is published under the permissive <strong>MIT License</strong>. You are completely free to inspect, modify, fork, and self-host this platform within your internal corporate network or university lab.
+        </p>
+    </div>
+</div>
+{% endblock %}

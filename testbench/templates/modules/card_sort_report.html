@@ -1,0 +1,42 @@
+<div class="space-y-6">
+    <div class="bg-white rounded shadow p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Card Matrix</h3>
+        <p class="text-sm text-gray-500 mb-4">Shows how many times each card was placed into each category.</p>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-700">
+                    <tr>
+                        <th class="px-4 py-3 font-medium">Card</th>
+                        <!-- Find all unique categories from the matrix -->
+                        {% set all_cats = [] %}
+                        {% for c in cards %}
+                            {% for cat in matrix[c.id].keys() %}
+                                {% if cat not in all_cats %}
+                                    {% set _ = all_cats.append(cat) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                        
+                        {% for cat in all_cats|sort %}
+                        <th class="px-4 py-3 font-medium">{{ cat }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for c in cards %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ c.label }}</td>
+                        {% for cat in all_cats|sort %}
+                            {% set count = matrix[c.id].get(cat, 0) %}
+                            <td class="px-4 py-3 {% if count > 0 %}font-bold text-blue-600{% else %}text-gray-400{% endif %}">
+                                {{ count }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

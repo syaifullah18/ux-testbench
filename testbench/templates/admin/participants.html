@@ -19,6 +19,7 @@
             <td class="px-3 py-2 text-[13px] text-slate-500 whitespace-nowrap">{{ p.last_seen_at[:16].replace('T', ' ') }}</td>
             <td class="px-3 py-2 text-right">
                 <form method="post" action="{{ url_for('admin.delete_participant', slug=project.slug, pid=p.id) }}" onsubmit="return confirm({{ t('admin.delete_confirm', who=p.identity)|tojson }})">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button class="text-red-700 hover:underline text-[13px]">{{ t('admin.delete') }}</button>
                 </form>
             </td>

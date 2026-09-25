@@ -7,6 +7,7 @@
 {% if page.intro %}<p class="text-base mb-6 whitespace-pre-line">{{ page.intro }}</p>{% elif page_no == 1 and module.description %}<p class="text-base mb-6">{{ module.description }}</p>{% else %}<div class="mb-6"></div>{% endif %}
 {{ error_banner(errors, t) }}
 <form method="post" novalidate class="space-y-5" data-questions>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% set page_ids = page.questions|map(attribute='id')|list %}
     {% for q in page.questions %}
         {% set cond = Q.client_condition(q, page_ids) %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="prose">
+        <h1>{{ conf.title }}</h1>
+        <p>{{ conf.instructions }}</p>
+    </div>
+
+    <div class="flex gap-6 items-start h-[70vh]">
+        <!-- Unsorted Cards Pool -->
+        <div class="w-1/3 flex flex-col h-full bg-gray-50 border border-gray-200 rounded-lg shadow-inner p-4 overflow-y-auto"
+             id="card-pool"
+             aria-label="Unsorted Cards Pool"
+             ondrop="drop(event)" ondragover="allowDrop(event)">
+            <h3 class="font-semibold text-gray-700 mb-4 sticky top-0 bg-gray-50 pb-2">Unsorted Cards</h3>
+            
+            <div id="cards-container" class="space-y-2">
+                {% for card in conf.cards %}
+                <div class="p-3 bg-white border border-gray-300 rounded shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-400 select-none"
+                     draggable="true" tabindex="0" role="button" aria-grabbed="false"
+                     ondragstart="drag(event)" 
+                     id="card-{{ card.id }}" 
+                     data-card-id="{{ card.id }}">
+                    {{ card.label }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Categories Area -->
+        <div class="w-2/3 flex flex-col h-full">
+            {% if conf.allow_new_categories %}
+            <div class="mb-4 flex items-center gap-2">
+                <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="border border-gray-300 rounded px-3 py-1.5 focus:ring focus:ring-blue-200 flex-1">
+                <button type="button" aria-label="Add Category" onclick="addCategory()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded">Add</button>
+            </div>
+            {% endif %}
+            
+            <div id="categories-container" class="flex-1 overflow-x-auto flex gap-4 pb-4">
+                {% for cat in conf.categories %}
+                <div class="min-w-[250px] max-w-[250px] flex flex-col bg-gray-100 rounded-lg border border-gray-300 p-3 h-full">
+                    <h3 class="font-semibold text-gray-800 mb-2 truncate" title="{{ cat }}">{{ cat }}</h3>
+                    <div class="flex-1 overflow-y-auto space-y-2 category-dropzone" 
+                         data-category="{{ cat }}"
+                         ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <!-- Cards dropped here -->
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end pt-4 border-t border-gray-200">
+        <button id="btn-done" type="button" class="btn btn-primary px-8" onclick="submitSort()">Complete Sort</button>
+    </div>
+</div>
+
+<script>
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drag(ev) {
+    ev.dataTransfer.setData("text", ev.target.id);
+    ev.target.classList.add("opacity-50");
+}
+
+document.addEventListener("dragend", function(ev) {
+    ev.target.classList.remove("opacity-50");
+});
+
+function drop(ev) {
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("text");
+    var el = document.getElementById(data);
+    if (!el) return;
+    
+    var dropzone = ev.target.closest('.category-dropzone') || ev.target.closest('#card-pool');
+    if (dropzone) {
+        dropzone.appendChild(el);
+    }
+}
+
+function addCategory() {
+    const input = document.getElementById('new-cat-name');
+    const name = input.value.trim();
+    if (!name) return;
+    
+    // Check if exists
+    const existing = Array.from(document.querySelectorAll('.category-dropzone')).map(el => el.dataset.category);
+    if (existing.includes(name)) {
+        alert("Category already exists.");
+        return;
+    }
+    
+    const container = document.getElementById('categories-container');
+    const col = document.createElement('div');
+    col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-gray-100 rounded-lg border border-gray-300 p-3 h-full';
+    col.innerHTML = `
+        <h3 class="font-semibold text-gray-800 mb-2 truncate" title="${name}">${name}</h3>
+        <div class="flex-1 overflow-y-auto space-y-2 category-dropzone" data-category="${name}" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+    `;
+    container.appendChild(col);
+    input.value = '';
+}
+
+function submitSort() {
+    const poolCards = document.querySelectorAll('#cards-container .p-3');
+    if (poolCards.length > 0) {
+        if (!confirm("You have unsorted cards. Are you sure you want to complete the task?")) {
+            return;
+        }
+    }
+    
+    const result = {};
+    document.querySelectorAll('.category-dropzone').forEach(dropzone => {
+        const cat = dropzone.dataset.category;
+        dropzone.querySelectorAll('[data-card-id]').forEach(card => {
+            result[card.dataset.cardId] = cat;
+        });
+    });
+    
+    // Also mark pool cards as null/empty
+    document.querySelectorAll('#card-pool > #cards-container > [data-card-id]').forEach(card => {
+        result[card.dataset.cardId] = "";
+    });
+    
+    const btn = document.getElementById('btn-done');
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(result)
+    }).then(r => {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            alert("Error saving.");
+            btn.disabled = false;
+            btn.textContent = "Complete Sort";
+        }
+    });
+}
+</script>
+{% endblock %}

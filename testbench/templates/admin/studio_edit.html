@@ -17,6 +17,7 @@
         {% endif %}
         {% if started %}<div class="p-3 mb-4 rounded-lg bg-amber-50 text-amber-900 text-[14px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ t('studio.live_warning', n=started) }}</div>{% endif %}
         <form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="file" value="{{ rel }}">
             <textarea id="content" name="content" spellcheck="false" {% if not project.editable %}readonly{% endif %}
                       class="w-full h-[65vh] font-mono text-[13px] leading-5 border border-slate-300 rounded-lg p-3 bg-slate-50 focus:bg-white focus:ring-brand focus:border-brand" style="tab-size: 2">{{ text }}</textarea>

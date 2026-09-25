@@ -1,0 +1,69 @@
+# A public deployment: the app, and Caddy in front for automatic HTTPS.
+#
+# Two domains are deliberate. APP_DOMAIN serves the application and holds the session cookie.
+# USERCONTENT_DOMAIN serves researcher-uploaded prototypes and must be a separate registrable
+# domain, not a subdomain, so a prototype's JavaScript can never reach an app cookie. See
+# docs/decisions/001-same-origin-prototypes.md and docs/operations.md.
+#
+#   cp .env.example .env    # fill in SECRET_KEY, APP_DOMAIN, USERCONTENT_DOMAIN, ACME_EMAIL
+#   docker compose up -d
+#   docker compose exec app python -m testbench create-admin you@example.org
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      TESTBENCH_MODE: public
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      DATA_DIR: /data
+      SESSION_COOKIE_SECURE: "1"
+      LOCAL_ASSETS: ${LOCAL_ASSETS:-0}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@localhost}
+      PROTOTYPE_ORIGIN: https://${USERCONTENT_DOMAIN:-localhost}
+      SIGNUP_MODE: ${SIGNUP_MODE:-invite}
+      LIMIT_PROJECTS_PER_USER: ${LIMIT_PROJECTS_PER_USER:-10}
+      LIMIT_PARTICIPANTS_PER_PROJECT: ${LIMIT_PARTICIPANTS_PER_PROJECT:-2000}
+    volumes:
+      - data:/data
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+      USERCONTENT_DOMAIN: ${USERCONTENT_DOMAIN:?set USERCONTENT_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # Nightly backup of the SQLite files and the Studio's project folder.
+  backup:
+    build: .
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      'while true; do
+         DATA_DIR=/data BACKUP_DIR=/backups /app/scripts/backup.sh || echo "backup failed";
+         sleep 86400;
+       done'
+    environment:
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes:
+      - data:/data:ro
+      - ./backups:/backups
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:

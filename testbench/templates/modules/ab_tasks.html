@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('ab.view_n', n=n) }}{% endblock %}
 {% block width %}max-w-none{% endblock %}
-{% block body_class %}h-screen overflow-hidden{% endblock %}
+{% block body_class %}h-dvh overflow-hidden{% endblock %}
 {% block main %}
 {# The task panel sits above the prototype frame and the frame fills the rest, so on a phone
    the prototype renders at the phone's own width and its mobile layout is what gets tested. #}

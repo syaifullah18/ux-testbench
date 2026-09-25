@@ -22,4 +22,5 @@ brand:
 modules:
   - profile
   - journey
+  - info-arch
   - events-ab
