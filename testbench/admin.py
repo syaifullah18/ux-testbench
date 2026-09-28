@@ -3,8 +3,9 @@ opens every project."""
 import csv
 import io
 import os
+from pathlib import Path
 
-from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session as cookie, url_for
+from flask import Blueprint, Response, abort, current_app, jsonify, redirect, render_template, request, session as cookie, url_for
 
 from . import passcodes, storage
 from .context import Ctx, is_admin, is_super
@@ -1173,5 +1174,171 @@ def launch_passcode(slug):
     if request.is_json:
         return jsonify({"ok": True, "action": "set", "kind": kind})
     return redirect(url_for("admin.launch", slug=slug, notice=f"{kind.title()} passcode saved."))
+
+
+@bp.route("/help")
+@bp.route("/help/")
+@bp.route("/admin/help")
+@bp.route("/admin/help/")
+def help():
+    is_public = os.environ.get("TESTBENCH_MODE", "internal") == "public"
+    return render_template(
+        "admin/help.html",
+        active_tab="help",
+        is_public=is_public,
+        is_super=is_super(),
+        project=None,
+    )
+
+
+@bp.route("/instance")
+@bp.route("/instance/")
+@bp.route("/admin/instance")
+@bp.route("/admin/instance/")
+def instance():
+    is_public = os.environ.get("TESTBENCH_MODE", "internal") == "public"
+    allowed = is_super()
+    if is_public:
+        from . import auth
+        user = auth.current_user()
+        allowed = bool(user and user.get("is_platform_admin"))
+        if not user:
+            return redirect(url_for("auth.login", next=request.path))
+
+    if not allowed:
+        return render_template(
+            "admin/instance.html",
+            is_allowed=False,
+            is_public=is_public,
+            is_super=is_super(),
+            project=None,
+            active_tab="instance",
+        )
+
+    from . import moderation
+    projects = list(registry().projects.values())
+    studies = [get_study_card(p, "superadmin") for p in projects]
+    offline_set = moderation.offline_slugs()
+    for s in studies:
+        s["is_offline"] = s["slug"] in offline_set
+
+    total_studies = len(studies)
+    live_studies = sum(1 for s in studies if s["status"] == "live" and not s.get("is_offline"))
+    offline_studies = sum(1 for s in studies if s.get("is_offline"))
+    total_participants = sum(s["participants"] for s in studies)
+
+    cur_sec = request.args.get("s", "overview")
+    valid_secs = ("overview", "users", "studies", "reports", "audit")
+    if cur_sec not in valid_secs or (cur_sec in ("users", "reports") and not is_public):
+        cur_sec = "overview"
+
+    # Storage size
+    total_bytes = 0
+    data_dir = Path(current_app.config["DATA_DIR"])
+    if data_dir.is_dir():
+        for p in data_dir.rglob("*"):
+            if p.is_file() and not p.name.startswith("."):
+                try:
+                    total_bytes += p.stat().st_size
+                except Exception:
+                    pass
+    storage_mb = round(total_bytes / (1024 * 1024), 1)
+
+    # Audit list
+    raw_audit = moderation.list_audit(limit=200)
+    audit_entries = []
+    audit_actors = set()
+    audit_actions = set()
+    for row in raw_audit:
+        actor = row["actor"] or "Superadmin"
+        action = row["action"]
+        audit_actors.add(actor)
+        audit_actions.add(action)
+        at_str = time_ago(row["at"])
+        dt_raw = row["detail_json"]
+        dt_text = ""
+        if dt_raw:
+            try:
+                import json
+                parsed = json.loads(dt_raw)
+                if isinstance(parsed, dict):
+                    dt_text = ", ".join(f"{k}: {v}" for k, v in parsed.items())
+                else:
+                    dt_text = str(parsed)
+            except Exception:
+                dt_text = str(dt_raw)
+        audit_entries.append({
+            "at_formatted": at_str,
+            "actor": actor,
+            "action": action,
+            "project_slug": row["project_slug"],
+            "detail_text": dt_text,
+            "ip": row["ip"],
+        })
+
+    superadmin_set = bool(os.environ.get("SUPERADMIN_PASSCODE"))
+    open_reports_count = moderation.count_open_reports() if is_public else 0
+
+    return render_template(
+        "admin/instance.html",
+        is_allowed=True,
+        is_public=is_public,
+        is_super=is_super(),
+        project=None,
+        active_tab="instance",
+        cur_sec=cur_sec,
+        studies=studies,
+        total_studies=total_studies,
+        live_studies=live_studies,
+        offline_studies=offline_studies,
+        total_participants=total_participants,
+        storage_mb=storage_mb,
+        superadmin_set=superadmin_set,
+        audit_entries=audit_entries,
+        audit_actors=sorted(audit_actors),
+        audit_actions=sorted(audit_actions),
+        recent_audit=audit_entries[:5],
+        open_reports_count=open_reports_count,
+    )
+
+
+@bp.route("/admin/instance/action", methods=["POST"])
+def instance_action():
+    is_public = os.environ.get("TESTBENCH_MODE", "internal") == "public"
+    allowed = is_super()
+    actor = "Superadmin"
+    user_id = None
+    if is_public:
+        from . import auth
+        user = auth.current_user()
+        allowed = bool(user and user.get("is_platform_admin"))
+        if user:
+            actor = user.get("email", "Platform admin")
+            user_id = user.get("id")
+
+    if not allowed:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Access denied."}), 403
+        abort(403)
+
+    from . import moderation
+    data = request.get_json() if request.is_json else request.form
+    action = data.get("action")
+    slug = data.get("slug")
+    reason = (data.get("reason") or "").strip()
+
+    if action == "offline":
+        moderation.take_offline(slug, reason=reason, by_user_id=user_id)
+        moderation.audit("Study taken offline", user_id=user_id, actor=actor, project_slug=slug, detail={"reason": reason}, ip=request.remote_addr)
+    elif action == "restore":
+        moderation.put_online(slug, by_user_id=user_id)
+        moderation.audit("Study restored", user_id=user_id, actor=actor, project_slug=slug, detail={"reason": reason}, ip=request.remote_addr)
+    else:
+        return jsonify({"ok": False, "error": "Unknown action."}), 400
+
+    if request.is_json:
+        return jsonify({"ok": True, "action": action, "slug": slug})
+    return redirect(url_for("admin.instance", s="studies"))
+
 
 

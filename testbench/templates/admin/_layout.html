@@ -37,14 +37,14 @@
       <a class="topnav" href="{{ home_url }}" {% if self.tab() == 'studies' %}aria-current="page"{% endif %}>Studies</a>
       {% if is_public %}
         {% if user and user.is_platform_admin %}
-          <a class="topnav" href="{{ url_for('platform.home') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Platform</a>
+          <a class="topnav" href="{{ url_for('admin.instance') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Platform</a>
         {% endif %}
       {% else %}
         {% if ns.is_super %}
-          <a class="topnav" href="{{ url_for('admin.overview') }}#instance" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Instance</a>
+          <a class="topnav" href="{{ url_for('admin.instance') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Instance</a>
         {% endif %}
       {% endif %}
-      <a class="topnav" href="{{ url_for('public.docs') if is_public else 'https://github.com/syaifullah18/ux-testbench' }}" {% if self.tab() == 'help' %}aria-current="page"{% endif %} target="_blank" rel="noopener">Help</a>
+      <a class="topnav" href="{{ url_for('admin.help') }}" {% if self.tab() == 'help' %}aria-current="page"{% endif %}>Help</a>
     </nav>
     <div class="ml-auto flex items-center gap-4 text-sm">
       {% if is_public %}

@@ -1,0 +1,214 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Help · UX Testbench{% endblock %}
+{% block shell %}workspace{% endblock %}
+{% block tab %}help{% endblock %}
+
+{% block extra_head %}
+<style>
+  section[id] { scroll-margin-top: 24px; }
+  .prose-help p + p { margin-top: 12px; }
+</style>
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="t-page">Help</h1>
+  <p class="mt-1 text-muted">Short answers to what people ask most. Nothing here is a marketing page.</p>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    <nav class="panel side" aria-label="Help" id="help-nav">
+      <a href="#modules" aria-current="page"><span>Choosing a module</span></a>
+      <a href="#status"><span>Draft, live and closed</span></a>
+      <a href="#reading"><span>Reading results</span></a>
+      <a href="#yaml"><span>Editing as YAML</span></a>
+      {% if is_public %}
+      <a href="#report"><span>Report a study</span></a>
+      {% endif %}
+    </nav>
+  </aside>
+
+  <div class="stack min-w-0 prose-help">
+    <!-- 1. Choosing a module -->
+    <section class="panel" id="modules" aria-labelledby="m-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="m-h">Choosing a module</h2>
+          <p>Pick by the question you are asking.</p>
+        </div>
+      </header>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Which of two designs is easier to use?</p>
+            <p class="t-meta">Use an A/B test. Each person does the same tasks on both. You get success, time and ease, and a plain verdict.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Who are your participants, and what is hard for them?</p>
+            <p class="t-meta">Use a survey. Put it first so other modules can use its answers, for example to show different questions to staff.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Where would people look for something?</p>
+            <p class="t-meta">Use a tree test on your menu structure, with no visual design. Use a first-click test when the page layout matters.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">How do people group your content?</p>
+            <p class="t-meta">Use a card sort. Closed if you already have categories, open if you want theirs, hybrid for both. Aim for 15 to 40 cards.</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 2. Draft, live and closed -->
+    <section class="panel" id="status" aria-labelledby="s-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="s-h">Draft, live and closed</h2>
+          <p>What each status means for participants.</p>
+        </div>
+      </header>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Draft</p>
+            <p class="t-meta">Participants see “This study is being prepared”. You can change anything. Use Preview to try it yourself.</p>
+          </div>
+          <div class="row-state"><span class="st st-draft">Draft</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Live</p>
+            <p class="t-meta">Participants can enter at the study link. Changing questions now can make answers hard to compare, so the editor warns you.</p>
+          </div>
+          <div class="row-state"><span class="st st-live"><i class="fa-solid fa-circle text-[8px]" aria-hidden="true"></i>Live</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Closed</p>
+            <p class="t-meta">Nobody new can enter and people inside cannot resume. Results stay. You can reopen it.</p>
+          </div>
+          <div class="row-state"><span class="st st-closed">Closed</span></div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 3. Reading results -->
+    <section class="panel" id="reading" aria-labelledby="r-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="r-h">Reading results</h2>
+          <p>Every sentence in a report is produced by a fixed rule, not written by a model. The same numbers always give the same sentence.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width:34%">Term</th>
+              <th scope="col">What it means</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="t-strong">Indicative</td>
+              <td>A report is marked Indicative until enough people have finished. The number is set in the module’s decision rule for A/B tests, and is 8 for the other types. Below it, no report says a design won.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Intervals</td>
+              <td>A range next to a number shows how far it could be from the truth. If the range crosses zero, the difference may be chance, and the report says so.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">A/B verdict</td>
+              <td>Each check (speed, success, ease) reads for, against or unsure, then the overall line follows the strongest pattern: all three for, a mix of for and against, all against, or not enough evidence on any check. It is never stronger than the least certain check.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Order effect</td>
+              <td>Only stated as a fact, for example “Search and filters is faster in both orders.” It never claims that order did or did not drive the result — that is not something the numbers alone can show.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Drop-off</td>
+              <td>A module is flagged when at least 2 people and at least 20% stopped at the same point. One person leaving is not flagged.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Card sort agreement</td>
+              <td>A card has a clear home when at least 70% of people used the same category. Under 50% is “no clear home”.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">First click</td>
+              <td>The share of people who clicked inside the target area, and the median time to their first click.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Tree test</td>
+              <td>Success across all tasks, success without backtracking, and the single weakest task by name and share.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Sign test</td>
+              <td>Where a check is about direction (for example, which variant was faster for each person), a p-value from the exact two-sided test is shown alongside it.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">Every sentence above is produced the same way for every study — nothing is written by hand or by a model.</p>
+    </section>
+
+    <!-- 4. Editing as YAML -->
+    <section class="panel" id="yaml" aria-labelledby="y-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="y-h">Editing as YAML</h2>
+          <p>For people who prefer a file.</p>
+        </div>
+      </header>
+      <div class="panel-b">
+        <p>Every module editor has an Advanced tab with the same file the form writes. Edit either. If you change the file, the form shows what it understood the next time you open it.</p>
+        <p>Every save checks the whole study first. If anything is wrong, nothing is written and the problems are listed with the file and line.</p>
+      </div>
+    </section>
+
+    <!-- 5. Report a study (public mode) -->
+    {% if is_public %}
+    <section class="panel" id="report" aria-labelledby="rp-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="rp-h">Report a study</h2>
+          <p>If someone sent you a study that looks like a scam.</p>
+        </div>
+      </header>
+      <div class="row">
+        <div class="row-main">
+          <p class="row-title">Tell the platform</p>
+          <p class="t-meta">You do not need an account. A platform admin reads every report.</p>
+        </div>
+        <div class="row-act" style="width:auto">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('public.report') if 'public.report' in url_for.__globals__ else '/report' }}">Report a study</a>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('#help-nav a').forEach(function(a) {
+  a.addEventListener('click', function() {
+    document.querySelectorAll('#help-nav a').forEach(function(x) { x.removeAttribute('aria-current'); });
+    a.setAttribute('aria-current', 'page');
+  });
+});
+if (location.hash) {
+  var t = document.querySelector(location.hash);
+  if (t) {
+    setTimeout(function() { t.scrollIntoView({ behavior: 'smooth' }); }, 100);
+  }
+}
+</script>
+{% endblock %}

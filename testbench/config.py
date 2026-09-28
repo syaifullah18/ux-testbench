@@ -21,7 +21,7 @@ ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 # move, so no study may be named after one of the app's own pages.
 RESERVED_SLUGS = {"static", "admin", "api", "health", "login", "signup", "logout",
                    "forgot", "reset", "verify", "account", "app", "s", "about",
-                   "docs", "privacy", "terms", "explore", "report", "invite"}
+                   "docs", "privacy", "terms", "explore", "report", "invite", "help", "instance"}
 IDENTITY_MODES = {"code", "email", "anonymous"}
 ACCESS_MODES = {"passcode", "open"}
 DEFAULT_BRAND = {"primary": "#2563EB", "nav": "#0F172A"}
