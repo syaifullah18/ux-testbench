@@ -575,6 +575,26 @@ def make_headline(ctx, m, m_stat):
     return f"{started} {p_word} started, {finished} finished."
 
 
+def get_results_nav_context(ctx):
+    n_participants = ctx.conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+    modules_list = []
+    for m in ctx.project.modules.values():
+        cnt = ctx.conn.execute(
+            "SELECT COUNT(*) FROM sessions WHERE module_id = ? AND finished_at IS NOT NULL",
+            (m.id,)
+        ).fetchone()[0]
+        raw_type = getattr(m, "type", "survey")
+        modules_list.append({
+            "id": m.id,
+            "title": m.title,
+            "type": MODULE_TYPE_LABELS.get(raw_type, raw_type.title()),
+            "raw_type": raw_type,
+            "finished": cnt,
+            "module": m,
+        })
+    return n_participants, modules_list
+
+
 @bp.route("/app/p/<slug>/results")
 @bp.route("/<slug>/admin/results")
 def results(slug, mid=None):
@@ -669,16 +689,76 @@ def module_action(slug, mid, path):
     return early or ctx.module.impl.admin_action(ctx, path) or abort(404)
 
 
+@bp.route("/app/p/<slug>/export")
+@bp.route("/<slug>/admin/export")
+def export_view(slug):
+    ctx, early = admin_ctx(slug)
+    if early:
+        return early
+    n_participants, modules_list = get_results_nav_context(ctx)
+
+    mrows = []
+    for m in ctx.project.modules.values():
+        mctx = Ctx(ctx.project, module=m, admin=True)
+        try:
+            header, rows = m.impl.export(mctx)
+            n_rows = len(rows)
+            n_cols = len(header)
+        except Exception:
+            n_rows = 0
+            n_cols = 1
+
+        raw_type = getattr(m, "type", "survey")
+        mrows.append({
+            "m": m,
+            "type": MODULE_TYPE_LABELS.get(raw_type, raw_type.title()),
+            "n": n_rows,
+            "cols": n_cols,
+        })
+
+    participants_list = ctx.conn.execute(
+        "SELECT id, identity, created_at, last_seen_at FROM participants ORDER BY identity"
+    ).fetchall()
+    headers = ["participant", "created_at", "last_seen_at"]
+    for m in ctx.project.modules.values():
+        sessions = ctx.conn.execute("SELECT id, participant_id FROM sessions WHERE module_id = ?", (m.id,)).fetchall()
+        sid_to_pid = {s["id"]: s["participant_id"] for s in sessions}
+        sids = list(sid_to_pid.keys())
+        try:
+            m_headers, sid_cols = m.impl.export_cols(ctx, sids)
+            headers.extend(m_headers)
+        except Exception:
+            pass
+
+    comb_rows = len(participants_list)
+    comb_cols = len(headers)
+
+    can_edit = is_super() or (ctx.project.editable if hasattr(ctx.project, "editable") else True)
+
+    return ctx.render(
+        "admin/export.html",
+        project=ctx.project,
+        active_tab="results",
+        modules_list=modules_list,
+        n_participants=n_participants,
+        mrows=mrows,
+        comb_rows=comb_rows,
+        comb_cols=comb_cols,
+        can_edit=can_edit,
+        active_page="export"
+    )
+
+
 @bp.route("/app/p/<slug>/export.csv")
 @bp.route("/<slug>/admin/export.csv")
 def project_export(slug):
     ctx, early = admin_ctx(slug)
     if early:
         return early
-    participants = ctx.conn.execute("SELECT id, identity, created_at, last_seen_at FROM participants ORDER BY identity").fetchall()
+    participants_list = ctx.conn.execute("SELECT id, identity, created_at, last_seen_at FROM participants ORDER BY identity").fetchall()
     headers = ["participant", "created_at", "last_seen_at"]
     module_data = []
-    for m in ctx.project.modules:
+    for m in ctx.project.modules.values():
         sessions = ctx.conn.execute("SELECT id, participant_id FROM sessions WHERE module_id = ?", (m.id,)).fetchall()
         sid_to_pid = {s["id"]: s["participant_id"] for s in sessions}
         sids = list(sid_to_pid.keys())
@@ -689,7 +769,7 @@ def project_export(slug):
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(headers)
-    for p in participants:
+    for p in participants_list:
         row = [p["identity"], p["created_at"], p["last_seen_at"] or ""]
         p_cols = {}
         for m_cols in module_data:
@@ -706,11 +786,110 @@ def participants(slug):
     ctx, early = admin_ctx(slug)
     if early:
         return early
-    people = ctx.conn.execute("SELECT * FROM participants ORDER BY identity").fetchall()
+    n_participants, modules_list = get_results_nav_context(ctx)
+
+    raw_people = ctx.conn.execute("SELECT * FROM participants ORDER BY identity").fetchall()
     sessions = {}
     for s in ctx.conn.execute("SELECT participant_id, module_id, step, finished_at FROM sessions"):
         sessions.setdefault(s["participant_id"], {})[s["module_id"]] = s
-    return ctx.render("admin/participants.html", people=people, sessions=sessions)
+
+    module_items = list(ctx.project.modules.values())
+    total_modules = len(module_items)
+
+    people = []
+    for p in raw_people:
+        p_sess = sessions.get(p["id"], {})
+        done_cnt = 0
+        started_cnt = 0
+        mods = []
+        started_module_titles = []
+        for m in module_items:
+            s = p_sess.get(m.id)
+            if not s:
+                mods.append("-")
+            elif s["finished_at"]:
+                mods.append("done")
+                done_cnt += 1
+                started_cnt += 1
+                started_module_titles.append(m.title)
+            else:
+                step_val = s["step"] or "intro"
+                mods.append(f"stop:{step_val}")
+                started_cnt += 1
+                started_module_titles.append(m.title)
+
+        if total_modules > 0 and done_cnt == total_modules:
+            p_state = "all"
+        elif done_cnt > 0 or started_cnt > 0:
+            p_state = "progress"
+        else:
+            p_state = "none"
+
+        stopped_parts = []
+        for i, m in enumerate(module_items):
+            st = mods[i]
+            if st.startswith("stop:"):
+                stopped_parts.append(f"{m.title} at {st[5:]}")
+        if stopped_parts:
+            if len(stopped_parts) == 1:
+                joined = stopped_parts[0]
+            elif len(stopped_parts) == 2:
+                joined = f"{stopped_parts[0]} and {stopped_parts[1]}"
+            else:
+                joined = f"{', '.join(stopped_parts[:-1])} and {stopped_parts[-1]}"
+            stopped_line = f"Stopped in {joined}."
+        elif p_state == "all":
+            stopped_line = "Finished every module."
+        else:
+            stopped_line = ""
+
+        last_seen = p["last_seen_at"] or p["created_at"]
+        last_seen_text = time_ago(last_seen)
+
+        if len(started_module_titles) == 0:
+            started_modules_str = ""
+        elif len(started_module_titles) == 1:
+            started_modules_str = started_module_titles[0]
+        elif len(started_module_titles) == 2:
+            started_modules_str = f"{started_module_titles[0]} and {started_module_titles[1]}"
+        else:
+            started_modules_str = f"{', '.join(started_module_titles[:-1])} and {started_module_titles[-1]}"
+
+        people.append({
+            "id": p["id"],
+            "identity": p["identity"],
+            "created_at": p["created_at"],
+            "last_seen_at": p["last_seen_at"],
+            "last_seen_text": last_seen_text,
+            "done_count": done_cnt,
+            "total_modules": total_modules,
+            "state": p_state,
+            "stopped_line": stopped_line,
+            "started_modules_str": started_modules_str,
+            "mods": mods,
+        })
+
+    counts = {
+        "all": len(people),
+        "finished": sum(1 for p in people if p["state"] == "all"),
+        "progress": sum(1 for p in people if p["state"] == "progress"),
+        "none": sum(1 for p in people if p["state"] == "none"),
+    }
+
+    can_edit = is_super() or (ctx.project.editable if hasattr(ctx.project, "editable") else True)
+
+    return ctx.render(
+        "admin/participants.html",
+        project=ctx.project,
+        active_tab="results",
+        people=people,
+        sessions=sessions,
+        counts=counts,
+        modules_list=modules_list,
+        n_participants=n_participants,
+        can_edit=can_edit,
+        active_page="participants"
+    )
 
 
 @bp.route("/app/p/<slug>/p/<int:pid>", methods=["GET", "POST"])
@@ -731,13 +910,92 @@ def participant(slug, pid):
                 module.impl.save_detail(Ctx(ctx.project, module=module, participant=person, admin=True), s, request.form)
         ctx.conn.commit()
         return redirect(url_for("admin.participant", slug=slug, pid=pid, saved=1))
+
+    n_participants, modules_list = get_results_nav_context(ctx)
+    can_edit = is_super() or (ctx.project.editable if hasattr(ctx.project, "editable") else True)
+
     blocks = []
-    for m in ctx.project.modules.values():
+    done_count = 0
+    total_modules = len(ctx.project.modules)
+    started_module_titles = []
+    stopped_parts = []
+
+    for idx, m in enumerate(ctx.project.modules.values()):
         s = sessions.get(m.id)
-        if s:
+        raw_type = getattr(m, "type", "survey")
+        type_name = MODULE_TYPE_LABELS.get(raw_type, raw_type.title())
+
+        if not s:
+            b_state = "none"
+            html_content = ""
+            step = ""
+        elif s["finished_at"]:
+            b_state = "done"
+            done_count += 1
+            started_module_titles.append(m.title)
+            step = s["step"] or ""
             mctx = Ctx(ctx.project, module=m, participant=person, admin=True)
-            blocks.append({"m": m, "s": s, "html": m.impl.detail(mctx, s)})
-    return ctx.render("admin/participant.html", person=person, blocks=blocks, saved=request.args.get("saved"))
+            html_content = m.impl.detail(mctx, s)
+        else:
+            b_state = "stopped"
+            step = s["step"] or "intro"
+            started_module_titles.append(m.title)
+            stopped_parts.append(f"{m.title} at {step}")
+            html_content = ""
+
+        is_open = (b_state == "done" and raw_type == "ab") or (b_state == "done" and len(blocks) == 0)
+
+        blocks.append({
+            "m": m,
+            "s": s,
+            "type_name": type_name,
+            "state": b_state,
+            "step": step,
+            "open": is_open,
+            "html": html_content
+        })
+
+    if stopped_parts:
+        if len(stopped_parts) == 1:
+            p_stopped_line = f"Stopped in {stopped_parts[0]}."
+        elif len(stopped_parts) == 2:
+            p_stopped_line = f"Stopped in {stopped_parts[0]} and {stopped_parts[1]}."
+        else:
+            p_stopped_line = f"Stopped in {', '.join(stopped_parts[:-1])} and {stopped_parts[-1]}."
+    elif done_count == total_modules and total_modules > 0:
+        p_stopped_line = "Finished every module."
+    else:
+        p_stopped_line = ""
+
+    last_seen = person["last_seen_at"] or person["created_at"]
+    p_last_seen = time_ago(last_seen)
+
+    if len(started_module_titles) == 0:
+        started_modules_str = ""
+    elif len(started_module_titles) == 1:
+        started_modules_str = started_module_titles[0]
+    elif len(started_module_titles) == 2:
+        started_modules_str = f"{started_module_titles[0]} and {started_module_titles[1]}"
+    else:
+        started_modules_str = f"{', '.join(started_module_titles[:-1])} and {started_module_titles[-1]}"
+
+    return ctx.render(
+        "admin/participant.html",
+        project=ctx.project,
+        active_tab="results",
+        person=person,
+        blocks=blocks,
+        done_count=done_count,
+        total_modules=total_modules,
+        p_stopped_line=p_stopped_line,
+        p_last_seen=p_last_seen,
+        started_modules_str=started_modules_str,
+        modules_list=modules_list,
+        n_participants=n_participants,
+        can_edit=can_edit,
+        saved=request.args.get("saved"),
+        active_page="participants"
+    )
 
 
 @bp.post("/app/p/<slug>/p/<int:pid>/delete")

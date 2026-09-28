@@ -275,7 +275,7 @@ class ABTest(ModuleType):
 
     def final_questions(self, ctx):
         qs = list(self.m.conf["final"])
-        order = ctx.state["order"]
+        order = getattr(ctx, "state", {}).get("order", []) if isinstance(getattr(ctx, "state", None), dict) else []
         if self.m.conf["preference"] and len(order) > 1:
             opts = [(str(i), ctx.t("ab.view_n", n=i)) for i in range(1, len(order) + 1)] + [("none", ctx.t("ab.no_preference"))]
             qs = [{"id": "_preference", "type": "single", "label": ctx.t("ab.preference_q"), "hint": "",
@@ -555,8 +555,10 @@ class ABTest(ModuleType):
         views = []
         for n, variant in enumerate(state.get("order", []), start=1):
             rows = self._rows(ctx.conn, session["id"], n)
+            v_conf = self.m.conf.get("variants", {}).get(variant, {})
+            v_label = v_conf.get("label", variant)
             survey = storage.page_answers(ctx.conn, session["id"], f"survey{n}")
-            views.append({"n": n, "variant": variant, "label": self.m.conf["variants"][variant]["label"],
+            views.append({"n": n, "variant": variant, "label": v_label,
                           "viewport_w": next((r["viewport_w"] for r in rows.values() if r["viewport_w"]), None),
                           "tasks": [{"task": t, "row": rows.get(t["id"]),
                                      "answer": storage.loads(rows[t["id"]]["answer"], {}) if t["id"] in rows else {},

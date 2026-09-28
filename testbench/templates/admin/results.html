@@ -28,26 +28,8 @@
 {% block content %}
 <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
   <aside class="lg:sticky lg:top-6 lg:self-start">
-    <nav class="panel side" aria-label="Results" id="side">
-      <a href="{{ url_for('admin.results', slug=project.slug) }}" {% if not cur_module %}aria-current="page"{% endif %}>
-        <span>Summary</span>
-      </a>
-      <div class="grp">Modules</div>
-      {% for m in modules_list %}
-        <a href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}" {% if cur_module and cur_module.id == m.id %}aria-current="page"{% endif %}>
-          <span>{{ m.title }}</span>
-          <span class="count">{{ m.finished }}</span>
-        </a>
-      {% endfor %}
-      <hr>
-      <a href="{{ url_for('admin.participants', slug=project.slug) }}">
-        <span>Participants</span>
-        <span class="count">{{ n_participants }}</span>
-      </a>
-      <a href="{{ url_for('admin.project_export', slug=project.slug) }}">
-        <span>Export</span>
-      </a>
-    </nav>
+    {% set active_page = 'module' if cur_module else 'summary' %}
+    {% include "admin/_results_sidebar.html" %}
   </aside>
 
   <div class="stack min-w-0" id="content">
