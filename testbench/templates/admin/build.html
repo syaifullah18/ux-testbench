@@ -1,0 +1,431 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Build · {{ project.name }}{% endblock %}
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+{% set active_tab = 'build' %}
+{% include "admin/_study_header.html" %}
+
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  {% set active_build_subnav = 'modules' %}
+  {% include "admin/_build_nav.html" %}
+
+  <div class="stack min-w-0">
+    <!-- Read-only notice -->
+    {% if not project.editable %}
+    <div id="ro" class="panel">
+      <div class="panel-b flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="t-strong">This study is read-only</p>
+          <p class="t-meta">It is a bundled project. Duplicate it to change modules.</p>
+        </div>
+        {% if is_super %}
+        <form method="post" action="{{ url_for('studio.new_project') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+          <input type="hidden" name="source" value="duplicate">
+          <input type="hidden" name="from" value="{{ project.slug }}">
+          <input type="hidden" name="slug" value="{{ project.slug }}-copy">
+          <button type="submit" class="btn btn-primary">Duplicate to edit</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if notice %}
+    <div class="panel border-l-4 border-l-emerald-600 bg-emerald-50/50 p-4 text-sm text-emerald-900 flex items-center justify-between">
+      <span>{{ notice }}</span>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="panel border-l-4 border-l-bad bg-bad/10 p-4 text-sm text-bad flex items-center justify-between" role="alert">
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Modules panel -->
+    <section class="panel" aria-labelledby="mod-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="mod-h">Modules</h2>
+          <p id="mod-sum">
+            {{ mod_list|length }} {{ 'module' if mod_list|length == 1 else 'modules' }}
+            {%- if total_minutes %}, about {{ total_minutes }} minutes{% endif -%}
+            {%- if no_est %} ({{ no_est }} without an estimate){% endif -%}
+          </p>
+        </div>
+        {% if project.editable %}
+        <button type="button" class="btn btn-primary" id="add-open" data-can="edit">
+          <i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>Add module
+        </button>
+        {% endif %}
+      </header>
+
+      <div class="mod-grid mod-head {% if mod_list|length == 0 %}is-hidden{% endif %}" aria-hidden="true">
+        <span></span><span>#</span><span>Module</span><span class="mod-hide">State</span><span class="mod-hide">Responses</span><span></span>
+      </div>
+
+      <ol class="rows" id="list" aria-label="Modules in the order participants see them">
+        {% for m in mod_list %}
+        <li class="mod-grid mod-row" draggable="{{ 'true' if project.editable else 'false' }}" data-i="{{ loop.index0 }}" data-id="{{ m.id }}">
+          <span class="drag {% if not project.editable %}invisible{% endif %}" aria-hidden="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </span>
+          <span class="num t-meta">{{ loop.index }}</span>
+          <div class="min-w-0">
+            <p class="row-title">{{ m.title }}</p>
+            <p class="t-meta">
+              {{ m.type_label }}
+              {%- if m.minutes %}, {{ m.minutes }} min{% else %}, no time estimate{% endif -%}
+              {%- if m.requires_titles %}, after {{ m.requires_titles|join(' and ') }}{% endif -%}
+            </p>
+          </div>
+          <div class="mod-hide">
+            {% if m.minutes %}
+            <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Valid</span>
+            {% else %}
+            <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>No estimate</span>
+            {% endif %}
+          </div>
+          <div class="mod-hide">
+            {% if m.started %}
+            <span class="num t-strong">{{ m.started }}</span> started
+            <span class="t-meta block">{{ m.finished }} finished</span>
+            {% else %}
+            <span class="t-meta">No responses</span>
+            {% endif %}
+          </div>
+          <div class="mod-act">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.edit', slug=project.slug, file='modules/' ~ m.id ~ '.yaml') }}">
+              {{ 'Edit' if project.editable else 'View' }}
+            </a>
+            <div class="pop">
+              <button type="button" class="btn btn-secondary btn-sm btn-icon" data-pop aria-haspopup="menu" aria-expanded="false" aria-label="More actions for {{ m.title }}">
+                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+              </button>
+              <div class="menu is-hidden" role="menu">
+                <a href="{{ url_for('admin.preview', slug=project.slug) if 'admin.preview' in url_for.__globals__ else url_for('web.home', slug=project.slug) }}?m={{ m.id }}" role="menuitem">Preview this module</a>
+                <a href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) }}?m={{ m.id }}" role="menuitem">View report</a>
+                {% if project.editable %}
+                <span>
+                  <button type="button" class="mi" role="menuitem" data-act="dup" data-id="{{ m.id }}">Duplicate</button>
+                  {% if not loop.first %}
+                  <button type="button" class="mi" role="menuitem" data-act="up" data-id="{{ m.id }}">Move up</button>
+                  {% endif %}
+                  {% if not loop.last %}
+                  <button type="button" class="mi" role="menuitem" data-act="down" data-id="{{ m.id }}">Move down</button>
+                  {% endif %}
+                  <hr class="my-1 border-line">
+                  <button type="button" class="mi t-strong text-bad" role="menuitem" data-act="del" data-id="{{ m.id }}" data-title="{{ m.title }}" data-started="{{ m.started }}">Delete</button>
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+
+      <div id="empty" class="{% if mod_list|length > 0 %}is-hidden{% endif %} panel-b">
+        <p class="t-strong">This study has no modules</p>
+        <p class="t-meta mt-1">Add the first module so participants have something to do.</p>
+      </div>
+
+      <p class="panel-f" id="quota">
+        <span class="num t-strong text-ink">{{ mod_list|length }}</span> of {{ limit or 30 }} modules used
+      </p>
+    </section>
+
+    <!-- What participants see -->
+    <section class="panel" aria-labelledby="pv-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="pv-h">What participants see</h2>
+          <p>A new participant who has not finished anything yet.</p>
+        </div>
+      </header>
+      <ol class="rows" id="preview">
+        {% for m in mod_list %}
+        {% set locked = m.requires|length > 0 %}
+        <li class="row">
+          <span class="num t-meta" style="width:24px">{{ loop.index }}</span>
+          <div class="row-main">
+            <p class="row-title">{{ m.title }}</p>
+            <p class="t-meta">
+              {{ m.minutes ~ ' min' if m.minutes else 'No estimate' }}
+              {%- if locked %}, opens after {{ m.requires_titles|join(' and ') }}{% endif -%}
+            </p>
+          </div>
+          <div class="row-state">
+            {% if locked %}
+            <span class="st st-info"><i class="fa-solid fa-lock" aria-hidden="true"></i>Locked</span>
+            {% else %}
+            <span class="st st-ok"><i class="fa-solid fa-circle-play" aria-hidden="true"></i>Open</span>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+</div>
+
+<!-- Add module modal -->
+<dialog id="dlg-add" aria-labelledby="dlg-add-h" style="max-width:640px">
+  <form method="post" action="{{ url_for('studio.module_new', slug=project.slug) }}" id="add-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+    <header class="panel-h">
+      <div>
+        <h2 id="dlg-add-h" class="t-panel">Add a module</h2>
+        <p class="t-meta">Every type starts with a working example you can change.</p>
+      </div>
+    </header>
+    <div class="rows" role="radiogroup" aria-label="Module type" id="types">
+      <label class="opt">
+        <input type="radio" name="type" value="survey" checked>
+        <span class="radio"></span>
+        <span>
+          <span class="opt-title">Survey</span>
+          <span class="opt-desc">Choices, scales, matrices and text answers.</span>
+        </span>
+        <span class="opt-meta">About 3 min</span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="type" value="ab_test">
+        <span class="radio"></span>
+        <span>
+          <span class="opt-title">A/B test</span>
+          <span class="opt-desc">Compare prototypes on the same tasks and get a verdict.</span>
+        </span>
+        <span class="opt-meta">About 12 min</span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="type" value="first_click">
+        <span class="radio"></span>
+        <span>
+          <span class="opt-title">First click</span>
+          <span class="opt-desc">A screenshot and a task. See where people click first.</span>
+        </span>
+        <span class="opt-meta">About 5 min</span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="type" value="card_sort">
+        <span class="radio"></span>
+        <span>
+          <span class="opt-title">Card sort</span>
+          <span class="opt-desc">People group cards into categories.</span>
+        </span>
+        <span class="opt-meta">About 10 min</span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="type" value="tree_test">
+        <span class="radio"></span>
+        <span>
+          <span class="opt-title">Tree test</span>
+          <span class="opt-desc">People look for items in a menu tree.</span>
+        </span>
+        <span class="opt-meta">About 8 min</span>
+      </label>
+    </div>
+    <div class="panel-b" style="border-top:1px solid var(--line)">
+      <div class="field">
+        <label class="label" for="m-title">Title</label>
+        <input id="m-title" name="title" class="input" autocomplete="off" placeholder="Checkout comparison" maxlength="80" required>
+      </div>
+      <div class="field">
+        <label class="label" for="m-id">Id</label>
+        <input id="m-id" name="id" class="input font-mono" autocomplete="off" spellcheck="false" maxlength="40" aria-describedby="m-id-msg" required>
+        <p id="m-id-msg" class="help" role="status">Appears in the column names of your CSV export. It can't change once the module has responses.</p>
+      </div>
+    </div>
+    <div class="panel-f flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="add-cancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="add-ok" disabled>Add module</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Delete module dialog -->
+<dialog id="dlg-del" aria-labelledby="dlg-del-h">
+  <form method="post" id="del-form" action="" class="p-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+    <h2 id="dlg-del-h" class="t-panel">Delete <span id="del-title"></span>?</h2>
+    <p class="mt-2 text-muted" id="del-text"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="del-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid">Delete module</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Hidden forms for Move / Duplicate -->
+<form id="action-form" method="post" class="is-hidden">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+  <input type="hidden" name="direction" id="action-dir" value="">
+</form>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var existingIds = {{ (existing_ids if existing_ids is defined else mod_list|map(attribute='id')|list)|tojson }};
+  var limit = {{ limit or 30 }};
+  var currentCount = {{ mod_list|length }};
+  var slug = {{ project.slug|tojson }};
+
+  /* Popover action menus */
+  function closeMenus(except) {
+    document.querySelectorAll('.pop .menu').forEach(function (m) {
+      if (m !== except) {
+        m.classList.add('is-hidden');
+        if (m.previousElementSibling) m.previousElementSibling.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pop]');
+    if (b) {
+      var menu = b.nextElementSibling;
+      var open = menu.classList.contains('is-hidden');
+      closeMenus(open ? menu : null);
+      menu.classList.toggle('is-hidden', !open);
+      b.setAttribute('aria-expanded', open);
+      return;
+    }
+    var a = e.target.closest('[data-act]');
+    if (a) {
+      handleAction(a.dataset.act, a.dataset.id, a);
+      closeMenus();
+      return;
+    }
+    if (!e.target.closest('.pop')) closeMenus();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+
+  function handleAction(kind, mid, el) {
+    var form = $('action-form');
+    if (kind === 'up' || kind === 'down') {
+      form.action = '{{ url_for("studio.module_move", slug=project.slug, mid="__MID__") }}'.replace('__MID__', encodeURIComponent(mid));
+      $('action-dir').value = kind;
+      form.submit();
+    } else if (kind === 'dup') {
+      form.action = '{{ url_for("studio.module_duplicate", slug=project.slug, mid="__MID__") }}'.replace('__MID__', encodeURIComponent(mid));
+      $('action-dir').value = '';
+      form.submit();
+    } else if (kind === 'del') {
+      var title = el.dataset.title || mid;
+      var started = parseInt(el.dataset.started || '0', 10);
+      $('del-title').textContent = title;
+      $('del-text').textContent = started > 0
+        ? started + ' people have started this module. Their answers stay in the database but will no longer be shown.'
+        : 'No one has started this module. Nothing else is affected.';
+      var delForm = $('del-form');
+      delForm.action = '{{ url_for("studio.module_delete", slug=project.slug, mid="__MID__") }}'.replace('__MID__', encodeURIComponent(mid));
+      $('dlg-del').showModal();
+    }
+  }
+
+  $('del-cancel').addEventListener('click', function () { $('dlg-del').close(); });
+
+  /* Drag and drop reordering */
+  var list = $('list');
+  var dragFromId = null;
+  list.addEventListener('dragstart', function (e) {
+    var li = e.target.closest('.mod-row');
+    if (!li) return;
+    dragFromId = li.dataset.id;
+    li.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragFromId);
+  });
+  list.addEventListener('dragover', function (e) {
+    var li = e.target.closest('.mod-row');
+    if (!li || !dragFromId) return;
+    e.preventDefault();
+    document.querySelectorAll('.mod-row.over').forEach(function (x) { x.classList.remove('over'); });
+    li.classList.add('over');
+  });
+  list.addEventListener('drop', function (e) {
+    var li = e.target.closest('.mod-row');
+    if (!li || !dragFromId) return;
+    e.preventDefault();
+    var targetId = li.dataset.id;
+    if (targetId && targetId !== dragFromId) {
+      var rows = Array.from(list.querySelectorAll('.mod-row')).map(function (r) { return r.dataset.id; });
+      var fromIdx = rows.indexOf(dragFromId);
+      var toIdx = rows.indexOf(targetId);
+      if (fromIdx >= 0 && toIdx >= 0) {
+        rows.splice(fromIdx, 1);
+        rows.splice(toIdx, 0, dragFromId);
+        // Post new order
+        var f = document.createElement('form');
+        f.method = 'post';
+        f.action = '{{ url_for("studio.module_move", slug=project.slug, mid="__MID__") }}'.replace('__MID__', encodeURIComponent(dragFromId));
+        var csrf = document.createElement('input');
+        csrf.type = 'hidden'; csrf.name = 'csrf_token'; csrf.value = '{{ csrf_token if csrf_token is defined else "" }}';
+        f.appendChild(csrf);
+        var ord = document.createElement('input');
+        ord.type = 'hidden'; ord.name = 'order'; ord.value = rows.join(',');
+        f.appendChild(ord);
+        document.body.appendChild(f);
+        f.submit();
+      }
+    }
+    dragFromId = null;
+  });
+  list.addEventListener('dragend', function () {
+    dragFromId = null;
+    document.querySelectorAll('.mod-row').forEach(function (x) { x.classList.remove('dragging', 'over'); });
+  });
+
+  /* Add module dialog */
+  var addOpen = $('add-open');
+  var dlgAdd = $('dlg-add');
+  var idTouched = false;
+
+  function idify(s) {
+    return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+
+  function checkAdd() {
+    var id = $('m-id').value.trim();
+    var ok = false;
+    var msg = $('m-id-msg');
+    $('m-id').removeAttribute('aria-invalid');
+    if (!id) {
+      msg.innerHTML = 'Appears in the column names of your CSV export. It can\'t change once the module has responses.';
+    } else if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(id)) {
+      msg.innerHTML = '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>Use lowercase letters, digits, hyphens and underscores.</span>';
+    } else if (existingIds.indexOf(id) >= 0) {
+      msg.innerHTML = '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>Another module already uses &ldquo;' + id + '&rdquo;.</span>';
+    } else {
+      ok = true;
+      msg.innerHTML = '<span class="t-strong text-ok"><i class="fa-solid fa-circle-check mr-2" aria-hidden="true"></i>Available.</span>';
+    }
+    if (id && !ok) $('m-id').setAttribute('aria-invalid', 'true');
+    $('add-ok').disabled = !($('m-title').value.trim() && ok) || currentCount >= limit;
+  }
+
+  if (addOpen) {
+    addOpen.addEventListener('click', function () {
+      $('m-title').value = '';
+      $('m-id').value = '';
+      idTouched = false;
+      checkAdd();
+      dlgAdd.showModal();
+      $('m-title').focus();
+    });
+  }
+  $('m-title').addEventListener('input', function () {
+    if (!idTouched) $('m-id').value = idify(this.value);
+    checkAdd();
+  });
+  $('m-id').addEventListener('input', function () {
+    idTouched = true;
+    this.value = this.value.toLowerCase();
+    checkAdd();
+  });
+  $('add-cancel').addEventListener('click', function () { dlgAdd.close(); });
+})();
+</script>
+{% endblock %}

@@ -380,25 +380,227 @@ def extract_zip(stream, dest, allowed_ext, strip_single_root=False):
 
 # ---------------------------------------------------------------- project studio
 
+MODULE_TYPE_LABELS = {
+    "survey": "Survey",
+    "ab_test": "A/B test",
+    "first_click": "First click",
+    "card_sort": "Card sort",
+    "tree_test": "Tree test",
+}
+
+FILE_ICONS = {
+    "code": "fa-file-code",
+    "image": "fa-file-image",
+    "font": "fa-font",
+    "video": "fa-file-video",
+    "pdf": "fa-file-pdf",
+    "folder": "fa-folder",
+}
+
+FILE_KINDS = {
+    "html": "code", "htm": "code", "css": "code", "js": "code", "mjs": "code", "json": "code",
+    "png": "image", "jpg": "image", "jpeg": "image", "gif": "image", "svg": "image", "webp": "image",
+    "woff": "font", "woff2": "font", "ttf": "font", "otf": "font",
+    "mp4": "video", "webm": "video",
+    "pdf": "pdf"
+}
+
+
+def format_bytes(n):
+    if n < 1024:
+        return f"{n} B"
+    elif n < 1048576:
+        return f"{n / 1024:.1f} KB"
+    else:
+        return f"{n / 1048576:.1f} MB"
+
+
+def prototype_file_usage(project):
+    """Returns a dict mapping rel_path -> dict(id=..., title=..., note=...) or dict(loaded_by=...)."""
+    usage = {}
+    proto_dir = project.dir / "prototypes"
+    if not proto_dir.is_dir():
+        return usage
+
+    for mid, m in project.modules.items():
+        m_file = project.dir / "modules" / f"{mid}.yaml"
+        if m_file.is_file():
+            text = m_file.read_text(encoding="utf-8", errors="ignore")
+            for p in proto_dir.rglob("*"):
+                if p.is_file():
+                    rel = p.relative_to(project.dir).as_posix()
+                    p_name = p.name
+                    if rel in text or f"prototypes/{p_name}" in text or f": {p_name}" in text:
+                        note = "Used by module"
+                        if m.type == "ab_test":
+                            if "variant-a" in rel or "variant_a" in rel:
+                                note = "Entry file for variant A"
+                            elif "variant-b" in rel or "variant_b" in rel:
+                                note = "Entry file for variant B"
+                            else:
+                                note = "Used in A/B test"
+                        elif m.type == "first_click":
+                            note = "Screenshot image"
+                        usage[rel] = {"id": m.id, "title": m.title, "note": note}
+
+    html_files = [p for p in proto_dir.rglob("*.html") if p.is_file()] + [p for p in proto_dir.rglob("*.htm") if p.is_file()]
+    for p in proto_dir.rglob("*"):
+        if p.is_file() and p.suffix.lower() not in (".html", ".htm"):
+            rel = p.relative_to(project.dir).as_posix()
+            loaded_by = 0
+            for h in html_files:
+                if h != p:
+                    content = h.read_text(encoding="utf-8", errors="ignore")
+                    if p.name in content:
+                        loaded_by += 1
+            if loaded_by > 0 and rel not in usage:
+                usage[rel] = {"loaded_by": loaded_by}
+
+    return usage
+
+
 @bp.route("/app/p/<slug>/studio/")
 @bp.route("/<slug>/admin/studio/")
 def home(slug):
     project = studio_project(slug, write=False)
     ctx = studio_ctx(project)
-    started = {r["module_id"]: r["n"] for r in ctx.conn.execute(
+
+    n_participants = ctx.conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+    last_act = ctx.conn.execute("SELECT MAX(started_at) FROM sessions").fetchone()[0]
+    last_activity_text = "Recently"
+    if last_act:
+        try:
+            dt = datetime.fromisoformat(str(last_act).replace("Z", "+00:00"))
+            diff = datetime.now(timezone.utc) - dt
+            if diff.days == 0:
+                last_activity_text = "Today"
+            elif diff.days == 1:
+                last_activity_text = "Yesterday"
+            else:
+                last_activity_text = f"{diff.days} days ago"
+        except Exception:
+            last_activity_text = "Recently"
+
+    started_map = {r["module_id"]: r["n"] for r in ctx.conn.execute(
         "SELECT module_id, COUNT(*) AS n FROM sessions GROUP BY module_id")}
-    files = []
+    finished_map = {r["module_id"]: r["n"] for r in ctx.conn.execute(
+        "SELECT module_id, COUNT(*) AS n FROM sessions WHERE finished_at IS NOT NULL GROUP BY module_id")}
+
+    modules_by_id = {m.id: m for m in project.modules.values()}
+    mod_list = []
+    total_minutes = 0
+    no_est = 0
+    for m in project.modules.values():
+        mins = m.minutes
+        if mins:
+            total_minutes += mins
+        else:
+            no_est += 1
+        req_titles = [modules_by_id[r].title for r in m.requires if r in modules_by_id]
+        mod_list.append({
+            "id": m.id,
+            "title": m.title,
+            "type": m.type,
+            "type_label": MODULE_TYPE_LABELS.get(m.type, m.type),
+            "minutes": mins,
+            "requires": m.requires,
+            "requires_titles": req_titles,
+            "started": started_map.get(m.id, 0),
+            "finished": finished_map.get(m.id, 0),
+        })
+
     proto = project.dir / "prototypes"
+    n_files = 0
+    if proto.is_dir():
+        for p in proto.rglob("*"):
+            if p.is_file() and not any(part.startswith(".") for part in p.relative_to(project.dir).parts):
+                n_files += 1
+
+    return ctx.render(
+        "admin/build.html",
+        mod_list=mod_list,
+        total_minutes=total_minutes,
+        no_est=no_est,
+        limit=30,
+        n_files=n_files,
+        n_participants=n_participants,
+        last_activity_text=last_activity_text,
+        is_super=is_super(),
+        role="owner" if can_edit(slug) else "viewer",
+        notice=request.args.get("notice"),
+        error=request.args.get("error"),
+        created=request.args.get("created"),
+    )
+
+
+@bp.route("/app/p/<slug>/studio/prototypes")
+@bp.route("/<slug>/admin/studio/prototypes")
+def prototypes(slug):
+    project = studio_project(slug, write=False)
+    ctx = studio_ctx(project)
+
+    n_participants = ctx.conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+    last_act = ctx.conn.execute("SELECT MAX(started_at) FROM sessions").fetchone()[0]
+    last_activity_text = "Recently"
+    if last_act:
+        try:
+            dt = datetime.fromisoformat(str(last_act).replace("Z", "+00:00"))
+            diff = datetime.now(timezone.utc) - dt
+            if diff.days == 0:
+                last_activity_text = "Today"
+            elif diff.days == 1:
+                last_activity_text = "Yesterday"
+            else:
+                last_activity_text = f"{diff.days} days ago"
+        except Exception:
+            last_activity_text = "Recently"
+
+    usage = prototype_file_usage(project)
+    proto = project.dir / "prototypes"
+    files = []
+    total_bytes = 0
     if proto.is_dir():
         for p in sorted(proto.rglob("*")):
             if p.is_file() and not any(part.startswith(".") for part in p.relative_to(project.dir).parts):
-                files.append({"rel": p.relative_to(project.dir).as_posix(), "size": p.stat().st_size})
-    pc = {k: passcodes.source(project, k) for k in passcodes.KINDS}
-    return ctx.render("admin/studio.html", started=started, files=files, pc=pc, is_super=is_super(),
-                      history=history(project.dir)[:10] if project.editable else [],
-                      module_types=sorted(MODULE_TYPES), env_prefix=env_prefix(slug),
-                      notice=request.args.get("notice"), error=request.args.get("error"),
-                      created=request.args.get("created"))
+                rel = p.relative_to(project.dir).as_posix()
+                sz = p.stat().st_size
+                total_bytes += sz
+                e = p.suffix.lower().lstrip(".")
+                kind = FILE_KINDS.get(e, "code")
+                icon = FILE_ICONS.get(kind, "fa-file-code")
+                is_prev = e in ("html", "htm", "png", "jpg", "jpeg", "gif", "svg", "webp", "pdf")
+                raw_url = url_for("studio.files_raw", slug=project.slug, rel=rel)
+                u = usage.get(rel)
+                locked = bool(u and "id" in u)
+                files.append({
+                    "rel": rel,
+                    "name": p.name,
+                    "size": sz,
+                    "size_formatted": format_bytes(sz),
+                    "icon_class": icon,
+                    "is_previewable": is_prev,
+                    "src": raw_url if is_prev else None,
+                    "use": u if u and "id" in u else None,
+                    "loaded_by": u.get("loaded_by") if u and "loaded_by" in u else None,
+                    "locked": locked,
+                })
+
+    limit_mb = 100
+    quota_pct = max(1, min(100, round((total_bytes / (limit_mb * 1024 * 1024)) * 100)))
+
+    return ctx.render(
+        "admin/prototypes.html",
+        files=files,
+        total_size_formatted=format_bytes(total_bytes),
+        quota_pct=quota_pct,
+        n_files=len(files),
+        n_participants=n_participants,
+        last_activity_text=last_activity_text,
+        is_super=is_super(),
+        role="owner" if can_edit(slug) else "viewer",
+        notice=request.args.get("notice"),
+        error=request.args.get("error"),
+    )
 
 
 @bp.route("/app/p/<slug>/studio/edit", methods=["GET", "POST"])
@@ -439,17 +641,21 @@ def edit(slug):
                       history=history(project.dir, rel)[:10] if project.editable else [])
 
 
+@bp.post("/app/p/<slug>/studio/modules/new")
 @bp.post("/<slug>/admin/studio/modules/new")
 def module_new(slug):
     project = studio_project(slug)
     t = translator(project.locale)
     mid = request.form.get("id", "").strip().lower()
+    title = request.form.get("title", "").strip()
     mtype = request.form.get("type", "survey")
     if not ID_RE.match(mid) or mtype not in MODULE_TYPES:
         return redirect(url_for("studio.home", slug=slug, error=t("studio.bad_module_id")))
     if (project.dir / "modules" / f"{mid}.yaml").exists() or mid in project.modules:
         return redirect(url_for("studio.home", slug=slug, error=t("studio.module_exists", id=mid)))
     template = (SCAFFOLD / "templates" / f"{mtype}.yaml").read_text(encoding="utf-8")
+    if title:
+        template = re.sub(r"^title:.*$", f"title: {title}", template, count=1, flags=re.MULTILINE)
     data = read_project_yaml(project.dir)
     data["modules"] = list(data.get("modules") or []) + [mid]
     writes = {"project.yaml": dump_yaml(data), f"modules/{mid}.yaml": template}
@@ -466,6 +672,80 @@ def module_new(slug):
     return redirect(url_for("studio.edit", slug=slug, file=f"modules/{mid}.yaml"))
 
 
+@bp.post("/app/p/<slug>/studio/modules/<mid>/duplicate")
+@bp.post("/<slug>/admin/studio/modules/<mid>/duplicate")
+def module_duplicate(slug, mid):
+    project = studio_project(slug)
+    if not ID_RE.match(mid) or mid not in project.modules:
+        abort(400)
+
+    new_id = f"{mid}-copy"
+    n = 2
+    while (project.dir / "modules" / f"{new_id}.yaml").exists() or new_id in project.modules:
+        new_id = f"{mid}-copy-{n}"
+        n += 1
+
+    src_file = project.dir / "modules" / f"{mid}.yaml"
+    if not src_file.is_file():
+        abort(404)
+    content = src_file.read_text(encoding="utf-8")
+    orig_title = project.modules[mid].title
+    new_title = f"{orig_title} (copy)"
+    content = re.sub(r"^title:.*$", f"title: {new_title}", content, count=1, flags=re.MULTILINE)
+
+    data = read_project_yaml(project.dir)
+    current_mods = list(data.get("modules") or [])
+    if mid in current_mods:
+        idx = current_mods.index(mid)
+        current_mods.insert(idx + 1, new_id)
+    else:
+        current_mods.append(new_id)
+    data["modules"] = current_mods
+
+    writes = {"project.yaml": dump_yaml(data), f"modules/{new_id}.yaml": content}
+    problems = trial(project.dir, slug, writes=writes)
+    if problems:
+        return redirect(url_for("studio.home", slug=slug, error="; ".join(problems[:3])))
+    for rel, text in writes.items():
+        write_text(project.dir, rel, text)
+    reload()
+    return redirect(url_for("studio.home", slug=slug, notice=f"Duplicated {orig_title} as {new_title}."))
+
+
+@bp.post("/app/p/<slug>/studio/modules/<mid>/move")
+@bp.post("/<slug>/admin/studio/modules/<mid>/move")
+def module_move(slug, mid):
+    project = studio_project(slug)
+    if not ID_RE.match(mid):
+        abort(400)
+    data = read_project_yaml(project.dir)
+    current_mods = list(data.get("modules") or [])
+
+    order = request.form.get("order")
+    direction = request.form.get("direction")
+
+    if order:
+        new_order = [m.strip() for m in order.split(",") if m.strip()]
+        if set(new_order) == set(current_mods) and len(new_order) == len(current_mods):
+            current_mods = new_order
+    elif direction in ("up", "down") and mid in current_mods:
+        idx = current_mods.index(mid)
+        if direction == "up" and idx > 0:
+            current_mods[idx - 1], current_mods[idx] = current_mods[idx], current_mods[idx - 1]
+        elif direction == "down" and idx < len(current_mods) - 1:
+            current_mods[idx + 1], current_mods[idx] = current_mods[idx], current_mods[idx + 1]
+
+    data["modules"] = current_mods
+    writes = {"project.yaml": dump_yaml(data)}
+    problems = trial(project.dir, slug, writes=writes)
+    if problems:
+        return redirect(url_for("studio.home", slug=slug, error="; ".join(problems[:3])))
+    write_text(project.dir, "project.yaml", dump_yaml(data))
+    reload()
+    return redirect(url_for("studio.home", slug=slug, notice="Order saved."))
+
+
+@bp.post("/app/p/<slug>/studio/modules/<mid>/delete")
 @bp.post("/<slug>/admin/studio/modules/<mid>/delete")
 def module_delete(slug, mid):
     project = studio_project(slug)
@@ -485,6 +765,7 @@ def module_delete(slug, mid):
     return redirect(url_for("studio.home", slug=slug, notice=t("studio.module_deleted", id=mid)))
 
 
+@bp.post("/app/p/<slug>/studio/files/upload")
 @bp.post("/<slug>/admin/studio/files/upload")
 def files_upload(slug):
     project = studio_project(slug)
@@ -500,13 +781,13 @@ def files_upload(slug):
         f.stream.seek(0)
         over = limits.check_upload(project.dir, size)
         if over:
-            return redirect(url_for("studio.home", slug=slug, error=over))
+            return redirect(url_for("studio.prototypes", slug=slug, error=over))
         if f.filename.lower().endswith(".zip") and request.form.get("extract", "1") == "1":
             base.mkdir(parents=True, exist_ok=True)
             try:
                 written += extract_zip(f.stream, base, PROTOTYPE_EXT)
             except ValueError as exc:
-                return redirect(url_for("studio.home", slug=slug, error=str(exc)))
+                return redirect(url_for("studio.prototypes", slug=slug, error=str(exc)))
             continue
         parts = safe_parts(f.filename)  # folder uploads send "dir/sub/file.css"
         if parts is None or Path(parts[-1]).suffix.lower() not in PROTOTYPE_EXT:
@@ -519,9 +800,10 @@ def files_upload(slug):
     msg = t("studio.uploaded", n=len(written)) + (" " + t("studio.skipped", files=", ".join(skipped[:5])) if skipped else "")
     with storage.connect(slug) as conn:
         storage.audit(conn, "upload_files", request.remote_addr, {"written": written})
-    return redirect(url_for("studio.home", slug=slug, notice=msg))
+    return redirect(url_for("studio.prototypes", slug=slug, notice=msg))
 
 
+@bp.post("/app/p/<slug>/studio/files/delete")
 @bp.post("/<slug>/admin/studio/files/delete")
 def files_delete(slug):
     project = studio_project(slug)
@@ -533,13 +815,13 @@ def files_delete(slug):
     # Refuse when a module still points at the file, so a delete can't break a live study.
     problems = trial(project.dir, slug, deletes=[rel])
     if problems:
-        return redirect(url_for("studio.home", slug=slug, error=t("studio.file_in_use", file=rel)))
+        return redirect(url_for("studio.prototypes", slug=slug, error=t("studio.file_in_use", file=rel)))
     target = inside(project.dir, rel)
     if target.is_file():
         target.unlink()
         with storage.connect(slug) as conn:
             storage.audit(conn, "delete_file", request.remote_addr, {"file": rel})
-    return redirect(url_for("studio.home", slug=slug, notice=t("studio.file_deleted", file=rel)))
+    return redirect(url_for("studio.prototypes", slug=slug, notice=t("studio.file_deleted", file=rel)))
 
 
 @bp.route("/app/p/<slug>/studio/files/raw/<path:rel>")

@@ -1,0 +1,15 @@
+<aside class="lg:sticky lg:top-6 lg:self-start">
+  <nav class="panel side" aria-label="Build">
+    <a href="{{ url_for('studio.home', slug=project.slug) }}" id="side-modules" {% if active_build_subnav == 'modules' %}aria-current="page"{% endif %}>
+      <span>Modules</span>
+      <span class="count" id="side-count">{{ project.modules|length }}</span>
+    </a>
+    <a href="{{ url_for('studio.prototypes', slug=project.slug) }}" {% if active_build_subnav == 'prototypes' %}aria-current="page"{% endif %}>
+      <span>Prototypes and files</span>
+      <span class="count">{{ n_files or 0 }}</span>
+    </a>
+    <a href="{{ url_for('studio.edit', slug=project.slug, file='project.yaml') }}" {% if active_build_subnav == 'settings' %}aria-current="page"{% endif %}>
+      <span>Study settings</span>
+    </a>
+  </nav>
+</aside>
