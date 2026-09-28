@@ -104,3 +104,23 @@ def test_study_settings_save_example_as_superadmin(projects_dir, make_app):
     assert data["ok"] is True
     assert "Modern City Library" in (pdir / "project.yaml").read_text(encoding="utf-8")
 
+
+def test_settings_and_data_page(projects_dir, make_app):
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+    r = c.get("/example/admin/data")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+
+    assert "Settings and data" in html
+    assert "Version history" in html
+    assert "Danger zone" in html
+    assert "Delete all responses" in html
+    assert "Duplicate this study" in html
+    assert "Export the study" in html
+
+    # Also test via /example/admin/settings
+    r2 = c.get("/example/admin/settings")
+    assert r2.status_code == 200
+
+

@@ -130,10 +130,6 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.module_export', slug=project.slug, mid=cur_module.id) }}">Export CSV</a>
-            {% if can_edit %}
-              <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.edit', slug=project.slug) }}?file=modules/{{ cur_module.id }}.yaml">Edit this module</a>
-            {% endif %}
-            <a class="btn btn-secondary btn-sm" href="{{ url_for('web.home', slug=project.slug) }}?m={{ cur_module.id }}" target="_blank" rel="noopener">Preview this module</a>
           </div>
         </header>
         <div class="panel-b flex flex-wrap items-center gap-x-8 gap-y-2">

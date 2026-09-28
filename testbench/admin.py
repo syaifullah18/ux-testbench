@@ -1027,3 +1027,69 @@ def reset(slug):
     storage.reset(slug)
     storage.audit(ctx.conn, "reset_project", request.remote_addr, {})
     return redirect(url_for("admin.dashboard", slug=slug))
+
+
+@bp.route("/app/p/<slug>/data")
+@bp.route("/app/p/<slug>/settings")
+@bp.route("/<slug>/admin/data")
+@bp.route("/<slug>/admin/settings")
+def settings_data(slug):
+    ctx, early = admin_ctx(slug)
+    if early:
+        return early
+    project = ctx.project
+
+    n_participants = ctx.conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+    n_started_sessions = ctx.conn.execute("SELECT COUNT(*) FROM sessions WHERE started_at IS NOT NULL").fetchone()[0]
+    n_finished_sessions = ctx.conn.execute("SELECT COUNT(*) FROM sessions WHERE finished_at IS NOT NULL").fetchone()[0]
+
+    last_ts = ctx.conn.execute("SELECT MAX(COALESCE(finished_at, started_at)) FROM sessions").fetchone()[0]
+    if not last_ts:
+        last_ts = ctx.conn.execute("SELECT MAX(created_at) FROM participants").fetchone()[0]
+    last_activity_text = time_ago(last_ts)
+
+    total_bytes = 0
+    if project.dir.is_dir():
+        for p in project.dir.rglob("*"):
+            if p.is_file() and not p.name.startswith("."):
+                try:
+                    total_bytes += p.stat().st_size
+                except Exception:
+                    pass
+    storage_kb = round(total_bytes / 1024, 1)
+
+    from .studio import history
+    version_items = []
+    if getattr(project, "editable", False):
+        try:
+            for item in history(project.dir)[:30]:
+                f_path = project.dir / ".history" / item["id"]
+                sz = f_path.stat().st_size if f_path.is_file() else 0
+                version_items.append({
+                    "file": item["file"],
+                    "when": item["when"],
+                    "size": sz,
+                    "id": item["id"],
+                })
+        except Exception:
+            pass
+
+    is_public = os.environ.get("TESTBENCH_MODE", "internal") == "public"
+    can_delete = is_super() or (is_public and False)
+    can_edit = is_super() or getattr(project, "editable", True)
+
+    return ctx.render(
+        "admin/data.html",
+        project=project,
+        active_tab="settings",
+        n_participants=n_participants,
+        n_started_sessions=n_started_sessions,
+        n_finished_sessions=n_finished_sessions,
+        last_activity_text=last_activity_text,
+        storage_kb=storage_kb,
+        versions=version_items,
+        is_public=is_public,
+        can_delete=can_delete,
+        can_edit=can_edit,
+    )
+

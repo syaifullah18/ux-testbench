@@ -1,0 +1,282 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Settings and data · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}settings{% endblock %}
+
+{% block extra_head %}
+<style>
+  section[id] { scroll-margin-top: 24px; }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'settings' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    <nav class="panel side" aria-label="Settings and data" id="settings-nav">
+      <a href="#history" aria-current="page"><span>Version history</span></a>
+      <a href="#data"><span>Data</span></a>
+      <a href="#danger"><span>Danger zone</span></a>
+    </nav>
+  </aside>
+
+  <div class="stack min-w-0">
+
+    <!-- Version history -->
+    <section class="panel" id="history" aria-labelledby="vh-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="vh-h">Version history</h2>
+          <p>The last 30 saved versions of every file are kept. Restoring loads a version into its editor so you can review it before saving.</p>
+        </div>
+      </header>
+      <ul class="rows" id="versions">
+        {% for v in versions %}
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title font-mono" style="font-size:14px">{{ v.file }}</p>
+            <p class="t-meta">{{ v.when }}, {{ (v.size / 1024)|round(1) }} KB</p>
+          </div>
+          {% if can_edit %}
+          <div class="row-act" style="width:auto">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.edit', slug=project.slug) }}?file={{ v.file }}&restore={{ v.id }}">Restore</a>
+          </div>
+          {% endif %}
+        </li>
+        {% else %}
+        <li class="row">
+          <div class="row-main">
+            <p class="t-meta">No versions saved yet. Versions are created automatically when study files are edited and saved in Studio.</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- Data -->
+    <section class="panel" id="data" aria-labelledby="dt-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="dt-h">Data</h2>
+          <p id="dt-sub">{{ 'What is stored for this study.' if n_participants else 'Nothing is stored yet.' }}</p>
+        </div>
+      </header>
+      <dl class="grid gap-6 p-6 sm:grid-cols-3" style="padding:24px">
+        <div>
+          <dt class="t-meta">Participants</dt>
+          <dd class="t-strong">{{ n_participants }}</dd>
+        </div>
+        <div>
+          <dt class="t-meta">Module sessions</dt>
+          <dd class="t-strong">{{ n_started_sessions }} started, {{ n_finished_sessions }} finished</dd>
+        </div>
+        <div>
+          <dt class="t-meta">Last activity</dt>
+          <dd class="t-strong">{{ last_activity_text }}</dd>
+        </div>
+      </dl>
+      <p class="panel-f">Storage used by files: {{ storage_kb }} KB. The last activity is {{ last_activity_text|lower }}. Delete responses you no longer need.</p>
+      <div class="row" style="border-top:1px solid var(--line)">
+        <div class="row-main">
+          <p class="row-title">Delete a single participant</p>
+          <p class="t-meta">Open the person in Results, then delete them there. Only their answers go.</p>
+        </div>
+        <div class="row-act" style="width:auto">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.participants', slug=project.slug) }}">Go to participants</a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-main">
+          <p class="row-title">Delete all responses</p>
+          <p class="t-meta">Removes every participant and answer. The design and settings stay.</p>
+        </div>
+        <div class="row-act" style="width:auto">
+          <button type="button" class="btn btn-secondary btn-sm" id="reset-open">Delete all responses</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Danger zone -->
+    <section class="panel" id="danger" aria-labelledby="dz-h" style="border-color:#F0C4BF">
+      <header class="panel-h" style="border-bottom-color:#F0C4BF">
+        <div>
+          <h2 id="dz-h" class="text-bad">Danger zone</h2>
+          <p>These actions affect the whole study.</p>
+        </div>
+      </header>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Duplicate this study</p>
+            <p class="t-meta">Copies the design only. Responses and passcodes are not copied.</p>
+          </div>
+          <div class="row-act" style="width:auto">
+            <form method="post" action="{{ url_for('studio.new_project') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="source" value="duplicate">
+              <input type="hidden" name="from" value="{{ project.slug }}">
+              <input type="hidden" name="slug" value="{{ project.slug }}-copy">
+              <button type="submit" class="btn btn-secondary btn-sm">Duplicate</button>
+            </form>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Export the study</p>
+            <p class="t-meta">A zip with the settings, modules and prototypes.</p>
+          </div>
+          <div class="row-act" style="width:auto">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.export_view', slug=project.slug) }}">Go to Export</a>
+          </div>
+        </li>
+        {% if project.editable and can_delete %}
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Delete this study</p>
+            <p class="t-meta">The link stops working and the design is removed.</p>
+          </div>
+          <div class="row-act" style="width:auto">
+            <button type="button" class="btn btn-danger-solid btn-sm" id="del-open">Delete study</button>
+          </div>
+        </li>
+        {% endif %}
+      </ul>
+      <p class="panel-f">
+        {% if is_public %}
+          Only owners can delete a study.
+        {% else %}
+          Only the superadmin can delete a study. Study admins can duplicate and export.
+        {% endif %}
+      </p>
+    </section>
+  </div>
+</div>
+
+<!-- Delete all responses -->
+<dialog id="dlg-reset" aria-labelledby="dlg-reset-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="post" action="{{ url_for('admin.reset', slug=project.slug) }}" class="p-6" id="reset-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2 id="dlg-reset-h" class="t-panel">Delete all responses?</h2>
+    <p class="mt-2 text-muted text-sm leading-relaxed" id="reset-text">
+      {% if n_participants %}
+        This removes {{ n_participants }} participant{{ 's' if n_participants != 1 else '' }} and {{ n_started_sessions }} module session{{ 's' if n_started_sessions != 1 else '' }}. It can’t be undone. The design and settings stay.
+      {% else %}
+        There are no responses to delete.
+      {% endif %}
+    </p>
+    {% if not is_public %}
+    <div id="reset-pass" class="mt-4">
+      <label class="label block text-sm font-semibold mb-1" for="rp">Enter the admin passcode to confirm</label>
+      <input id="rp" name="passcode" class="input w-full border border-line rounded-lg px-3 py-2 text-sm" type="password" autocomplete="off">
+      <p class="err is-hidden text-sm text-red-600 mt-1" id="rp-err"></p>
+    </div>
+    {% endif %}
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="dlg-reset-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid" id="reset-ok" {% if not n_participants %}disabled{% endif %}>Delete all responses</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Delete study -->
+{% if project.editable and can_delete %}
+<dialog id="dlg-del" aria-labelledby="dlg-del-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="post" action="{{ url_for('studio.delete_project', slug=project.slug) }}" class="p-6" id="del-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2 id="dlg-del-h" class="t-panel">Delete <span class="font-mono">{{ project.slug }}</span>?</h2>
+    <p class="mt-2 text-muted text-sm leading-relaxed">The study link stops working and its design is removed. This can't be undone.</p>
+    <label class="mt-4 flex items-start gap-3 cursor-pointer text-sm">
+      <input id="del-data" name="with_data" type="checkbox" value="1" class="check mt-0.5">
+      <span>Also delete all responses <span class="text-muted">({{ n_participants }} participant{{ 's' if n_participants != 1 else '' }})</span></span>
+    </label>
+    <label class="label block text-sm font-semibold mt-4 mb-1" for="del-slug">
+      Type <span class="font-mono text-ink">{{ project.slug }}</span> to confirm
+    </label>
+    <input id="del-slug" name="confirm" class="input font-mono w-full border border-line rounded-lg px-3 py-2 text-sm" autocomplete="off" spellcheck="false">
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="dlg-del-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid" id="del-ok" disabled>Delete study</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+<script>
+(function() {
+  // Sidebar scroll spy & click handling
+  var navLinks = document.querySelectorAll('#settings-nav a');
+  navLinks.forEach(function(a) {
+    a.addEventListener('click', function() {
+      navLinks.forEach(function(x) { x.removeAttribute('aria-current'); });
+      a.setAttribute('aria-current', 'page');
+    });
+  });
+
+  // Reset dialog
+  var resetBtn = document.getElementById('reset-open');
+  var dlgReset = document.getElementById('dlg-reset');
+  var resetCancel = document.getElementById('dlg-reset-cancel');
+  var rpInput = document.getElementById('rp');
+  var rpErr = document.getElementById('rp-err');
+  var resetForm = document.getElementById('reset-form');
+
+  if (resetBtn && dlgReset) {
+    resetBtn.addEventListener('click', function() {
+      if (rpInput) rpInput.value = '';
+      if (rpErr) rpErr.classList.add('is-hidden');
+      dlgReset.showModal();
+    });
+  }
+  if (resetCancel && dlgReset) {
+    resetCancel.addEventListener('click', function() {
+      dlgReset.close();
+    });
+  }
+  if (resetForm && rpInput) {
+    resetForm.addEventListener('submit', function(e) {
+      if (rpInput.value.length < 1) {
+        e.preventDefault();
+        if (rpErr) {
+          rpErr.textContent = 'Enter the admin passcode to confirm.';
+          rpErr.classList.remove('is-hidden');
+        }
+      }
+    });
+  }
+
+  // Delete study dialog
+  var delBtn = document.getElementById('del-open');
+  var dlgDel = document.getElementById('dlg-del');
+  var delCancel = document.getElementById('dlg-del-cancel');
+  var delSlug = document.getElementById('del-slug');
+  var delOk = document.getElementById('del-ok');
+  var expectedSlug = {{ project.slug|tojson }};
+
+  if (delBtn && dlgDel) {
+    delBtn.addEventListener('click', function() {
+      if (delSlug) delSlug.value = '';
+      if (delOk) delOk.disabled = true;
+      dlgDel.showModal();
+      if (delSlug) delSlug.focus();
+    });
+  }
+  if (delCancel && dlgDel) {
+    delCancel.addEventListener('click', function() {
+      dlgDel.close();
+    });
+  }
+  if (delSlug && delOk) {
+    delSlug.addEventListener('input', function() {
+      delOk.disabled = (delSlug.value.trim() !== expectedSlug);
+    });
+  }
+})();
+</script>
+{% endblock %}

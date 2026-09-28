@@ -86,7 +86,7 @@
       {% if is_public %}
       <a class="tab" href="{{ url_for('admin.team', slug=project.slug) if 'admin.team' in url_for.__globals__ else '#' }}" {% if cur_tab == 'team' %}aria-current="page"{% endif %}>Team</a>
       {% endif %}
-      <a class="tab" href="{{ url_for('studio.home', slug=project.slug) ~ '#settings' }}" {% if cur_tab == 'settings' %}aria-current="page"{% endif %}>Settings &amp; data</a>
+      <a class="tab" href="{{ url_for('admin.settings_data', slug=project.slug) }}" {% if cur_tab == 'settings' %}aria-current="page"{% endif %}>Settings &amp; data</a>
     </nav>
   </div>
 </div>

@@ -45,7 +45,8 @@ def test_results_module_view(projects_dir, make_app):
     # Header and action buttons
     assert "Try two events pages" in html
     assert "Export CSV" in html
-    assert "Preview this module" in html
+    assert "Edit this module" not in html
+    assert "Preview this module" not in html
     assert "started" in html
     assert "finished" in html
 
