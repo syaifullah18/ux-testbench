@@ -1,87 +1,246 @@
-{% extends "base.html" %}
-{% block title %}{{ t('admin.all_projects') }}{% endblock %}
-{% block width %}max-w-5xl{% endblock %}
-{% block nav_right %}
-<span class="flex items-center gap-3 text-[13px]">
-    <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold">Superadmin</span>
-    <a href="{{ url_for('admin.super_logout') }}" class="text-white/70 hover:text-white underline">{{ t('common.logout') }}</a>
-</span>
-{% endblock %}
-{% block content %}
-{% set btn = 'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-semibold bg-brand-600 text-white hover:bg-brand-700' %}
-{% set field = 'border border-line rounded-lg px-3 py-2 text-[14px] w-full' %}
-<h1 class="text-2xl font-bold text-ink mb-6">{{ t('admin.all_projects') }}</h1>
-{% if error %}<div class="p-3 mb-5 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]" role="alert">{{ error }}</div>{% endif %}
-{% if notice %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ notice }}</div>{% endif %}
-{% if config_error %}
-<div class="p-4 mb-6 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]">
-    <p class="font-semibold mb-1">{{ t('admin.config_error') }}</p>
-    <ul class="list-disc ml-5">{% for p in config_error.problems %}<li>{{ p }}</li>{% endfor %}</ul>
+{% extends "admin/_layout.html" %}
+{% block title %}Studies{% endblock %}
+{% block tab %}studies{% endblock %}
+
+{% block header %}
+{% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
+{% set new_study_url = url_for('public.new_project') if is_public else url_for('studio.new_project') %}
+<div class="page-head">
+  <div class="wrap head-end">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="t-page">Studies<span class="sr-only"> Researcher Dashboard</span></h1>
+        {% if studies %}
+        <p class="t-meta mt-1">
+          <span class="num t-strong text-ink">{{ studies|length }}</span> studies, 
+          <span class="num t-strong text-ink">{{ total_participants }}</span> participants in total.
+        </p>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-4">
+        {% if is_public and max_studies %}
+        <p class="t-meta"><span class="num t-strong text-ink">{{ studies|length }}</span> of {{ max_studies }} studies used</p>
+        {% endif %}
+        <a href="{{ new_study_url }}?start=import" class="btn btn-secondary">Import</a>
+        <a href="{{ new_study_url }}" class="btn btn-primary"><i class="fa-solid fa-plus text-sm" aria-hidden="true"></i>New study</a>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block content %}
+{% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
+{% set new_study_url = url_for('public.new_project') if is_public else url_for('studio.new_project') %}
+
+{% if not studies %}
+<!-- Empty state: one first action -->
+<section class="panel" aria-labelledby="empty-h">
+  <div class="panel-b">
+    <div class="max-w-2xl">
+      <h2 id="empty-h" class="t-page">You have no studies yet</h2>
+      <p class="mt-2 text-muted">A study is a set of activities that participants complete in order, such as a survey or an A/B test of two designs. You share one link, then read the results here.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{{ new_study_url }}?start=ab" class="btn btn-primary">Start from a template</a>
+        <a href="{{ new_study_url }}?start=example" class="btn btn-secondary">Copy the example</a>
+        <a href="{{ new_study_url }}?start=import" class="btn btn-secondary">Import a zip</a>
+      </div>
+      {% if not is_public and not (is_super and is_super()) %}
+      <p class="t-meta mt-4">Only a superadmin can create studies. Ask them to add you, or to give you the study passcode.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% else %}
+<!-- Study list -->
+<section class="panel" aria-label="Study list">
+  <div class="panel-h">
+    <div class="flex flex-1 flex-wrap items-center gap-4">
+      <div class="relative w-full max-w-sm">
+        <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+        <label for="search" class="sr-only-x">Search studies by name or slug</label>
+        <input id="search" class="input pl-8" type="search" placeholder="Search by name or slug">
+      </div>
+      <div class="seg" role="group" aria-label="Filter by status" id="status-filter">
+        <button type="button" data-f="all" aria-pressed="true">All <span class="num opacity-70">{{ studies|length }}</span></button>
+        <button type="button" data-f="draft" aria-pressed="false">Draft <span class="num opacity-70">{{ counts.draft }}</span></button>
+        <button type="button" data-f="live" aria-pressed="false">Live <span class="num opacity-70">{{ counts.live }}</span></button>
+        <button type="button" data-f="closed" aria-pressed="false">Closed <span class="num opacity-70">{{ counts.closed }}</span></button>
+      </div>
+    </div>
+    <p id="count" class="t-meta" aria-live="polite"></p>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="tbl min-w-[900px]">
+      <thead>
+        <tr>
+          <th scope="col">Study</th>
+          <th scope="col">Status</th>
+          {% if is_public %}<th scope="col">Your role</th>{% endif %}
+          <th scope="col" class="text-right">Participants</th>
+          <th scope="col" class="text-right">Finished every module</th>
+          <th scope="col" class="la">Last activity</th>
+          <th scope="col"><span class="sr-only-x">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        {% for s in studies %}
+        {% set st = s.status or 'draft' %}
+        <tr data-status="{{ st }}" data-search="{{ s.name|lower }} {{ s.slug|lower }}">
+          <td>
+            <div class="flex items-start gap-3">
+              <span class="mt-2 h-3 w-3 flex-none rounded-[3px]" style="background: {{ s.brand_primary or '#151A23' }}" aria-hidden="true"></span>
+              <div class="min-w-0">
+                <a href="{{ url_for('admin.dashboard', slug=s.slug) }}" class="t-strong hover:underline">{{ s.name }}</a>
+                <p class="font-mono text-sm text-muted">/{{ s.slug }}</p>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if st == 'live' %}
+            <span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>
+            {% elif st == 'closed' %}
+            <span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>
+            {% else %}
+            <span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>
+            {% endif %}
+          </td>
+          {% if is_public %}
+          <td>{{ (s.role or 'admin')|capitalize }}</td>
+          {% endif %}
+          <td class="num t-strong text-right">{{ s.participants }}</td>
+          <td class="num text-right">
+            {% if s.participants > 0 %}
+            <span class="t-strong">{{ s.finished_all }}</span> <span class="text-muted">({{ s.finished_pct }}%)</span>
+            {% else %}
+            <span class="text-muted">0</span>
+            {% endif %}
+          </td>
+          <td class="la {% if not s.last_seen %}text-muted{% endif %}">{{ s.last_activity_text }}</td>
+          <td>
+            <div class="flex items-center justify-end gap-2">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.dashboard', slug=s.slug) }}">Open</a>
+              <button type="button" class="btn btn-secondary btn-sm btn-icon" data-dropdown-toggle="menu-{{ loop.index }}" data-dropdown-placement="bottom-end" aria-label="More actions for {{ s.name }}">
+                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+              </button>
+              <div id="menu-{{ loop.index }}" class="menu z-40 hidden w-56">
+                <a href="{{ url_for('admin.dashboard', slug=s.slug) }}">Results</a>
+                <a href="{{ url_for('studio.home', slug=s.slug) }}">Build</a>
+                <button type="button" class="mi" data-copy="{{ s.participant_url }}">Copy participant link</button>
+                <a href="{{ new_study_url }}?start=duplicate&from={{ s.slug }}">Duplicate</a>
+                <a href="{{ url_for('studio.export_zip', slug=s.slug) }}">Export as zip</a>
+                <hr class="my-1 border-line">
+                <button type="button" class="mi t-strong text-bad" data-delete="{{ s.slug }}" data-name="{{ s.name }}" data-people="{{ s.participants }}">Delete study</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div id="none" class="is-hidden px-6 py-12 text-center">
+      <p class="t-strong">No studies match</p>
+      <p class="t-meta mt-1">Try a different word, or clear the status filter.</p>
+    </div>
+  </div>
+</section>
 {% endif %}
 
-<ul class="space-y-3 mb-10">
-    {% for p in projects %}
-    <li class="border border-line rounded-xl p-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-            <p class="font-semibold text-ink">{{ p.name }} <span class="text-ink-subtle font-normal">/{{ p.slug }}/</span>
-                {% if not p.listed %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-line">{{ t('admin.unlisted') }}</span>{% endif %}
-                {% if p.editable %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">{{ t('studio.editable') }}</span>
-                {% else %}<span class="text-[12px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900">{{ t('studio.read_only') }}</span>{% endif %}</p>
-            <p class="text-[13px] text-ink-subtle">{{ p.modules|length }} {{ t('admin.modules') }} · {{ p.identity.mode }} · {{ p.locale }}</p>
-        </div>
-        <div class="flex gap-4 text-[14px]">
-            <a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('web.home', slug=p.slug) }}">{{ t('admin.participant_view') }}</a>
-            <a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('studio.home', slug=p.slug) }}">{{ t('studio.tab') }}</a>
-            <a class="text-brand-600 dark:text-brand-400 hover:underline font-semibold" href="{{ url_for('admin.dashboard', slug=p.slug) }}">{{ t('admin.results') }}</a>
-        </div>
-    </li>
-    {% endfor %}
-</ul>
+<!-- Delete study confirmation dialog -->
+<dialog id="dlg-delete" aria-labelledby="dlg-delete-h">
+  <form id="delete-form" method="post" class="p-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+    <h2 id="dlg-delete-h" class="t-panel">Delete <span id="del-name"></span>?</h2>
+    <p class="mt-2 text-muted">The study link stops working and its design is removed. This can’t be undone.</p>
+    <label class="mt-4 flex items-start gap-3">
+      <input id="del-data" name="with_data" value="1" type="checkbox" class="mt-1 h-4 w-4 rounded border-line-strong">
+      <span>Also delete all responses <span class="text-muted">(<span id="del-people">0</span> participants)</span></span>
+    </label>
+    <label class="label mt-6" for="del-slug">Type <span class="font-mono" id="del-slug-hint"></span> to confirm</label>
+    <input id="del-slug" name="confirm" class="input font-mono" autocomplete="off" spellcheck="false">
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="del-cancel">Cancel</button>
+      <button type="submit" id="del-ok" class="btn btn-danger-solid" disabled>Delete study</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
 
-<div class="grid md:grid-cols-2 gap-6">
-    <section class="border border-line rounded-xl p-5">
-        <h2 class="text-lg font-bold text-ink mb-1">{{ t('studio.new_project') }}</h2>
-        <p class="text-[13px] text-ink-subtle mb-4">{{ t('studio.new_project_hint', dir=studio_dir) }}</p>
-        <form method="post" action="{{ url_for('studio.new_project') }}" class="space-y-3">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <div><label class="block text-[13px] font-semibold mb-1" for="np-slug">{{ t('studio.slug') }}</label>
-                <input id="np-slug" name="slug" required pattern="[a-z0-9][a-z0-9-]*" placeholder="checkout-2026" class="{{ field }}">
-                <p class="text-[12px] text-ink-subtle mt-1">{{ t('studio.slug_hint') }}</p></div>
-            <div><label class="block text-[13px] font-semibold mb-1" for="np-name">{{ t('studio.name') }}</label>
-                <input id="np-name" name="name" class="{{ field }}"></div>
-            <div><label class="block text-[13px] font-semibold mb-1" for="np-source">{{ t('studio.start_from') }}</label>
-                <select id="np-source" name="source" class="{{ field }}">
-                    <option value="blank">{{ t('studio.blank') }}</option>
-                    {% for p in projects %}<option value="{{ p.slug }}">{{ t('studio.copy_of', name=p.name) }}</option>{% endfor %}
-                </select></div>
-            <div class="grid grid-cols-3 gap-2" id="np-blank">
-                <div><label class="block text-[12px] mb-1" for="np-locale">{{ t('studio.language') }}</label>
-                    <select id="np-locale" name="locale" class="{{ field }}">{% for l in locales %}<option>{{ l }}</option>{% endfor %}</select></div>
-                <div><label class="block text-[12px] mb-1" for="np-identity">{{ t('studio.login') }}</label>
-                    <select id="np-identity" name="identity" class="{{ field }}"><option>code</option><option>email</option><option>anonymous</option></select></div>
-                <div><label class="block text-[12px] mb-1" for="np-access">{{ t('studio.access') }}</label>
-                    <select id="np-access" name="access" class="{{ field }}"><option>passcode</option><option>open</option></select></div>
-            </div>
-            <button class="{{ btn }}"><i class="fa-solid fa-plus"></i>{{ t('studio.create') }}</button>
-        </form>
-    </section>
-    <section class="border border-line rounded-xl p-5">
-        <h2 class="text-lg font-bold text-ink mb-1">{{ t('studio.import') }}</h2>
-        <p class="text-[13px] text-ink-subtle mb-4">{{ t('studio.import_hint') }}</p>
-        <form method="post" action="{{ url_for('studio.import_project') }}" enctype="multipart/form-data" class="space-y-3">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <div><label class="block text-[13px] font-semibold mb-1" for="im-file">{{ t('studio.zip_file') }}</label>
-                <input id="im-file" type="file" name="archive" accept=".zip" required class="block w-full text-[13px]"></div>
-            <div><label class="block text-[13px] font-semibold mb-1" for="im-slug">{{ t('studio.slug') }}</label>
-                <input id="im-slug" name="slug" pattern="[a-z0-9][a-z0-9-]*" placeholder="{{ t('studio.slug_from_zip') }}" class="{{ field }}"></div>
-            <button class="{{ btn }}"><i class="fa-solid fa-file-import"></i>{{ t('studio.import') }}</button>
-        </form>
-    </section>
-</div>
+{% block scripts %}
 <script>
-document.getElementById('np-source').addEventListener('change', function () {
-    document.getElementById('np-blank').hidden = this.value !== 'blank';
-});
+  (function () {
+    // Search and status filter
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#rows tr'));
+    var f = 'all', term = '';
+    var count = document.getElementById('count'), none = document.getElementById('none');
+
+    function apply() {
+      if (!count) return;
+      var shown = 0;
+      rows.forEach(function (r) {
+        var ok = (f === 'all' || r.dataset.status === f) && (!term || r.dataset.search.indexOf(term) >= 0);
+        r.classList.toggle('is-hidden', !ok);
+        if (ok) shown++;
+      });
+      count.textContent = 'Showing ' + shown + ' of ' + rows.length;
+      if (none) none.classList.toggle('is-hidden', shown > 0);
+    }
+
+    var searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        term = this.value.trim().toLowerCase();
+        apply();
+      });
+    }
+
+    document.querySelectorAll('#status-filter button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        f = b.dataset.f;
+        document.querySelectorAll('#status-filter button').forEach(function (x) {
+          x.setAttribute('aria-pressed', x === b);
+        });
+        apply();
+      });
+    });
+    apply();
+
+    // Delete confirmation
+    var dlg = document.getElementById('dlg-delete');
+    var deleteForm = document.getElementById('delete-form');
+    var slugIn = document.getElementById('del-slug');
+    var ok = document.getElementById('del-ok');
+    var target = '';
+
+    document.querySelectorAll('[data-delete]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        target = b.dataset.delete;
+        document.getElementById('del-name').textContent = b.dataset.name;
+        document.getElementById('del-people').textContent = b.dataset.people;
+        document.getElementById('del-slug-hint').textContent = target;
+        slugIn.value = '';
+        ok.disabled = true;
+        document.getElementById('del-data').checked = false;
+        deleteForm.action = '/' + encodeURIComponent(target) + '/admin/studio/delete';
+        document.querySelectorAll('[id^="menu-"]').forEach(function (m) { m.classList.add('hidden'); });
+        dlg.showModal();
+        slugIn.focus();
+      });
+    });
+
+    if (slugIn) {
+      slugIn.addEventListener('input', function () {
+        ok.disabled = slugIn.value !== target;
+      });
+    }
+
+    var cancelBtn = document.getElementById('del-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        dlg.close();
+      });
+    }
+  })();
 </script>
 {% endblock %}

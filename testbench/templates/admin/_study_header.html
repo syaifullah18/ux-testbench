@@ -1,0 +1,94 @@
+{% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
+{% set studies_url = url_for('public.dashboard') if is_public else url_for('admin.overview') %}
+{% set st = status if status is defined else (project.status if project.status else 'live' if n_participants and n_participants > 0 else 'draft') %}
+
+<div class="page-head">
+  <div class="wrap">
+    <a href="{{ studies_url }}" class="inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-ink">
+      <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>All studies
+    </a>
+    <div class="mt-4 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="h-4 w-4 flex-none rounded-[4px] bg-brand" aria-hidden="true"></span>
+          <h1 class="t-page">{{ project.name }}</h1>
+          <span class="font-mono text-sm text-muted">/{{ project.slug }}</span>
+          
+          <div class="relative">
+            <button type="button" id="st-btn" data-dropdown-toggle="st-menu" data-dropdown-placement="bottom-start" class="st-btn" aria-label="Change study status">
+              <span>
+                {% if st == 'live' %}
+                <span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>
+                {% elif st == 'closed' %}
+                <span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>
+                {% else %}
+                <span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>
+                {% endif %}
+              </span>
+              <i class="fa-solid fa-chevron-down text-xs text-muted" aria-hidden="true"></i>
+            </button>
+            <div id="st-menu" class="menu z-40 hidden w-80">
+              <form method="post" action="{{ url_for('admin.set_status', slug=project.slug) if 'admin.set_status' in url_for.__globals__ else '#' }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+                <button type="submit" name="status" value="draft" class="mi mi-status w-full text-left {% if st == 'draft' %}aria-current="true"{% endif %}">
+                  <span><span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span></span>
+                  <span class="t-meta">Participants see "This study is being prepared". You can still pilot it.</span>
+                </button>
+                <button type="submit" name="status" value="live" class="mi mi-status w-full text-left {% if st == 'live' %}aria-current="true"{% endif %}">
+                  <span><span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span></span>
+                  <span class="t-meta">Participants can enter at the study link.</span>
+                </button>
+                <button type="submit" name="status" value="closed" class="mi mi-status w-full text-left {% if st == 'closed' %}aria-current="true"{% endif %}">
+                  <span><span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span></span>
+                  <span class="t-meta">Nobody new enters and nobody can resume. Results stay open.</span>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {% if not project.editable %}
+          <span class="st st-info"><i class="fa-solid fa-lock" aria-hidden="true"></i>Read-only</span>
+          {% endif %}
+          {% if is_public and role %}
+          <span class="st st-info">{{ role|capitalize }}</span>
+          {% endif %}
+        </div>
+        <dl class="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
+            <dt class="sr-only-x">Participants</dt>
+            <dd><span class="num font-semibold text-ink">{{ n_participants or 0 }}</span> participants</dd>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+            <dt class="sr-only-x">Modules</dt>
+            <dd><span class="num font-semibold text-ink">{{ project.modules|length }}</span> modules</dd>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+            <dt class="sr-only-x">Last activity</dt>
+            <dd>Last activity <span class="font-semibold text-ink">{{ last_activity_text or 'Recently' }}</span></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('web.home', slug=project.slug) }}" target="_blank" rel="noopener">
+          <i class="fa-solid fa-arrow-up-right-from-square text-xs" aria-hidden="true"></i>Open participant view
+        </a>
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.preview', slug=project.slug) if 'admin.preview' in url_for.__globals__ else url_for('web.home', slug=project.slug) }}">
+          <i class="fa-regular fa-eye text-xs" aria-hidden="true"></i>Preview as participant
+        </a>
+      </div>
+    </div>
+    <nav aria-label="Study" class="tabs">
+      <a class="tab" href="{{ url_for('admin.dashboard', slug=project.slug) }}" {% if active_tab == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+      <a class="tab" href="{{ url_for('studio.home', slug=project.slug) }}" {% if active_tab == 'build' %}aria-current="page"{% endif %}>Build</a>
+      <a class="tab" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}" {% if active_tab == 'launch' %}aria-current="page"{% endif %}>Launch</a>
+      <a class="tab" href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) }}" {% if active_tab == 'results' %}aria-current="page"{% endif %}>Results</a>
+      {% if is_public %}
+      <a class="tab" href="{{ url_for('admin.team', slug=project.slug) if 'admin.team' in url_for.__globals__ else '#' }}" {% if active_tab == 'team' %}aria-current="page"{% endif %}>Team</a>
+      {% endif %}
+      <a class="tab" href="{{ url_for('studio.home', slug=project.slug) ~ '#settings' }}" {% if active_tab == 'settings' %}aria-current="page"{% endif %}>Settings &amp; data</a>
+    </nav>
+  </div>
+</div>

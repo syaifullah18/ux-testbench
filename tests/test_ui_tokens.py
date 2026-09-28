@@ -102,7 +102,7 @@ SLATE_ALLOWED = {
 def test_no_literal_slate_outside_the_allowed_one_offs():
     problems = []
     for path in TEMPLATES:
-        rel = str(path.relative_to(ROOT / "testbench" / "templates"))
+        rel = path.relative_to(ROOT / "testbench" / "templates").as_posix()
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             for match in SLATE_RE.finditer(line):
                 if (rel, match.group(0)) in SLATE_ALLOWED:

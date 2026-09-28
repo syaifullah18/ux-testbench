@@ -170,17 +170,99 @@ def install(src_dir, slug):
     return []
 
 
-def project_yaml_text(name, locale, mode, access, description=""):
-    identity = {"code": '  mode: code\n  pattern: "^P\\\\d{2}$"      # codes you hand out, e.g. P01\n',
-                "email": "  mode: email\n  # domains: [example.com]\n",
-                "anonymous": "  mode: anonymous          # the app issues a resume code\n"}[mode]
+def project_yaml_text(name, locale, mode, access, description="", brand="#2563EB", modules=None, pattern=None, domains=None):
+    import json
+    if mode == "code":
+        pat = pattern or "^P\\d{2}$"
+        identity = f"  mode: code\n  pattern: {json.dumps(pat)}      # codes you hand out, e.g. P01\n"
+    elif mode == "email":
+        dom_list = f" [{domains}]" if domains else " [example.com]"
+        identity = f"  mode: email\n  # domains:{dom_list}\n"
+    else:
+        identity = "  mode: anonymous          # the app issues a resume code\n"
+
+    mod_lines = "\n".join(f"  - {m}" for m in (modules or ["feedback"]))
     return (f"name: {yaml.safe_dump(name, allow_unicode=True).strip().removesuffix('...').strip()}\n"
             f"description: {yaml.safe_dump(description or 'Describe the study for participants.', allow_unicode=True).strip().removesuffix('...').strip()}\n"
             f"locale: {locale}\nlisted: false\n\nidentity:\n{identity}\n"
             f"access: {access}               # passcode | open; set passcodes in the Studio\n\n"
             "consent: >-\n  I agree that my answers are recorded for this research.\n\n"
-            'brand:\n  primary: "#2563EB"\n  nav: "#0F172A"\n\n'
-            "modules:\n  - feedback\n")
+            f'brand:\n  primary: "{brand}"\n  nav: "#0F172A"\n\n'
+            f"modules:\n{mod_lines}\n")
+
+
+def build_project_scaffold(dst, slug, name, source, locale, mode, access, brand="#2563EB", pattern=None, domains=None, upload=None, duplicate_from=None):
+    (dst / "modules").mkdir(parents=True, exist_ok=True)
+    if source == "import":
+        if not upload or not upload.filename:
+            return ["No import file provided"]
+        names = extract_zip(upload.stream, dst, PROJECT_EXT, strip_single_root=True)
+        if "project.yaml" not in names:
+            return ["Archive has no project.yaml"]
+        data = read_project_yaml(dst)
+        data["name"] = name or data.get("name", slug)
+        if brand:
+            data.setdefault("brand", {})["primary"] = brand
+        (dst / "project.yaml").write_text(dump_yaml(data), encoding="utf-8")
+        return []
+    elif source in ("example", "duplicate"):
+        src_slug = duplicate_from or "example"
+        src = registry().get(src_slug)
+        if src is None:
+            if registry().projects:
+                src = next(iter(registry().projects.values()))
+            else:
+                return [f"Source project '{src_slug}' not found"]
+        shutil.copytree(src.dir, dst, ignore=shutil.ignore_patterns(".history"), dirs_exist_ok=True)
+        data = read_project_yaml(dst)
+        data["name"] = name or f"{data.get('name', src_slug)} (copy)"
+        data.pop("passcode_env", None)
+        data.pop("admin_passcode_env", None)
+        if brand:
+            data.setdefault("brand", {})["primary"] = brand
+        (dst / "project.yaml").write_text(dump_yaml(data), encoding="utf-8")
+        return []
+    elif source == "ab":
+        modules = ["events-ab", "feedback"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "templates" / "ab_test.yaml", dst / "modules" / "events-ab.yaml")
+        shutil.copy(SCAFFOLD / "modules" / "feedback.yaml", dst / "modules" / "feedback.yaml")
+        proto = dst / "prototypes"
+        proto.mkdir(parents=True, exist_ok=True)
+        shutil.copy(SCAFFOLD / "templates" / "variant-a.html", proto / "variant-a.html")
+        shutil.copy(SCAFFOLD / "templates" / "variant-b.html", proto / "variant-b.html")
+        return []
+    elif source == "survey":
+        modules = ["survey"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "templates" / "survey.yaml", dst / "modules" / "survey.yaml")
+        return []
+    elif source == "tree":
+        modules = ["info-arch"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "templates" / "tree_test.yaml", dst / "modules" / "info-arch.yaml")
+        return []
+    elif source == "sort":
+        modules = ["card-sort"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "templates" / "card_sort.yaml", dst / "modules" / "card-sort.yaml")
+        return []
+    elif source == "click":
+        modules = ["first-click"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "templates" / "first_click.yaml", dst / "modules" / "first-click.yaml")
+        return []
+    else:  # blank
+        modules = ["feedback"]
+        yaml_content = project_yaml_text(name, locale, mode, access, brand=brand, modules=modules, pattern=pattern, domains=domains)
+        (dst / "project.yaml").write_text(yaml_content, encoding="utf-8")
+        shutil.copy(SCAFFOLD / "modules" / "feedback.yaml", dst / "modules" / "feedback.yaml")
+        return []
 
 
 def studio_ctx(project):
@@ -189,37 +271,39 @@ def studio_ctx(project):
 
 # ---------------------------------------------------------------- superadmin: create, import
 
-@bp.post("/admin/projects/new")
+@bp.route("/admin/projects/new", methods=["GET", "POST"])
 def new_project():
     if not is_super():
         abort(403)
+    if request.method == "GET":
+        taken = [p.slug for p in registry().projects.values()]
+        return render_template("admin/new_study.html", locales=available_locales(), taken_slugs=taken)
     t = translator("en")
     slug = request.form.get("slug", "").strip().lower()
     err = validate_new_slug(slug, t)
-    source = request.form.get("source", "blank")
+    source = request.form.get("source", "ab")
+    name = request.form.get("name", "").strip() or slug
+    locale = request.form.get("locale") if request.form.get("locale") in available_locales() else "en"
+    mode = request.form.get("identity", "code")
+    access = "open" if request.form.get("access") == "open" else "passcode"
+    brand = request.form.get("brand", "#2563EB")
+    pattern = request.form.get("pattern", "^P\\d{2}$")
+    domains = request.form.get("domains", "")
+    upload = request.files.get("archive")
+    duplicate_from = request.args.get("from") or request.form.get("from")
+
     if err:
         return redirect(url_for("admin.overview", error=err))
     with tempfile.TemporaryDirectory() as tmp:
         dst = Path(tmp) / slug
-        if source == "blank":
-            (dst / "modules").mkdir(parents=True)
-            mode = request.form.get("identity", "code")
-            (dst / "project.yaml").write_text(project_yaml_text(
-                request.form.get("name", "").strip() or slug,
-                request.form.get("locale") if request.form.get("locale") in available_locales() else "en",
-                mode if mode in ("code", "email", "anonymous") else "code",
-                "open" if request.form.get("access") == "open" else "passcode"), encoding="utf-8")
-            shutil.copy(SCAFFOLD / "modules" / "feedback.yaml", dst / "modules" / "feedback.yaml")
-        else:
-            src = registry().get(source)
-            if src is None:
-                abort(404)
-            shutil.copytree(src.dir, dst, ignore=shutil.ignore_patterns(".history"))
-            data = read_project_yaml(dst)
-            data["name"] = request.form.get("name", "").strip() or f"{data.get('name', source)} (copy)"
-            data.pop("passcode_env", None)
-            data.pop("admin_passcode_env", None)
-            (dst / "project.yaml").write_text(dump_yaml(data), encoding="utf-8")
+        scaffold_errs = build_project_scaffold(
+            dst, slug, name, source, locale,
+            mode if mode in ("code", "email", "anonymous") else "code",
+            access, brand=brand, pattern=pattern, domains=domains,
+            upload=upload, duplicate_from=duplicate_from
+        )
+        if scaffold_errs:
+            return redirect(url_for("admin.overview", error="; ".join(scaffold_errs[:3])))
         problems = install(dst, slug)
     if problems:
         return redirect(url_for("admin.overview", error="; ".join(problems[:3])))
