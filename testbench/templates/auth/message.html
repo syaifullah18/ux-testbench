@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm text-center">
-    <h1 class="text-xl font-bold text-slate-900 mb-2">{{ title }}</h1>
-    <p class="text-slate-600 mb-6">{{ message }}</p>
-    <a href="{{ url_for('auth.login') }}" class="bg-brand text-white font-semibold py-2 px-6 rounded-lg hover:bg-brand/90 transition-colors">Go to login</a>
+<div class="max-w-md mx-auto my-8 sm:my-14 border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm text-center">
+    <h1 class="text-xl font-bold text-ink mb-2">{{ title }}</h1>
+    <p class="text-ink-muted mb-6">{{ message }}</p>
+    <a href="{{ url_for('auth.login') }}" class="bg-brand-600 text-white font-semibold min-h-11 inline-flex items-center justify-center py-2.5 px-6 rounded-lg hover:bg-brand-700 transition-colors">Go to login</a>
 </div>
 {% endblock %}

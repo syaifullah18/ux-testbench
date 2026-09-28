@@ -17,9 +17,14 @@ def test_landing_page_modes(projects_dir, make_app):
     resp_pub = c_pub.get("/")
     assert resp_pub.status_code == 200
     body = resp_pub.get_data(as_text=True)
-    assert "Evidence-driven UX research" in body
-    assert "Create Free Account" in body
-    assert "Try Demo Study" in body
+    assert "Know what your users" in body          # the marketing headline
+    assert "Create a free account" in body          # primary call to action
+    assert "try the demo study" in body             # secondary route, demoted to a link
+    assert 'id="theme-toggle"' in body              # both themes reachable
+    # One filled primary in the first viewport: the nav button starts as an outline and only
+    # becomes the brand button once the hero form scrolls away.
+    assert 'id="nav-cta"' in body
+    assert body.count("bg-brand-600 px-6 text-base font-semibold text-white") == 1
 
 
 def test_url_move_and_legacy_redirects(projects_dir, make_app):

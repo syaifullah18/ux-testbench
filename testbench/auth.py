@@ -73,6 +73,12 @@ def signup():
 
     mode = signup_mode()
     invite = None
+    # The landing page hero collects the address and hands it over, so the form opens with a
+    # field already filled and its first step already behind the visitor. An invitation is a
+    # stronger claim on the address than a query string, so it still wins.
+    prefilled = request.args.get("email", "").strip()
+    if prefilled and EMAIL_RE.match(prefilled):
+        form["email"] = prefilled
     invite_token = request.values.get("invite") or cookie.get("pending_invite")
     if invite_token:
         invite = users.get_invitation(invite_token)
@@ -100,7 +106,10 @@ def signup():
             errors["name"] = t("auth.name_required")
         if len(password) < 10:
             errors["password"] = t("auth.password_too_short")
-        elif password != confirm:
+        elif confirm and password != confirm:
+            # The form now ships a single password field with a reveal toggle instead of asking
+            # twice, so `confirm` is usually absent. It is still checked when a client sends it,
+            # which keeps older clients and the existing tests honest.
             errors["confirm"] = t("auth.passwords_mismatch")
 
         if is_rate_limited(request.remote_addr, "signup"):

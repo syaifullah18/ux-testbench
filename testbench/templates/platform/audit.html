@@ -3,10 +3,10 @@
 {% set subheading = "Every platform admin action. IP addresses are cleared after the retention window." %}
 
 {% block panel %}
-<div class="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+<div class="bg-card border border-line/80 rounded-2xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
     <table class="w-full min-w-[44rem] text-sm">
-        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
+        <thead class="bg-surface-subtle text-left text-xs uppercase tracking-wider text-ink-subtle">
             <tr>
                 <th class="px-5 py-3 font-semibold">When (UTC)</th>
                 <th class="px-5 py-3 font-semibold">Who</th>
@@ -15,17 +15,17 @@
                 <th class="px-5 py-3 font-semibold">Detail</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-line">
         {% for e in entries %}
         <tr>
-            <td class="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{{ e.at[:19].replace('T', ' ') }}</td>
-            <td class="px-5 py-3 text-xs text-slate-700">{{ e.actor or 'system' }}</td>
-            <td class="px-5 py-3"><code class="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">{{ e.action }}</code></td>
-            <td class="px-5 py-3 text-xs text-slate-700">{{ e.project_slug or '—' }}</td>
-            <td class="px-5 py-3 text-xs text-slate-500 break-all max-w-xs">{{ e.detail_json or '' }}</td>
+            <td class="px-5 py-3 text-xs text-ink-subtle whitespace-nowrap">{{ e.at[:19].replace('T', ' ') }}</td>
+            <td class="px-5 py-3 text-xs text-ink-muted">{{ e.actor or 'system' }}</td>
+            <td class="px-5 py-3"><code class="text-[11px] bg-surface-subtle px-1.5 py-0.5 rounded">{{ e.action }}</code></td>
+            <td class="px-5 py-3 text-xs text-ink-muted">{{ e.project_slug or '—' }}</td>
+            <td class="px-5 py-3 text-xs text-ink-subtle break-all max-w-xs">{{ e.detail_json or '' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="px-5 py-10 text-center text-slate-500">Nothing logged yet.</td></tr>
+        <tr><td colspan="5" class="px-5 py-10 text-center text-ink-subtle">Nothing logged yet.</td></tr>
         {% endfor %}
         </tbody>
     </table>

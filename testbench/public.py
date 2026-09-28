@@ -6,9 +6,8 @@ import tempfile
 from pathlib import Path
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-from markupsafe import Markup, escape
 
-from . import auth, limits, mail, moderation, storage, users
+from . import auth, limits, mail, markdown, moderation, storage, users
 from .config import RESERVED_SLUGS, SLUG_RE
 from .i18n import translator
 from .web import get_project, registry
@@ -71,61 +70,55 @@ def report():
 
 # ---------------------------------------------------------------- docs reader
 
-def render_simple_markdown(text):
-    """Safe, zero-dependency subset markdown to HTML converter."""
-    html_lines = []
-    in_code = False
-    code_buf = []
+DOCS_DIR = Path(__file__).parent.parent / "docs"
+SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
-    for line in text.splitlines():
-        if line.strip().startswith("```"):
-            if in_code:
-                html_lines.append(f"<pre class='bg-slate-900 text-slate-100 p-4 rounded-xl text-xs overflow-x-auto my-4'><code>{escape(''.join(code_buf))}</code></pre>")
-                code_buf = []
-                in_code = False
-            else:
-                in_code = True
-            continue
-        if in_code:
-            code_buf.append(line + "\n")
-            continue
 
-        s = line.strip()
-        if not s:
-            continue
-        if s.startswith("#"):
-            level = min(len(s) - len(s.lstrip("#")), 6)
-            txt = escape(s.lstrip("#").strip())
-            sizes = {1: "text-2xl font-bold mt-6 mb-3", 2: "text-xl font-bold mt-5 mb-2.5", 3: "text-lg font-semibold mt-4 mb-2"}
-            html_lines.append(f"<h{level} class='{sizes.get(level, 'text-base font-semibold')} text-slate-900'>{txt}</h{level}>")
-        elif s.startswith(("- ", "* ")):
-            content = re.sub(r"`([^`]+)`", r"<code class='bg-slate-100 px-1 py-0.5 rounded text-xs'>\1</code>",
-                             re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escape(s[2:])))
-            html_lines.append(f"<li class='ml-5 list-disc text-slate-600 text-sm my-1'>{content}</li>")
-        else:
-            content = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"<a href='\2' class='text-brand underline'>\1</a>",
-                             re.sub(r"`([^`]+)`", r"<code class='bg-slate-100 px-1 py-0.5 rounded text-xs'>\1</code>",
-                                    re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escape(line))))
-            html_lines.append(f"<p class='text-slate-600 text-sm leading-relaxed my-2'>{content}</p>")
+def doc_path(page):
+    """Resolve a /docs/<page> path to a file inside docs/, or None.
 
-    if in_code and code_buf:
-        html_lines.append(f"<pre class='bg-slate-900 text-slate-100 p-4 rounded-xl text-xs overflow-x-auto my-4'><code>{escape(''.join(code_buf))}</code></pre>")
+    Pages live in subdirectories (`plans/saas-readiness`, `decisions/001-...`), so the path can
+    carry slashes. Each segment is checked against a strict pattern and the result is resolved
+    and compared against the docs directory, so neither `..` nor a symlink can escape it.
+    """
+    segments = [seg for seg in page.split("/") if seg]
+    if not segments or not all(SEGMENT_RE.match(seg) for seg in segments):
+        return None
+    candidate = (DOCS_DIR / "/".join(segments)).with_suffix(".md")
+    try:
+        resolved = candidate.resolve()
+        resolved.relative_to(DOCS_DIR.resolve())
+    except (OSError, ValueError):
+        return None
+    return resolved if resolved.is_file() else None
 
-    return Markup("".join(html_lines))
+
+def doc_index():
+    """Every doc, grouped by folder, for the sidebar. Top-level pages come first."""
+    groups = {}
+    for path in sorted(DOCS_DIR.rglob("*.md")):
+        rel = path.relative_to(DOCS_DIR)
+        group = rel.parent.as_posix() if rel.parent.as_posix() != "." else ""
+        slug = rel.with_suffix("").as_posix()
+        title = rel.stem.replace("-", " ").replace("_", " ")
+        title = re.sub(r"^\d+\s+", "", title)          # decision records are numbered
+        groups.setdefault(group, []).append({"slug": slug, "title": title[:1].upper() + title[1:]})
+    return dict(sorted(groups.items(), key=lambda kv: (kv[0] != "", kv[0])))
 
 
 @bp.route("/docs/")
-@bp.route("/docs/<page>")
+@bp.route("/docs/<path:page>")
 def docs(page="configuration"):
-    safe_name = re.sub(r"[^a-zA-Z0-9_-]", "", page)
-    doc_path = Path(__file__).parent.parent / "docs" / f"{safe_name}.md"
-    if not doc_path.exists() or not doc_path.is_file():
+    path = doc_path(page)
+    if path is None:
         abort(404)
-
-    content = render_simple_markdown(doc_path.read_text(encoding="utf-8"))
-    doc_files = [p.stem for p in (Path(__file__).parent.parent / "docs").glob("*.md")]
-    return render_template("public/doc.html", content=content, page=safe_name, doc_files=doc_files,
-                           t=translator("en"), user=auth.current_user())
+    content, headings = markdown.render(path.read_text(encoding="utf-8"))
+    title = headings[0][1] if headings and headings[0][0] == 1 else path.stem.replace("-", " ")
+    return render_template(
+        "public/doc.html", content=content, page=page.strip("/"), title=title,
+        # Only h2/h3 make a useful contents list; h1 is the page title.
+        toc=[h for h in headings if h[0] in (2, 3)],
+        groups=doc_index(), t=translator("en"), user=auth.current_user())
 
 
 # ---------------------------------------------------------------- researcher dashboard
@@ -159,8 +152,11 @@ def dashboard():
                 n_parts, last_seen = _project_stats(p.slug)
                 cards.append({"project": p, "role": "admin", "participants": n_parts, "last_seen": last_seen})
 
+    live_count = sum(1 for c in cards if getattr(c["project"], "status", None) == "live")
+
     return render_template("public/dashboard.html", user=user, projects=cards,
-                           total_participants=total_participants, t=translator("en"))
+                           total_participants=total_participants, live_count=live_count,
+                           t=translator("en"))
 
 
 @bp.route("/app/new", methods=["GET", "POST"])

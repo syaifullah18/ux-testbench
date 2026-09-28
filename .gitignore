@@ -29,5 +29,7 @@ backups/
 # belong to the project's history; .claude/settings.json can be un-ignored below if the team
 # ever wants to share permissions.
 .claude/
+.claude.json
+*.claude*
 .coverage
 skills-lock.json

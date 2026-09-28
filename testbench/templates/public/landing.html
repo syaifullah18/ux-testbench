@@ -1,444 +1,495 @@
+{#- The landing page. Standalone rather than extending base.html, because it carries its own
+    navigation and footer, but it includes the same _head.html so the palette, the fonts and
+    LOCAL_ASSETS all behave identically here.
+
+    Colours come from the surface tokens (`bg-surface`, `text-ink`, `border-line`, `bg-card`),
+    which flip with the theme class. That is what lets one set of markup serve both themes; see
+    the note at the top of _head.html. -#}
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UX Testbench · Open Source UX Research & Usability Testing Platform</title>
-    {# The same head as every other page, so the palette, fonts and LOCAL_ASSETS all behave
-       identically here. This page is dark where the rest of the app is light, which is a
-       deliberate difference for a marketing page, but the brand colour is the shared one. #}
+    <title>UX Testbench · Open-source UX research and usability testing</title>
+    <meta name="description" content="Run surveys, A/B prototype tests, card sorts, tree tests and first-click tests. Open source, self-hostable, and honest about what the numbers can and cannot tell you.">
     {% include "_head.html" %}
-    <style>
-        .card-hover {
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-        }
-    </style>
 </head>
-<body class="bg-[#090D16] text-slate-100 font-sans selection:bg-brand-500 selection:text-white antialiased">
 
-    <!-- Top Announcement Bar -->
-    <div class="bg-brand-600/15 border-b border-white/10 px-4 py-2 text-center text-xs font-medium text-slate-300 backdrop-blur-md">
-        <span class="inline-flex items-center gap-1.5">
-            <span class="inline-block size-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <strong class="text-white">v0.3 Released:</strong> Tree Testing, Card Sorting & A/B Prototype Testing now live.
-            <a href="{{ url_for('public.docs', page='configuration') }}" class="underline hover:text-white ml-1">Explore Docs &rarr;</a>
+<body class="theme-anim bg-surface text-ink-muted font-sans antialiased selection:bg-brand-500/20">
+
+{#- ---------------------------------------------------------------- announcement -#}
+{#- The whole bar is one target. It used to be a line of text with a link that disappeared below
+    `sm`, so on a phone the highest strip of the page was an advert for a page you could not
+    reach. The dot is gone with it: a green dot means "systems operational" to anyone who has
+    read a status page, and spending that signal on release notes costs an accent the primary
+    button needs. -#}
+<a href="{{ url_for('public.docs') }}"
+   class="group block border-b border-line bg-surface-subtle transition-colors hover:bg-card">
+    <div class="mx-auto flex max-w-7xl items-center justify-center gap-2 px-6 py-3 text-[13px]">
+        <span class="text-ink-muted">
+            <span class="font-semibold text-ink">v0.3</span>
+            adds tree testing, card sorting and first-click tests.
+        </span>
+        <span class="whitespace-nowrap font-semibold text-ink-muted group-hover:text-ink">
+            Read the docs <i class="fa-solid fa-arrow-right text-[10px]"></i>
         </span>
     </div>
+</a>
 
-    <!-- Navigation Header -->
-    <header class="sticky top-0 z-50 bg-[#090D16]/80 backdrop-blur-xl border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
-            <div class="flex items-center gap-8">
-                <a href="/" class="flex items-center gap-3 group">
-                    <div class="size-10 rounded-xl bg-brand-600 p-[1px] shadow-sm group-hover:scale-105 transition-transform">
-                        <div class="w-full h-full bg-[#0F172A] rounded-xl flex items-center justify-center">
-                            <i class="fa-solid fa-shapes text-brand-400 text-lg"></i>
-                        </div>
-                    </div>
-                    <span class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 whitespace-nowrap">
-                        UX Testbench
-                        <span class="hidden sm:inline text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30 font-semibold">OSS</span>
-                    </span>
-                </a>
-                <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
-                    <a href="#methods" class="hover:text-white transition-colors">Methods</a>
-                    <a href="#how-it-works" class="hover:text-white transition-colors">How it Works</a>
-                    <a href="{{ url_for('public.docs') }}" class="hover:text-white transition-colors">Documentation</a>
-                    <a href="{{ url_for('public.about') }}" class="hover:text-white transition-colors">About</a>
-                </nav>
-            </div>
-
-            <div class="flex items-center gap-3">
-                {% if user %}
-                    <a href="{{ url_for('public.dashboard') }}" class="bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all border border-white/10 flex items-center gap-2">
-                        <i class="fa-solid fa-gauge-high text-brand-400"></i>
-                        <span class="hidden sm:inline">My Dashboard</span><span class="sm:hidden">Dashboard</span>
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('auth.login') }}" class="text-slate-300 hover:text-white text-sm font-medium px-2 sm:px-3.5 py-2 rounded-xl transition-colors whitespace-nowrap">
-                        Log in
-                    </a>
-                    <a href="{{ url_for('auth.signup') }}" class="bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm transition-colors whitespace-nowrap">
-                        <span class="hidden sm:inline">Create Free Account</span><span class="sm:hidden">Sign up</span>
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-    </header>
-
-    <!-- Hero Section -->
-    <section class="relative pt-20 pb-28 overflow-hidden">
-        <div class="max-w-5xl mx-auto px-6 text-center relative z-10">
-            <!-- Pill Badge -->
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-brand-300 mb-8 backdrop-blur-md">
-                <i class="fa-solid fa-microchip text-brand-400"></i>
-                Privacy-First · Self-Hostable · MIT Licensed
-            </div>
-
-            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-6 text-balance">
-                Evidence-driven UX research,
-                <span class="text-brand-400">
-                    free & open source.
+{#- ---------------------------------------------------------------- navigation -#}
+<header class="sticky top-0 z-50 border-b border-line bg-surface/80 backdrop-blur-xl">
+    <nav class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-6">
+        <div class="flex items-center gap-10">
+            {#- The wordmark folds to the mark alone on a phone. That is what buys the CTA beside it
+                enough room to keep its full label at every width instead of shortening to a second
+                name for the same destination. -#}
+            <a href="/" class="flex flex-none items-center gap-2.5" aria-label="UX Testbench, home">
+                <span class="grid size-9 flex-none place-items-center rounded-xl bg-brand-600 text-white">
+                    <i class="fa-solid fa-flask-vial text-sm"></i>
                 </span>
-            </h1>
+                <span class="hidden whitespace-nowrap text-lg font-bold tracking-tight text-ink sm:inline">UX Testbench</span>
+            </a>
+            {#- Three destinations, not four. Privacy has a full section with its own heading and a
+                footer column; carrying it here too spent a nav slot on something already reachable
+                twice. -#}
+            <div class="hidden items-center gap-8 text-sm font-medium text-ink-muted lg:flex">
+                <a href="#methods" class="transition-colors hover:text-ink">Methods</a>
+                <a href="#how" class="transition-colors hover:text-ink">How it works</a>
+                <a href="{{ url_for('public.docs') }}" class="transition-colors hover:text-ink">Docs</a>
+            </div>
+        </div>
 
-            <p class="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10 font-normal text-pretty">
-                Run surveys, A/B prototype tests, card sorts, tree tests, and first-click tests. 
-                Built for researchers and product teams who need statistical rigor, zero tracking, and complete data ownership.
+        <div class="flex flex-none items-center gap-2 sm:gap-3">
+            {% include "_theme_toggle.html" %}
+            {% if user %}
+            <a href="{{ url_for('public.dashboard') }}"
+               class="inline-flex min-h-11 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700">
+                Dashboard
+            </a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}"
+               class="hidden min-h-11 items-center rounded-xl px-3 text-sm font-medium text-ink-muted transition-colors hover:text-ink sm:inline-flex">
+                Log in
+            </a>
+            {#- The same words as the hero button, because they go to the same place: two labels for
+                one destination read as two different offers and cost a beat of deciding.
+
+                It also starts as an outline. While the hero is on screen there is one filled brand
+                button in the viewport, not two competing for the same click; once the hero CTA
+                scrolls away this one takes over as the primary. -#}
+            <a href="{{ url_for('auth.signup') }}" id="nav-cta"
+               class="inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-line bg-card px-3 text-[13px] font-semibold text-ink shadow-sm transition-colors hover:bg-surface-subtle sm:px-4 sm:text-sm">
+                Create a free account
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+<main>
+{#- ---------------------------------------------------------------- hero -#}
+<section class="relative overflow-hidden px-6 pb-20 pt-16 sm:pt-24">
+    <div class="mx-auto max-w-4xl text-center">
+        {#- The pill sits directly above the H1, so anything coloured in it takes the eye's first
+            fixation off the headline. It keeps its shape and loses the accent. -#}
+        <a href="{{ url_for('public.docs', page='statistics') }}"
+           class="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-1.5 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink">
+            <span class="font-semibold text-ink">New</span>
+            Sign tests and three-state verdicts
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </a>
+
+        <h1 class="mt-7 text-pretty text-[2.75rem] font-extrabold leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-[4.25rem]">
+            Know what your users<br class="hidden sm:inline"> actually do.
+        </h1>
+
+        <p class="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-ink-muted sm:text-xl">
+            Run surveys, A/B prototype tests, card sorts, tree tests and first-click tests from one
+            place. Open source, self-hostable, and honest about what the numbers can and cannot
+            tell you.
+        </p>
+
+        {#- Goal gradient. A bare button hands the visitor a blank four-field form on another page
+            with nothing invested, and nothing invested is nothing to lose by closing the tab.
+            Typing an address here is one field of the signup already done, and the form arrives
+            with it filled in and the first step of its rail ticked off. The field is optional:
+            submitting it empty is the same plain link to /signup it always was. -#}
+        <form method="get" action="{{ url_for('auth.signup') }}"
+              class="mx-auto mt-9 flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row">
+            <label for="hero-email" class="sr-only">Work email</label>
+            <input id="hero-email" name="email" type="email" autocomplete="email"
+                   placeholder="you@company.com"
+                   class="min-h-[3.25rem] w-full flex-1 rounded-xl border border-line bg-card px-4 text-base text-ink placeholder:text-ink-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/40">
+            <button type="submit"
+                    class="inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-600 px-6 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto">
+                Create a free account
+            </button>
+        </form>
+
+        {#- The demo is a real second path, not a second primary. It drops to a text link with an
+            icon: still an obvious target, no longer the same visual weight as the button that
+            finishes the job. -#}
+        <p class="mt-5 text-sm text-ink-subtle">
+            No credit card. MIT licensed. Self-host it and we never see your data.
+        </p>
+        <a href="{{ url_for('web.home', slug='example') }}"
+           class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
+            <i class="fa-solid fa-play text-[10px]"></i>
+            Or try the demo study first — no account needed
+        </a>
+    </div>
+
+    {#- Product shot: a real report, using the verdict vocabulary the app actually prints. -#}
+    <div class="mx-auto mt-16 max-w-5xl">
+        <div class="overflow-hidden rounded-2xl border border-line bg-card shadow-xl shadow-slate-900/5 dark:shadow-black/40">
+            <div class="flex items-center gap-2 border-b border-line bg-surface-subtle px-4 py-3">
+                <span class="size-2.5 rounded-full bg-red-400"></span>
+                <span class="size-2.5 rounded-full bg-amber-400"></span>
+                <span class="size-2.5 rounded-full bg-emerald-400"></span>
+                <span class="mx-auto rounded-md border border-line bg-card px-3 py-1 font-mono text-[11px] text-ink-subtle">
+                    uxtestbench.org/s/events-ab/
+                </span>
+            </div>
+
+            <div class="grid gap-4 p-4 sm:p-6 md:grid-cols-3">
+                <div class="rounded-xl border border-line bg-surface-subtle p-5 text-left">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Variant A · control</p>
+                    <p class="mt-2 text-3xl font-bold tabular-nums text-ink">68.4%</p>
+                    <p class="mt-1 text-xs text-ink-muted">Task completion · 95% CI 58–77%</p>
+                    <div class="mt-4 flex justify-between border-t border-line pt-3 text-[11px] tabular-nums text-ink-subtle">
+                        <span>Median 42s</span><span>4.2 clicks</span>
+                    </div>
+                </div>
+
+                <div class="relative rounded-xl border border-brand-500/40 bg-brand-50 p-5 text-left dark:bg-brand-950/40">
+                    <span class="absolute right-4 top-4 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-200">
+                        +24.7%
+                    </span>
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">Variant B · filter bar</p>
+                    <p class="mt-2 text-3xl font-bold tabular-nums text-ink">93.1%</p>
+                    <p class="mt-1 text-xs text-ink-muted">Task completion · 95% CI 85–97%</p>
+                    {#- The p-value was here and again in the Decision card two columns over. One
+                        reading of it is enough, and dropping it lets this row mirror the control
+                        card exactly, so the eye compares like with like instead of re-parsing a
+                        different pair of figures. -#}
+                    <div class="mt-4 flex justify-between border-t border-brand-500/20 pt-3 text-[11px] font-medium tabular-nums text-brand-700 dark:text-brand-400">
+                        <span>Median 19s</span><span>2.8 clicks</span>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-line bg-surface-subtle p-5 text-left">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Decision</p>
+                    <p class="mt-2 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                        <i class="fa-solid fa-circle-check"></i> Evidence for the challenger
+                    </p>
+                    <p class="mt-2 text-xs leading-relaxed text-ink-muted">
+                        Sign test over 34 paired participants, p&nbsp;=&nbsp;0.004. Faster and more often
+                        completed. Not proof, but enough to act on.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{#- ---------------------------------------------------------------- methods -#}
+<section id="methods" class="scroll-mt-24 border-y border-line bg-surface-subtle px-6 py-20 sm:py-28">
+    <div class="mx-auto max-w-7xl">
+        <div class="max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Research toolkit</p>
+            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                Five methods, one participant session.
+            </h2>
+            <p class="mt-4 text-pretty text-lg leading-relaxed text-ink-muted">
+                Chain a screener, a card sort, a prototype task and an exit survey into a single link.
+                No plugins, and nothing for a participant to install.
             </p>
+        </div>
 
-            <!-- Main CTAs -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                {% if user %}
-                    <a href="{{ url_for('public.dashboard') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg transition-colors text-base">
-                        <i class="fa-solid fa-layer-group"></i> Open Dashboard
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('auth.signup') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold px-8 py-4 rounded-2xl shadow-lg transition-colors text-base">
-                        <i class="fa-solid fa-user-plus"></i> Create Free Account
-                    </a>
-                {% endif %}
-                
-                {% if has_example %}
-                    <a href="{{ url_for('web.home', slug='example') }}" target="_blank" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-white/10 hover:bg-white/15 text-white font-medium px-7 py-4 rounded-2xl border border-white/10 transition-all text-base backdrop-blur-md">
-                        <i class="fa-solid fa-play text-brand-400"></i> Try Demo Study
-                    </a>
-                    <a href="/example/admin/" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 text-slate-400 hover:text-white font-medium px-5 py-4 rounded-2xl transition-all text-sm">
-                        <i class="fa-solid fa-chart-pie"></i> View Live Results
-                    </a>
-                {% endif %}
+        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {% for m in [
+                {'icon': 'fa-list-check', 'name': 'Surveys and screeners',
+                 'desc': 'Likert scales, multi-choice, matrices and open text, with conditional skip logic.',
+                 'use': 'Qualifying participants, satisfaction, discovery.'},
+                {'icon': 'fa-code-compare', 'name': 'A/B prototype tests',
+                 'desc': 'Serve two HTML prototypes and record time on task, success, first click and click path.',
+                 'use': 'Choosing between two designs before build.'},
+                {'icon': 'fa-table-cells-large', 'name': 'Card sorting',
+                 'desc': 'Open, closed or hybrid sorts, with similarity matrices and dendrograms.',
+                 'use': 'Naming and grouping navigation.'},
+                {'icon': 'fa-sitemap', 'name': 'Tree testing',
+                 'desc': 'Text-only hierarchies measuring directness, success and backtracking.',
+                 'use': 'Finding where people get lost in a menu.'},
+                {'icon': 'fa-bullseye', 'name': 'First-click tests',
+                 'desc': 'Static mockups with click heatmaps and first-click success.',
+                 'use': 'Checking whether the hierarchy reads.'},
+            ] %}
+            <div class="group rounded-2xl border border-line bg-card p-6 transition-colors hover:border-brand-500/50">
+                <span class="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
+                    <i class="fa-solid {{ m.icon }}"></i>
+                </span>
+                <h3 class="mt-5 text-base font-bold text-ink">{{ m.name }}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ m.desc }}</p>
+                <p class="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
+                    <span class="font-semibold text-ink-muted">Use it for</span> · {{ m.use }}
+                </p>
             </div>
+            {% endfor %}
 
-            <!-- Preview Mockup Shell -->
-            <div class="relative max-w-4xl mx-auto rounded-3xl p-1 bg-white/10 shadow-2xl">
-                <div class="bg-[#0F172A] rounded-[22px] border border-white/10 overflow-hidden shadow-inner">
-                    <!-- Browser Chrome -->
-                    <div class="h-10 bg-slate-900/90 border-b border-white/10 px-4 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="size-3 rounded-full bg-rose-500/80"></span>
-                            <span class="size-3 rounded-full bg-amber-500/80"></span>
-                            <span class="size-3 rounded-full bg-emerald-500/80"></span>
-                        </div>
-                        <div class="bg-black/40 rounded-lg px-4 py-1 text-xs text-slate-400 font-mono flex items-center gap-2 border border-white/5">
-                            <i class="fa-solid fa-lock text-[10px] text-emerald-400"></i>
-                            https://uxtestbench.org/s/events-ab/
-                        </div>
-                        <div class="text-xs text-slate-500 font-mono">200 OK</div>
-                    </div>
-                    <!-- Mockup Content -->
-                    <div class="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                        <div class="bg-slate-800/60 border border-white/10 rounded-2xl p-5">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-brand-400 block mb-2">Variant A (Control)</span>
-                            <div class="text-2xl font-bold text-white mb-1">68.4%</div>
-                            <p class="text-xs text-slate-400">Task completion (95% CI: [58.2%, 77.1%])</p>
-                            <div class="mt-4 pt-3 border-t border-white/5 text-[11px] text-slate-500 flex justify-between">
-                                <span>Median: 42s</span>
-                                <span>Clicks: 4.2</span>
-                            </div>
-                        </div>
-                        <div class="bg-brand-950/40 border border-brand-500/30 rounded-2xl p-5 relative overflow-hidden">
-                            <span class="absolute top-3 right-3 text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">+24.7%</span>
-                            <span class="text-xs font-semibold uppercase tracking-wider text-brand-300 block mb-2">Variant B (Filter Bar)</span>
-                            <div class="text-2xl font-bold text-white mb-1">93.1%</div>
-                            <p class="text-xs text-slate-400">Task completion (95% CI: [85.7%, 97.2%])</p>
-                            <div class="mt-4 pt-3 border-t border-brand-500/20 text-[11px] text-brand-300 flex justify-between font-medium">
-                                <span>Median: 19s (-54%)</span>
-                                <span>p = 0.004</span>
-                            </div>
-                        </div>
-                        <div class="bg-slate-800/60 border border-white/10 rounded-2xl p-5 flex flex-col justify-between">
-                            <div>
-                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-2">Decision</span>
-                                <div class="text-sm font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-circle-check"></i> Evidence for the challenger
-                                </div>
-                                <p class="text-xs text-slate-400">
-                                    Sign test over 34 paired participants, p&nbsp;=&nbsp;0.004. Faster and more
-                                    often completed. Not proof, but enough to act on.
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <a href="/example/admin/" class="text-xs text-brand-400 hover:underline">Inspect details &rarr;</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {#- The heading says five and the grid used to hold six, because multi-module journeys
+                was filed as a sixth method. It is not one: it is what you do with the other five.
+                Counting it broke the promise in the heading one card later, on a page whose whole
+                argument is that the numbers are honest. It keeps its place in the row, stated as
+                the composition it is. -#}
+            <div class="rounded-2xl border border-dashed border-line bg-surface-subtle p-6">
+                <span class="grid size-11 place-items-center rounded-xl border border-line bg-card text-ink-muted">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </span>
+                <h3 class="mt-5 text-base font-bold text-ink">…and any of them chained</h3>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">
+                    Prerequisites and audience rules decide who sees which module, and when.
+                </p>
+                <p class="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
+                    <span class="font-semibold text-ink-muted">Use it for</span> · One study instead of four.
+                </p>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Methods Grid Section -->
-    <section id="methods" class="py-24 bg-[#0B101D] border-t border-white/5">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <span class="text-xs font-bold uppercase tracking-widest text-brand-400 block mb-3">Modular Research Toolkit</span>
-                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4 text-balance">
-                    Five research methods in one engine.
-                </h2>
-                <p class="text-slate-400 text-base">
-                    Combine multiple methods in a single participant journey, or run targeted standalone studies.
+{#- ---------------------------------------------------------------- how it works -#}
+<section id="how" class="scroll-mt-24 px-6 py-20 sm:py-28">
+    <div class="mx-auto max-w-7xl">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">How it works</p>
+            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                From idea to evidence in an afternoon.
+            </h2>
+        </div>
+
+        <ol class="mt-14 grid gap-10 md:grid-cols-3">
+            {% for s in [
+                {'n': '01', 'title': 'Write the study',
+                 'body': 'Use the Studio in your browser, or edit the YAML directly and keep it in
+                          version control. A scratch copy is validated before anything goes live, so
+                          a typo cannot take a running study down.'},
+                {'n': '02', 'title': 'Share one link',
+                 'body': 'Participants join with a code, an email address, or anonymously. It works
+                          on a phone, needs no account and no install, and they can stop and resume.'},
+                {'n': '03', 'title': 'Read the result',
+                 'body': 'Reports arrive with confidence intervals, a sign test and a verdict that is
+                          allowed to say "not enough evidence yet". Export the raw rows as CSV whenever
+                          you want them.'},
+            ] %}
+            <li class="relative">
+                <span class="font-mono text-sm font-bold text-brand-600 dark:text-brand-400">{{ s.n }}</span>
+                <h3 class="mt-3 text-xl font-bold text-ink">{{ s.title }}</h3>
+                <p class="mt-3 text-pretty leading-relaxed text-ink-muted">{{ s.body }}</p>
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+</section>
+
+{#- ---------------------------------------------------------------- statistics -#}
+<section class="border-y border-line bg-surface-subtle px-6 py-20 sm:py-28">
+    <div class="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Statistical honesty</p>
+            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                A tool that will tell you it does not know.
+            </h2>
+            <p class="mt-5 text-pretty text-lg leading-relaxed text-ink-muted">
+                Most testing tools run a t-test on eight participants and print a winner. Task times
+                are not normally distributed and eight people are not a sample, so that number is
+                theatre.
+            </p>
+            <p class="mt-4 text-pretty leading-relaxed text-ink-muted">
+                UX Testbench uses an exact sign test, bootstrapped intervals, and a verdict with three
+                states instead of two. Every verdict shows its p-value and how many paired participants
+                it rests on.
+            </p>
+            <a href="{{ url_for('public.docs', page='statistics') }}"
+               class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400">
+                Read how the maths works <i class="fa-solid fa-arrow-right text-[11px]"></i>
+            </a>
+        </div>
+
+        <div class="space-y-3">
+            {% for v in [
+                {'tone': 'text-emerald-600 dark:text-emerald-400', 'icon': 'fa-circle-check',
+                 'label': 'Evidence for the challenger', 'note': 'p = 0.004 over 34 pairs'},
+                {'tone': 'text-amber-600 dark:text-amber-400', 'icon': 'fa-circle-question',
+                 'label': 'Not enough evidence yet', 'note': 'p = 0.21 over 9 pairs — keep collecting'},
+                {'tone': 'text-red-600 dark:text-red-400', 'icon': 'fa-circle-xmark',
+                 'label': 'Evidence against the challenger', 'note': 'p = 0.012 over 28 pairs'},
+            ] %}
+            <div class="flex items-start gap-4 rounded-xl border border-line bg-card p-5">
+                <i class="fa-solid {{ v.icon }} mt-0.5 {{ v.tone }}"></i>
+                <div>
+                    <p class="font-semibold text-ink">{{ v.label }}</p>
+                    <p class="mt-0.5 text-sm tabular-nums text-ink-muted">{{ v.note }}</p>
+                </div>
+            </div>
+            {% endfor %}
+            <p class="pt-2 text-sm text-ink-subtle">
+                The middle one is the state most tools refuse to show you.
+            </p>
+        </div>
+    </div>
+</section>
+
+{#- ---------------------------------------------------------------- privacy -#}
+<section id="trust" class="scroll-mt-24 px-6 py-20 sm:py-28">
+    <div class="mx-auto max-w-7xl">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Privacy first</p>
+            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                Your research belongs to you.
+            </h2>
+            <p class="mt-4 text-pretty text-lg leading-relaxed text-ink-muted">
+                No participant panel resold, no model trained on your data, and no analytics script
+                following the people who help you.
+            </p>
+        </div>
+
+        <div class="mt-12 grid gap-5 md:grid-cols-3">
+            {% for t in [
+                {'icon': 'fa-database', 'title': 'One database per study',
+                 'body': 'Every study gets its own SQLite file. Archiving one is copying a file; deleting one leaves nothing behind.'},
+                {'icon': 'fa-ban', 'title': 'No third-party requests',
+                 'body': 'Run with LOCAL_ASSETS=1 and participant pages load nothing from a CDN, so no participant IP reaches anyone else.'},
+                {'icon': 'fa-scale-balanced', 'title': 'MIT licensed',
+                 'body': 'Self-host it forever, for free, on your own machine. No seat count and no feature held back.'},
+            ] %}
+            <div class="rounded-2xl border border-line bg-card p-6">
+                <span class="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
+                    <i class="fa-solid {{ t.icon }}"></i>
+                </span>
+                <h3 class="mt-5 text-base font-bold text-ink">{{ t.title }}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ t.body }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        {#- Self-host terminal -#}
+        <div class="mx-auto mt-12 max-w-3xl overflow-hidden rounded-2xl border border-line bg-slate-950">
+            <div class="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+                <span class="size-2.5 rounded-full bg-red-400"></span>
+                <span class="size-2.5 rounded-full bg-amber-400"></span>
+                <span class="size-2.5 rounded-full bg-emerald-400"></span>
+                <span class="ml-2 font-mono text-[11px] text-slate-400">self-host in a minute</span>
+            </div>
+            <pre class="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed text-slate-300"><code><span class="text-slate-400"># clone, install, run</span>
+<span class="text-emerald-400">$</span> <span class="text-slate-300">git clone https://github.com/your-org/ux-testbench</span>
+<span class="text-emerald-400">$</span> <span class="text-slate-300">cd ux-testbench && pip install -r requirements.txt</span>
+<span class="text-emerald-400">$</span> <span class="text-slate-300">python -m testbench run</span>
+
+<span class="text-slate-400">  * Running on http://127.0.0.1:5000</span>
+<span class="text-slate-400">  * No database server, no container, no build step</span></code></pre>
+        </div>
+    </div>
+</section>
+
+{#- ---------------------------------------------------------------- final CTA -#}
+<section class="px-6 pb-24">
+    <div class="mx-auto max-w-5xl rounded-3xl border border-line bg-surface-subtle px-6 py-16 text-center sm:px-16">
+        <h2 class="text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Start your first study today.
+        </h2>
+        <p class="mx-auto mt-4 max-w-xl text-pretty text-lg leading-relaxed text-ink-muted">
+            Free while it is in beta, and free forever if you host it yourself.
+        </p>
+        {#- Same shape as the hero, for the same reason: one filled button, and the alternative
+            route demoted to a link rather than a second slab of equal weight. -#}
+        <div class="mt-8 flex flex-col items-center justify-center gap-4">
+            <a href="{{ url_for('auth.signup') }}"
+               class="inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-xl bg-brand-600 px-8 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto">
+                Create a free account
+            </a>
+            <a href="{{ url_for('public.explore') }}"
+               class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-card hover:text-ink">
+                Or browse what other teams have published
+                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+            </a>
+        </div>
+    </div>
+</section>
+</main>
+
+{#- ---------------------------------------------------------------- footer -#}
+<footer class="border-t border-line bg-surface-subtle px-6 py-14">
+    <div class="mx-auto max-w-7xl">
+        <div class="grid gap-10 md:grid-cols-4">
+            <div class="md:col-span-1">
+                <div class="flex items-center gap-2.5">
+                    <span class="grid size-8 place-items-center rounded-lg bg-brand-600 text-white">
+                        <i class="fa-solid fa-flask-vial text-xs"></i>
+                    </span>
+                    <span class="font-bold tracking-tight text-ink">UX Testbench</span>
+                </div>
+                <p class="mt-4 max-w-xs text-pretty text-sm leading-relaxed text-ink-muted">
+                    Open-source usability testing and behavioural research, for teams who would rather
+                    know than guess.
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Method 1: Survey -->
-                <div class="bg-slate-900/70 border border-white/10 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-list-check"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">Survey & Screener</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                            Screener questions, Likert scales, multi-choice, and open-ended feedback with conditional skip logic.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/5 text-xs text-slate-500">
-                        <strong class="text-slate-300">When to use:</strong> Participant qualification, satisfaction ratings (CSAT/NPS), and qualitative discovery.
-                    </div>
-                </div>
-
-                <!-- Method 2: A/B Prototype Test -->
-                <div class="bg-slate-900/70 border border-brand-500/20 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-code-compare"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">A/B Prototype Testing</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                            Embed real HTML or Figma prototypes side-by-side. Track time-on-task, clickpaths, success rates, and single-ease questions.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/5 text-xs text-slate-500">
-                        <strong class="text-slate-300">When to use:</strong> Validating design revisions before engineering handoff with rigorous metrics.
-                    </div>
-                </div>
-
-                <!-- Method 3: Card Sort -->
-                <div class="bg-slate-900/70 border border-white/10 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-layer-group"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">Card Sorting</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                            Open, closed, or hybrid card sorts with responsive drag-and-drop. Generates similarity matrices and hierarchical cluster dendrograms.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/5 text-xs text-slate-500">
-                        <strong class="text-slate-300">When to use:</strong> Structuring navigation menus, content taxonomies, and feature categorization.
-                    </div>
-                </div>
-
-                <!-- Method 4: Tree Test -->
-                <div class="bg-slate-900/70 border border-white/10 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-sitemap"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">Tree Testing</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                            Evaluate text-only information hierarchies. Measure directness, success rate, and path backtracking without visual distraction.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/5 text-xs text-slate-500">
-                        <strong class="text-slate-300">When to use:</strong> Validating menu structures and finding exactly where participants get lost.
-                    </div>
-                </div>
-
-                <!-- Method 5: First-Click Test -->
-                <div class="bg-slate-900/70 border border-white/10 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-crosshairs"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">First-Click Testing</h3>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                            Upload static mockups and measure where users click first. First-click success correlates directly with end-to-end task completion.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/5 text-xs text-slate-500">
-                        <strong class="text-slate-300">When to use:</strong> Checking visual hierarchy, banner efficacy, and initial navigation instinct.
-                    </div>
-                </div>
-
-                <!-- Method 6: Journey & Combinations -->
-                <div class="bg-brand-900/30 border border-brand-500/30 rounded-2xl p-6 card-hover flex flex-col justify-between">
-                    <div>
-                        <div class="size-12 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center text-xl mb-5">
-                            <i class="fa-solid fa-route"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2 text-balance">Multi-Module Journeys</h3>
-                        <p class="text-slate-300 text-sm leading-relaxed mb-4">
-                            Chain screeners, card sorts, interactive prototype tasks, and exit interviews into one participant session.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-white/10 text-xs text-brand-300 font-medium">
-                        Flexible prerequisite rules and audience targeting included.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works Section -->
-    <section id="how-it-works" class="py-24 bg-[#090D16] border-t border-white/5">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <span class="text-xs font-bold uppercase tracking-widest text-brand-400 block mb-3">Workflow</span>
-                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4 text-balance">
-                    Three steps to dependable research results.
-                </h2>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-                <!-- Step 1 -->
-                <div class="bg-slate-900/50 border border-white/10 rounded-2xl p-8 relative">
-                    <span class="text-4xl font-extrabold text-white/10 absolute top-6 right-6">01</span>
-                    <div class="size-10 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center mb-6">
-                        <i class="fa-solid fa-pen-ruler"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2.5 text-balance">Configure or Import</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                        Use the web-based Studio or edit human-readable YAML files with version control. Scaffold studies from templates in seconds.
-                    </p>
-                    <a href="{{ url_for('public.docs', page='configuration') }}" class="text-xs text-brand-400 hover:underline">Learn config schema &rarr;</a>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="bg-slate-900/50 border border-white/10 rounded-2xl p-8 relative">
-                    <span class="text-4xl font-extrabold text-white/10 absolute top-6 right-6">02</span>
-                    <div class="size-10 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center mb-6">
-                        <i class="fa-solid fa-share-nodes"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2.5 text-balance">Share Link With Participants</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                        Participants open a clean, mobile-responsive web link. Support for anonymous tokens, employee email verification, or invite codes.
-                    </p>
-                    <span class="text-xs text-slate-500">Zero app installs or plugins required</span>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="bg-slate-900/50 border border-white/10 rounded-2xl p-8 relative">
-                    <span class="text-4xl font-extrabold text-white/10 absolute top-6 right-6">03</span>
-                    <div class="size-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6">
-                        <i class="fa-solid fa-square-poll-vertical"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2.5 text-balance">Analyze Sound Statistics</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
-                        Inspect Wilson confidence intervals, Bayesian probability of superiority, task duration percentiles, and 1-click UTF-8 CSV exports.
-                    </p>
-                    <a href="{{ url_for('public.docs', page='statistics') }}" class="text-xs text-emerald-400 hover:underline">Read statistics documentation &rarr;</a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Trust & Open Source Section -->
-    <section class="py-20 bg-[#0B101D] border-t border-white/5">
-        <div class="max-w-5xl mx-auto px-6">
-            <div class="bg-slate-900/80 border border-white/10 rounded-3xl p-8 sm:p-12 shadow-xl">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                    <div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400 block mb-2">Ethics & Architecture</span>
-                        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4 text-balance">
-                            You own your research data. Completely.
-                        </h2>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-6">
-                            Unlike commercial testing platforms that train proprietary models or resell participant panels, UX Testbench is built for complete privacy and isolation.
-                        </p>
-                        <div class="space-y-3 text-sm text-slate-300">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-database text-brand-400"></i>
-                                <span><strong>SQLite-per-project:</strong> Each study has an isolated database file.</span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-ban text-rose-400"></i>
-                                <span><strong>No Third-Party Trackers:</strong> Zero ad scripts, zero tracking pixels.</span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <i class="fa-solid fa-code text-brand-400"></i>
-                                <span><strong>MIT Licensed:</strong> Self-host on your own infrastructure forever.</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-black/50 border border-white/10 rounded-2xl p-6 font-mono text-xs text-slate-300">
-                        <div class="text-slate-500 mb-2"># Quick Self-Host in 1 minute</div>
-                        <div class="text-brand-400 mb-1">$ git clone https://github.com/your-org/ux-testbench</div>
-                        <div class="text-slate-400 mb-1">$ cd ux-testbench</div>
-                        <div class="text-slate-400 mb-1">$ python -m venv .venv &amp;&amp; source .venv/bin/activate</div>
-                        <div class="text-slate-400 mb-3">$ pip install -e .</div>
-                        <div class="text-emerald-400">$ python -m testbench run</div>
-                        <div class="mt-4 pt-3 border-t border-white/10 text-slate-500 flex justify-between">
-                            <span>Ready on http://localhost:5000</span>
-                            <span class="text-brand-400">Zero Docker needed</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="bg-[#05070D] border-t border-white/5 py-14 text-sm text-slate-500">
-        <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-            <div class="col-span-2">
-                <a href="/" class="flex items-center gap-2.5 mb-3 text-white font-bold text-base">
-                    <i class="fa-solid fa-shapes text-brand-400"></i> UX Testbench
-                </a>
-                <p class="text-xs text-slate-500 leading-relaxed max-w-sm mb-4">
-                    Open-source usability testing and behavioral research bench for ethical designers and product teams.
-                </p>
-                <div class="flex items-center gap-4 text-slate-400 text-base">
-                    <a href="https://github.com" target="_blank" class="hover:text-white"><i class="fa-brands fa-github"></i></a>
-                    <a href="{{ url_for('public.about') }}" class="hover:text-white"><i class="fa-solid fa-info-circle"></i></a>
-                    <a href="{{ url_for('public.report') }}" class="hover:text-rose-400" title="Report Abuse"><i class="fa-solid fa-flag"></i></a>
-                </div>
-            </div>
-
+            {% for col in [
+                {'title': 'Product', 'links': [
+                    ('Methods', '#methods'), ('How it works', '#how'),
+                    ('Demo study', url_for('web.home', slug='example')),
+                    ('Public studies', url_for('public.explore'))]},
+                {'title': 'Resources', 'links': [
+                    ('Documentation', url_for('public.docs')),
+                    ('Statistics guide', url_for('public.docs', page='statistics')),
+                    ('Configuration', url_for('public.docs', page='configuration')),
+                    ('About', url_for('public.about'))]},
+                {'title': 'Legal', 'links': [
+                    ('Privacy policy', url_for('public.privacy')),
+                    ('Terms of service', url_for('public.terms')),
+                    ('Report abuse', url_for('public.report'))]},
+            ] %}
             <div>
-                <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-3">Product</h4>
-                <ul class="space-y-2 text-xs">
-                    <li><a href="#methods" class="hover:text-white">Methods</a></li>
-                    <li><a href="{{ url_for('web.home', slug='example') }}" class="hover:text-white">Live Demo</a></li>
-                    <li><a href="{{ url_for('public.explore') }}" class="hover:text-white">Public Studies</a></li>
-                    <li><a href="{{ url_for('public.dashboard') }}" class="hover:text-white">Studio</a></li>
+                <p class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ col.title }}</p>
+                <ul class="mt-4 space-y-2.5 text-sm">
+                    {% for label, href in col.links %}
+                    <li><a href="{{ href }}" class="text-ink-muted transition-colors hover:text-ink">{{ label }}</a></li>
+                    {% endfor %}
                 </ul>
             </div>
-
-            <div>
-                <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-3">Resources</h4>
-                <ul class="space-y-2 text-xs">
-                    <li><a href="{{ url_for('public.docs', page='configuration') }}" class="hover:text-white">Configuration</a></li>
-                    <li><a href="{{ url_for('public.docs', page='statistics') }}" class="hover:text-white">Statistics Guide</a></li>
-                    <li><a href="{{ url_for('public.about') }}" class="hover:text-white">About & Team</a></li>
-                </ul>
-            </div>
-
-            <div>
-                <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-300 mb-3">Legal & Trust</h4>
-                <ul class="space-y-2 text-xs">
-                    <li><a href="{{ url_for('public.privacy') }}" class="hover:text-white">Privacy Policy</a></li>
-                    <li><a href="{{ url_for('public.terms') }}" class="hover:text-white">Terms of Use</a></li>
-                    <li><a href="{{ url_for('public.report') }}" class="hover:text-rose-400">Report Abuse</a></li>
-                </ul>
-            </div>
+            {% endfor %}
         </div>
 
-        <div class="max-w-7xl mx-auto px-6 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
-            <div>
-                &copy; 2026 UX Testbench Project · Released under the MIT License.
-            </div>
-            <div class="flex items-center gap-4 text-slate-500">
-                <span class="hover:text-slate-300 cursor-pointer"><i class="fa-solid fa-globe mr-1"></i> English</span>
-                <span>·</span>
-                <span class="hover:text-slate-300 cursor-pointer">Bahasa Indonesia</span>
-            </div>
+        <div class="mt-12 flex flex-col items-center justify-between gap-3 border-t border-line pt-6 text-xs text-ink-subtle sm:flex-row">
+            <p>© 2026 UX Testbench. Released under the MIT licence.</p>
+            <p>Built with Flask, SQLite and Tailwind CSS.</p>
         </div>
-    </footer>
+    </div>
+</footer>
+
+{#- One primary at a time. The nav button is an outline while the hero form is on screen, and
+    becomes the filled brand button once that form scrolls away, so the page never shows two
+    equally weighted routes to /signup at the same moment.
+
+    Progressive enhancement: with no JavaScript, or no IntersectionObserver, the nav button stays
+    an outline and the hero form keeps the filled one. That is the safe end of the trade. -#}
+<script>
+    (function () {
+        var cta = document.getElementById('nav-cta');
+        var hero = document.getElementById('hero-email');
+        if (!cta || !hero || !('IntersectionObserver' in window)) return;
+
+        var outline = ['border', 'border-line', 'bg-card', 'text-ink', 'hover:bg-surface-subtle'];
+        var filled = ['bg-brand-600', 'text-white', 'hover:bg-brand-700'];
+
+        new IntersectionObserver(function (entries) {
+            var heroVisible = entries[0].isIntersecting;
+            cta.classList.toggle('border', heroVisible);
+            outline.forEach(function (c) { cta.classList.toggle(c, heroVisible); });
+            filled.forEach(function (c) { cta.classList.toggle(c, !heroVisible); });
+        }, { rootMargin: '-72px 0px 0px 0px' }).observe(hero);
+    })();
+</script>
 
 </body>
 </html>

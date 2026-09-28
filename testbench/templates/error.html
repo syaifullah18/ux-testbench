@@ -2,15 +2,15 @@
 {% block title %}{{ title }}{% endblock %}
 {% block width %}max-w-lg{% endblock %}
 {% block content %}
-<div class="my-12 sm:my-20 text-center bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-sm">
-    <div class="size-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-bold">
+<div class="my-12 sm:my-20 text-center bg-card border border-line rounded-3xl p-8 sm:p-10 shadow-sm">
+    <div class="size-16 bg-surface-subtle text-ink-subtle rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl font-bold">
         {{ code }}
     </div>
-    <h1 class="text-2xl font-bold text-slate-900 mb-2 text-balance">{{ title }}</h1>
-    <p class="text-slate-600 text-[15px] leading-relaxed mb-6 text-pretty">{{ message }}</p>
-    <a href="/" class="text-sm font-semibold text-brand underline">Back to the home page</a>
+    <h1 class="text-2xl font-bold text-ink mb-2 text-balance">{{ title }}</h1>
+    <p class="text-ink-muted text-[15px] leading-relaxed mb-6 text-pretty">{{ message }}</p>
+    <a href="/" class="text-sm font-semibold text-brand-600 dark:text-brand-400 underline">Back to the home page</a>
     {% if request_id %}
-    <p class="text-[11px] text-slate-400 mt-6">Reference: <code>{{ request_id }}</code></p>
+    <p class="text-[11px] text-ink-subtle mt-6">Reference: <code>{{ request_id }}</code></p>
     {% endif %}
 </div>
 {% endblock %}

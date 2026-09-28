@@ -1,31 +1,48 @@
+{#- The shared controls. Two rules hold across all of them.
+
+    Size: every interactive control is at least 44px tall (`min-h-11`), which is the smallest
+    target a thumb hits reliably. `py-2.5` on a 15px font lands around 38px, which reads fine on
+    a desktop mouse and misses on a phone — and participants answer on phones.
+
+    Weight: there is exactly one primary style, and it is the brand colour. A screen with a brand
+    button and a near-black button is a screen with two primaries, and the eye has to work out
+    which one finishes the task. `secondary` is the outline, `ghost` is the text-only escape
+    hatch for cancel-shaped actions that should not look clickable-important at all. -#}
+
 {% macro button(label, icon=None, type='submit', name=None, value=None, style='primary', cls='') -%}
 <button type="{{ type }}" {% if name %}name="{{ name }}" value="{{ value }}"{% endif %}
-        class="inline-flex items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 focus:outline-none focus:ring-4 focus:ring-brand/30
-               {% if style == 'primary' %}text-white bg-brand hover:bg-brand/90{% elif style == 'danger' %}text-white bg-red-600 hover:bg-red-700{% else %}border border-slate-300 text-slate-800 hover:bg-slate-50{% endif %} {{ cls }}">
+        class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 transition-colors focus:outline-none focus:ring-4 focus:ring-brand/30
+               {% if style == 'primary' %}text-white bg-brand-600 hover:bg-brand-700
+               {% elif style == 'danger' %}text-white bg-red-600 hover:bg-red-700
+               {% elif style == 'ghost' %}text-ink-muted hover:text-ink hover:bg-surface-subtle
+               {% else %}border border-line bg-card text-ink hover:bg-surface-subtle{% endif %} {{ cls }}">
     {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</button>
 {%- endmacro %}
 
-{% macro link_button(href, label, icon=None, style='primary') -%}
-<a href="{{ href }}" class="inline-flex items-center justify-center gap-2 font-semibold rounded-lg text-[14px] px-4 py-2 focus:outline-none focus:ring-4 focus:ring-brand/30
-   {% if style == 'primary' %}text-white bg-brand hover:bg-brand/90{% else %}border border-slate-300 text-slate-800 hover:bg-slate-50{% endif %}">
+{% macro link_button(href, label, icon=None, style='primary', cls='') -%}
+<a href="{{ href }}" class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[14px] px-4 py-2.5 transition-colors focus:outline-none focus:ring-4 focus:ring-brand/30
+   {% if style == 'primary' %}text-white bg-brand-600 hover:bg-brand-700
+   {% elif style == 'ghost' %}text-ink-muted hover:text-ink hover:bg-surface-subtle
+   {% else %}border border-line bg-card text-ink hover:bg-surface-subtle{% endif %} {{ cls }}">
    {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</a>
 {%- endmacro %}
 
 {% macro error_banner(errors, t) -%}
 {% if errors %}
-<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-red-800 rounded-lg bg-red-50 border border-red-300" role="alert">
+<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-red-800 rounded-lg bg-red-50 border border-red-300 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900" role="alert">
     <i class="fa-solid fa-circle-exclamation mt-1"></i><span>{{ t('error.banner') }}</span>
 </div>
 {% endif %}
 {%- endmacro %}
 
-{% macro input(id, label, type='text', value='', error=None, hint=None, placeholder='') -%}
+{% macro input(id, label, type='text', value='', error=None, hint=None, placeholder='', autocomplete='off', required=False) -%}
 <div>
-    <label for="{{ id }}" class="block mb-1.5 font-semibold text-slate-900">{{ label }}</label>
-    <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="off" {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+    <label for="{{ id }}" class="block mb-1.5 font-semibold text-ink">{{ label }}</label>
+    <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="{{ autocomplete }}"
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %} {% if required %}required{% endif %}
            {% if error or hint %}aria-describedby="{{ id }}-msg"{% endif %} {% if error %}aria-invalid="true"{% endif %}
-           class="{% if error %}bg-red-50 border-red-400{% else %}bg-white border-slate-400{% endif %} border rounded-lg block w-full px-3.5 py-2.5 text-slate-900 focus:ring-brand focus:border-brand">
-    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-red-700">{{ error }}</p>
-    {% elif hint %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-slate-500">{{ hint }}</p>{% endif %}
+           class="{% if error %}bg-red-50 border-red-400 dark:bg-red-950/30{% else %}bg-card border-line{% endif %} min-h-11 border rounded-lg block w-full px-3.5 py-2.5 text-ink placeholder:text-ink-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-red-700 dark:text-red-400">{{ error }}</p>
+    {% elif hint %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-ink-subtle">{{ hint }}</p>{% endif %}
 </div>
 {%- endmacro %}

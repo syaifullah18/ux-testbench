@@ -163,7 +163,39 @@ def test_the_two_tailwind_configs_define_the_same_tokens():
     root = Path(__file__).resolve().parent.parent
     head = (root / "testbench" / "templates" / "_head.html").read_text()
     config = (root / "tailwind.config.js").read_text()
-    for token in ("--brand-500", "--nav-rgb"):
-        assert token in head and token in config, token
-    for name in ("brand", "nav", "height"):
+
+    # Every colour name the templates can use has to exist in both builds.
+    for name in ("brand", "nav", "surface", "surface-subtle", "card", "line",
+                 "ink", "ink-muted", "ink-subtle", "height"):
         assert name in head and name in config, name
+
+    # Both builds switch theme on a class, so the toggle controls both.
+    assert "darkMode: 'class'" in head or 'darkMode: "class"' in head
+    assert 'darkMode: "class"' in config or "darkMode: 'class'" in config
+
+
+SURFACE_TOKENS = ("--surface", "--surface-subtle", "--card", "--line",
+                  "--ink", "--ink-muted", "--ink-subtle")
+
+
+def test_every_surface_token_has_both_themes(projects_dir, make_app):
+    """A token defined for one theme only is how a dark card ends up with black-on-black text.
+
+    This reads the rendered CSS rather than the template, because the template's brand values are
+    Jinja expressions and what matters is what the browser is actually served.
+    """
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    body = app.test_client().get("/").get_data(as_text=True)
+    light = body.split(":root {", 1)[1].split("}", 1)[0]
+    dark = body.split(".dark {", 1)[1].split("}", 1)[0]
+    for token in SURFACE_TOKENS:
+        assert f"{token}:" in light, f"{token} missing from the light theme"
+        assert f"{token}:" in dark, f"{token} missing from the dark theme"
+
+
+def test_the_theme_is_set_before_the_stylesheet_loads(projects_dir, make_app):
+    """Otherwise a dark-theme visitor gets a white flash on every page load."""
+    body = make_app(projects_dir, TESTBENCH_MODE="public").test_client().get("/").get_data(as_text=True)
+    script_at = body.index("tb-theme")
+    assert script_at < body.index("cdn.tailwindcss.com"), "theme script runs after the stylesheet"
+    assert "classList.toggle('dark'" in body

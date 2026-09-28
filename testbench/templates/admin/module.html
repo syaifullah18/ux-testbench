@@ -3,10 +3,10 @@
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-slate-900">{{ module.title }}</h1>
-        <p class="text-[14px] text-slate-500">{{ module.type }}{% if module.description %} · {{ module.description }}{% endif %}</p>
+        <h1 class="text-2xl font-bold text-ink">{{ module.title }}</h1>
+        <p class="text-[14px] text-ink-subtle">{{ module.type }}{% if module.description %} · {{ module.description }}{% endif %}</p>
     </div>
-    <a href="{{ url_for('admin.module_export', slug=project.slug, mid=module.id) }}" class="px-3 py-2 rounded-lg bg-brand text-white text-[14px] hover:bg-brand/90"><i class="fa-solid fa-download mr-1"></i>CSV</a>
+    <a href="{{ url_for('admin.module_export', slug=project.slug, mid=module.id) }}" class="min-h-11 inline-flex items-center justify-center px-3 rounded-lg bg-brand-600 text-white text-[14px] hover:bg-brand-700"><i class="fa-solid fa-download mr-1"></i>CSV</a>
 </div>
 {{ body }}
 {% endblock %}

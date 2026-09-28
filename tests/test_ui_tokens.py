@@ -54,3 +54,102 @@ def test_only_the_landing_page_defines_its_own_head():
         text = path.read_text(encoding="utf-8")
         if "cdn.tailwindcss.com" in text:
             assert path.name == "_head.html", f"{path.relative_to(ROOT)} loads Tailwind itself"
+
+
+def test_no_interpolated_utility_classes():
+    """A class built by string interpolation never appears in the source Tailwind scans, so the
+    compiled build purges it and the element silently loses its colour. Write full class names
+    into the data instead."""
+    bad = []
+    for path in TEMPLATES:
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for m in re.finditer(r'class="[^"]*?\b(?:text|bg|border|from|to|via)-\{\{', line):
+                bad.append(f"{path.relative_to(ROOT)}:{line_no} {m.group(0)[:60]}")
+    assert not bad, "interpolated class names get purged from the compiled build:\n  " + "\n  ".join(bad)
+
+
+def test_landing_page_uses_surface_tokens_not_hand_written_dark_variants():
+    """The tokens are what keep the two themes in step. A page that reaches for `dark:` on every
+    surface is how a dark card ends up with a `text-slate-900` heading nobody can read."""
+    landing = (ROOT / "testbench" / "templates" / "public" / "landing.html").read_text()
+    for token in ("bg-surface", "text-ink", "border-line", "bg-card"):
+        assert token in landing, f"landing page does not use {token}"
+    # A handful of genuine one-offs is fine; a hundred means the tokens are being bypassed.
+    assert landing.count("dark:") < 40, f"{landing.count('dark:')} dark: variants — use the tokens"
+
+
+# Everything below guards the surface tokens. The two themes are one set of markup driven by
+# `--surface`/`--ink`/`--line`, so a literal slate or white in a themed surface is not a style
+# choice — it is a page that stops flipping, and it shows up as unreadable text on the dark
+# theme rather than as anything that looks wrong in review.
+
+SLATE_RE = re.compile(r"\b(?:text|bg|border|divide|ring)-slate-\d{2,3}\b(?!/)")
+
+# The literal colours that survive on purpose, with the reason each one does.
+SLATE_ALLOWED = {
+    # The self-host terminal and the docs code blocks are a dark console in both themes.
+    ("public/landing.html", "bg-slate-950"),
+    ("public/landing.html", "text-slate-400"),
+    ("public/landing.html", "text-slate-300"),
+    ("public/landing.html", "shadow-slate-900/5"),
+    ("public/doc.html", "bg-slate-950"),
+    ("public/doc.html", "text-slate-200"),
+    # _head.html names the class in prose, as the example of what not to write.
+    ("_head.html", "text-slate-900"),
+}
+
+
+def test_no_literal_slate_outside_the_allowed_one_offs():
+    problems = []
+    for path in TEMPLATES:
+        rel = str(path.relative_to(ROOT / "testbench" / "templates"))
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in SLATE_RE.finditer(line):
+                if (rel, match.group(0)) in SLATE_ALLOWED:
+                    continue
+                problems.append(f"{rel}:{line_no} {match.group(0)}")
+    assert not problems, (
+        "literal slate colours do not flip with the theme — use the surface tokens:\n  "
+        + "\n  ".join(problems))
+
+
+def test_brand_utilities_name_a_step_that_exists():
+    """`bg-brand-dark` rendered as nothing for as long as it was in the admin dashboard. Only
+    `brand` itself and the numbered steps are defined."""
+    bad = []
+    suffix = re.compile(r"\b(?:text|bg|border|ring|divide|from|to|via)-brand-([a-z][a-z-]*)\b")
+    for path in TEMPLATES:
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in suffix.finditer(line):
+                bad.append(f"{path.relative_to(ROOT)}:{line_no} {match.group(0)}")
+    assert not bad, "brand utilities must use a numbered step:\n  " + "\n  ".join(bad)
+
+
+def test_translucent_overlays_stay_literal_white():
+    """`bg-white/10` on the coloured app bar is an overlay, not a themed surface. Swapping it for
+    `bg-card/10` makes the pill vanish on the dark theme, where card is already near-black."""
+    bad = []
+    for path in TEMPLATES:
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in re.finditer(r"\bbg-card/\d+\b", line):
+                bad.append(f"{path.relative_to(ROOT)}:{line_no} {match.group(0)}")
+    assert not bad, "a translucent overlay must stay bg-white/N:\n  " + "\n  ".join(bad)
+
+
+def test_state_tints_carry_their_state_into_the_dark_variant():
+    """`hover:bg-brand-50 dark:bg-brand-950` reads like a pair but is not one: the dark half has
+    no state, so it paints every card all the time and the selected answer stops being visible on
+    the dark theme. A bare `dark:` tint is only correct when a bare light one sits beside it."""
+    bare_dark = re.compile(r"(?<![:\w-])dark:bg-brand-(?:900|950)\b")
+    bare_light = re.compile(r"(?<![:\w-])bg-brand-(?:50|100)\b")
+    has_state = re.compile(r"(?<![:\w-])(?:hover|has-\[:checked\]):bg-brand-\d")
+
+    problems = []
+    for path in TEMPLATES:
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not has_state.search(line) or bare_light.search(line):
+                continue
+            for match in bare_dark.finditer(line):
+                problems.append(f"{path.relative_to(ROOT)}:{line_no} {match.group(0)}")
+    assert not problems, (
+        "a dark variant of a state tint must repeat the state:\n  " + "\n  ".join(problems))

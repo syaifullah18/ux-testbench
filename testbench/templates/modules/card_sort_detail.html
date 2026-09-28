@@ -1,4 +1,4 @@
-<div class="bg-white rounded shadow p-6 mb-6">
+<div class="bg-card rounded shadow p-6 mb-6">
     <h3 class="text-lg font-medium mb-4">Sorted Cards</h3>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -20,7 +20,7 @@
                 {% for cid in card_ids %}
                     {% for c in conf.cards %}
                         {% if c.id == cid %}
-                        <li class="bg-white p-2 border border-gray-200 rounded shadow-sm text-sm">
+                        <li class="bg-card p-2 border border-gray-200 rounded shadow-sm text-sm">
                             {{ c.label }}
                         </li>
                         {% endif %}
@@ -45,7 +45,7 @@
                 {% for cid in unsorted %}
                     {% for c in conf.cards %}
                         {% if c.id == cid %}
-                        <li class="bg-white p-2 border border-red-100 rounded shadow-sm text-sm text-red-700">
+                        <li class="bg-card p-2 border border-red-100 rounded shadow-sm text-sm text-red-700">
                             {{ c.label }}
                         </li>
                         {% endif %}

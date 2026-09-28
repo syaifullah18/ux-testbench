@@ -7,11 +7,15 @@
     {% include "_head.html" %}
     {% block head %}{% endblock %}
 </head>
-<body class="bg-white font-sans text-[15px] leading-relaxed text-slate-700 antialiased min-h-dvh flex flex-col {% block body_class %}{% endblock %}">
+<body class="theme-anim bg-surface font-sans text-[15px] leading-relaxed text-ink-muted antialiased min-h-dvh flex flex-col {% block body_class %}{% endblock %}">
     <nav class="bg-nav text-white flex-none">
         <div class="{% block width %}max-w-3xl{% endblock %} mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
+            {#- The wordmark is the way back to the top of whatever the visitor is in. When there is
+                no project it used to be inert text, which leaves a public visitor on a form with no
+                exit but the back button. -#}
             {% if project %}<a href="{{ url_for('web.home', slug=project.slug) }}" class="text-base font-bold tracking-wide">{{ project.name }}</a>
-            {% else %}<span class="text-base font-bold tracking-wide">UX Testbench</span>{% endif %}
+            {% else %}<a href="{{ url_for('web.index') }}" class="text-base font-bold tracking-wide">UX Testbench</a>{% endif %}
+            <div class="flex flex-none items-center gap-3">
             {% block nav_right %}
             {% if participant and not (ctx and ctx.admin) %}
             <span class="flex flex-none items-center gap-3 text-[13px]">
@@ -20,19 +24,36 @@
             </span>
             {% endif %}
             {% endblock %}
+            {#- A participant mid-task is not choosing a colour scheme, and the switch would only
+                compete with the task. Everywhere else it belongs in the chrome, so the choice made
+                on the landing page survives the click into the app. -#}
+            {% if not participant %}{% with toggle_on_nav = true %}{% include "_theme_toggle.html" %}{% endwith %}{% endif %}
+            </div>
         </div>
     </nav>
 
     {% if progress and not hide_progress %}
-    <div class="bg-white border-b border-slate-200 flex-none">
+    {#- Goal gradient: the bar reads as distance already covered, so it shows the step just
+        finished rather than the one being started. At step 1 of 5 that is 20% rather than a bar
+        that looks untouched after the participant has already answered something. -#}
+    {%- set pct = (progress.index / progress.total * 100)|round(1) -%}
+    {%- set left = progress.total - progress.index -%}
+    <div class="bg-card border-b border-line flex-none">
         <div class="{{ self.width() }} mx-auto px-4 sm:px-8 py-3">
             <div class="flex items-baseline justify-between gap-4 text-[13px] mb-2">
-                <span><span class="text-slate-500">{{ progress.module }} ·</span> <span class="font-semibold text-slate-900">{{ progress.label }}</span></span>
-                <span class="text-slate-500 whitespace-nowrap">{{ t('common.step_of', n=progress.index, total=progress.total) }}</span>
+                <span><span class="text-ink-subtle">{{ progress.module }} ·</span> <span class="font-semibold text-ink">{{ progress.label }}</span></span>
+                <span class="text-ink-subtle whitespace-nowrap tabular-nums">{{ t('common.step_of', n=progress.index, total=progress.total) }}</span>
             </div>
-            <div class="w-full bg-slate-200 rounded-full h-1.5" role="progressbar" aria-valuemin="1" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.index }}">
-                <div class="bg-brand h-1.5 rounded-full" style="width: {{ (progress.index / progress.total * 100)|round(1) }}%"></div>
+            <div class="w-full bg-line rounded-full h-1.5" role="progressbar" aria-valuemin="1" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.index }}">
+                <div class="bg-brand h-1.5 rounded-full transition-[width] duration-500 ease-out" style="width: {{ pct }}%"></div>
             </div>
+            {#- Naming what is left is what turns a bar into momentum, and it is the line that makes
+                someone finish rather than close the tab on the second-to-last page. -#}
+            <p class="mt-1.5 text-[12px] text-ink-subtle">
+                {% if left <= 0 %}Last one — you are done after this.
+                {% elif left == 1 %}One step left after this.
+                {% else %}{{ left }} steps left — about {{ left }} min.{% endif %}
+            </p>
         </div>
     </div>
     {% endif %}

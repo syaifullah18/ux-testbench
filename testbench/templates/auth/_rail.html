@@ -1,0 +1,30 @@
+{#- The three steps between landing on the signup form and having a study running.
+
+    It exists for the goal gradient: a form that shows where it sits in a short, finite sequence
+    is finished more often than the same form floating on its own, and the step after this one is
+    what makes the verification mail worth opening rather than a dead end.
+
+    `current` is the step being worked on (1-3). Everything before it is done. `partial` marks a
+    current step that already has something filled in — the address the landing page passed over —
+    so it can be ticked honestly. Nothing here ever claims progress that has not happened; a rail
+    that lies about it is noticed once and then ignored forever. -#}
+
+{% macro rail(current, partial=false) -%}
+<ol class="flex items-center gap-2 mb-6 text-[12px] font-medium" aria-label="Where you are in setting up">
+    {% for step in [(1, 'Your details'), (2, 'Verify email'), (3, 'First study')] %}
+    {%- set n, label = step -%}
+    {%- set done = n < current or (n == current and partial) -%}
+    {%- set here = n == current -%}
+    <li class="flex flex-1 items-center gap-2">
+        <span class="grid size-6 flex-none place-items-center rounded-full text-[11px] font-bold
+                     {% if done %}bg-brand-600 text-white
+                     {% elif here %}border-2 border-brand-600 text-brand-600 dark:text-brand-400
+                     {% else %}border border-line text-ink-subtle{% endif %}"
+              {% if here %}aria-current="step"{% endif %}>
+            {% if done %}<i class="fa-solid fa-check"></i>{% else %}{{ n }}{% endif %}
+        </span>
+        <span class="truncate {% if here or done %}text-ink{% else %}text-ink-subtle{% endif %}">{{ label }}</span>
+    </li>
+    {% endfor %}
+</ol>
+{%- endmacro %}

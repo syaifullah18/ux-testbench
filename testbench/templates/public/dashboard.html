@@ -5,23 +5,24 @@
 {% block content %}
 <div class="space-y-8 py-4">
     <!-- Top Bar: Greeting & Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-line">
         <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight text-balance">Researcher Dashboard</h1>
-            <p class="text-slate-500 text-sm mt-1">
-                Manage your studies, monitor participant recruitment, and analyze results.
+            <h1 class="text-2xl sm:text-3xl font-bold text-ink tracking-tight text-balance">Researcher Dashboard</h1>
+            <p class="text-ink-subtle text-sm mt-1">
+                Signed in as {{ user.email }} ·
+                {% if user.is_platform_admin %}Platform admin{% else %}Researcher{% endif %}
             </p>
         </div>
         <div class="flex items-center gap-3">
             {% if user.is_platform_admin %}
-            <a href="{{ url_for('platform.home') }}" class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-xl hover:bg-brand-100 shadow-sm transition-all">
+            <a href="{{ url_for('platform.home') }}" class="inline-flex min-h-11 items-center gap-2 px-3.5 text-sm font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-xl hover:bg-brand-100 shadow-sm transition-all">
                 <i class="fa-solid fa-shield-halved text-brand-400"></i> Platform
             </a>
             {% endif %}
-            <a href="{{ url_for('auth.account') }}" class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
-                <i class="fa-solid fa-user-gear text-slate-400"></i> Account
+            <a href="{{ url_for('auth.account') }}" class="inline-flex min-h-11 items-center gap-2 px-3.5 text-sm font-medium text-ink-muted bg-card border border-line rounded-xl hover:bg-surface-subtle shadow-sm transition-all">
+                <i class="fa-solid fa-user-gear text-ink-subtle"></i> Account
             </a>
-            <a href="{{ url_for('public.new_project') }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand hover:bg-brand/90 rounded-xl shadow-sm transition-all hover:scale-[1.02]">
+            <a href="{{ url_for('public.new_project') }}" class="inline-flex min-h-11 items-center gap-2 px-4 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition-all hover:scale-[1.02]">
                 <i class="fa-solid fa-plus text-xs"></i> New Study
             </a>
         </div>
@@ -29,52 +30,55 @@
 
     <!-- Quick Stats Metric Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Total Studies</span>
-            <div class="text-2xl font-bold tabular-nums text-slate-900">{{ projects|length }}</div>
-            <span class="text-xs text-slate-500 mt-1 block">Active on your account</span>
+        <div class="bg-card border border-line/80 rounded-2xl p-5 shadow-sm">
+            <span class="text-xs font-semibold uppercase tracking-wider text-ink-subtle block mb-1">Total Studies</span>
+            <div class="text-2xl font-bold tabular-nums text-ink">{{ projects|length }}</div>
+            <span class="text-xs text-ink-subtle mt-1 block">Active on your account</span>
         </div>
-        <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Total Participants</span>
-            <div class="text-2xl font-bold tabular-nums text-slate-900">{{ total_participants }}</div>
-            <span class="text-xs text-slate-500 mt-1 block">Across all studies</span>
+        <div class="bg-card border border-line/80 rounded-2xl p-5 shadow-sm">
+            <span class="text-xs font-semibold uppercase tracking-wider text-ink-subtle block mb-1">Total Participants</span>
+            <div class="text-2xl font-bold tabular-nums text-ink">{{ total_participants }}</div>
+            <span class="text-xs text-ink-subtle mt-1 block">Across all studies</span>
         </div>
-        <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-1">Account Role</span>
-            <div class="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                {% if user.is_platform_admin %}
-                    <span class="text-brand-600">Platform Admin</span>
-                {% else %}
-                    <span class="text-slate-800">Researcher</span>
-                {% endif %}
-            </div>
-            <span class="text-xs text-slate-500 mt-1 block">{{ user.email }}</span>
+        {#- This tile used to print the account role at the same size and weight as the two counts
+            beside it, which made a fixed fact about the viewer read as a third metric. Who you are
+            is not something you watch change, so it moves to the line under the heading and the
+            tile carries a number that does move. -#}
+        <div class="bg-card border border-line/80 rounded-2xl p-5 shadow-sm">
+            <span class="text-xs font-semibold uppercase tracking-wider text-ink-subtle block mb-1">Live Studies</span>
+            <div class="text-2xl font-bold tabular-nums text-ink">{{ live_count }}</div>
+            <span class="text-xs text-ink-subtle mt-1 block">Currently collecting responses</span>
         </div>
     </div>
 
     <!-- Project List Table / Cards -->
     <div>
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-bold text-slate-900">Your Studies</h2>
-            <span class="text-xs text-slate-500">{{ projects|length }} project{% if projects|length != 1 %}s{% endif %}</span>
+            <h2 class="text-lg font-bold text-ink">Your Studies</h2>
+            <span class="text-xs text-ink-subtle">{{ projects|length }} project{% if projects|length != 1 %}s{% endif %}</span>
         </div>
 
         {% if not projects %}
         <!-- Empty State -->
-        <div class="text-center py-16 px-6 bg-slate-50 border border-dashed border-slate-300 rounded-3xl">
-            <div class="size-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto mb-4 text-2xl">
+        <div class="text-center py-16 px-6 bg-surface-subtle border border-dashed border-line rounded-3xl">
+            <div class="size-14 rounded-2xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto mb-4 text-2xl">
                 <i class="fa-solid fa-flask-vial"></i>
             </div>
-            <h3 class="text-lg font-bold text-slate-900 mb-1">No studies created yet</h3>
-            <p class="text-slate-500 text-sm max-w-md mx-auto mb-6">
-                Start by creating your first usability study from a template, copy the demo project, or import a zip archive.
+            <h3 class="text-lg font-bold text-ink mb-1">No studies created yet</h3>
+            {#- The empty state offered a blank study and a demo clone at equal weight, which asks
+                someone with nothing on the screen to first decide how to start. Cloning the demo
+                is the faster route to something that runs, so it is the recommended one and the
+                blank study becomes the alternative rather than the coin toss. -#}
+            <p class="text-ink-subtle text-sm max-w-md mx-auto mb-6">
+                The quickest start is a copy of the demo study: it runs immediately, and every part
+                of it can be renamed or deleted once you see how it fits together.
             </p>
-            <div class="flex flex-wrap items-center justify-center gap-3">
-                <a href="{{ url_for('public.new_project') }}?source=blank" class="inline-flex items-center gap-2 bg-brand text-white font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-brand/90 transition-all shadow-sm">
-                    <i class="fa-solid fa-plus text-xs"></i> Blank Study
+            <div class="flex flex-col items-center justify-center gap-3">
+                <a href="{{ url_for('public.new_project') }}?source=example" class="inline-flex min-h-11 items-center gap-2 bg-brand-600 text-white font-semibold text-sm px-5 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
+                    <i class="fa-solid fa-copy text-xs"></i> Start from the demo study
                 </a>
-                <a href="{{ url_for('public.new_project') }}?source=example" class="inline-flex items-center gap-2 bg-white text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 transition-all shadow-sm">
-                    <i class="fa-solid fa-copy text-xs text-brand"></i> Clone Demo Template
+                <a href="{{ url_for('public.new_project') }}?source=blank" class="inline-flex min-h-11 items-center gap-2 text-ink-muted hover:text-ink font-semibold text-sm px-4 rounded-xl hover:bg-card transition-colors">
+                    <i class="fa-solid fa-plus text-xs"></i> Or start from a blank study
                 </a>
             </div>
         </div>
@@ -82,61 +86,75 @@
         <div class="space-y-4">
             {% for item in projects %}
             {% set p = item.project %}
-            <div class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-sm hover:border-slate-300 transition-all">
+            <div class="bg-card border border-line/90 rounded-2xl p-5 sm:p-6 shadow-sm hover:border-line transition-all">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                     <div class="space-y-1.5">
                         <div class="flex flex-wrap items-center gap-2.5">
-                            <h3 class="text-base font-bold text-slate-900">{{ p.name }}</h3>
-                            <code class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{{ p.slug }}</code>
+                            <h3 class="text-base font-bold text-ink">{{ p.name }}</h3>
+                            <code class="text-xs bg-surface-subtle text-ink-muted px-2 py-0.5 rounded font-mono">{{ p.slug }}</code>
                             
                             <!-- Role Badge -->
-                            <span class="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full {% if item.role == 'owner' or item.role == 'admin' %}bg-brand-100 text-brand-700{% elif item.role == 'editor' %}bg-blue-100 text-blue-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                            <span class="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full {% if item.role == 'owner' or item.role == 'admin' %}bg-brand-100 text-brand-700{% elif item.role == 'editor' %}bg-blue-100 text-blue-700{% else %}bg-surface-subtle text-ink-muted{% endif %}">
                                 {{ item.role }}
                             </span>
 
-                            <!-- Status Badge Form -->
+                            {#- This control decides whether a study is collecting real participant
+                                data, and it used to be a 20px pill that submitted on change — the
+                                same shape as the read-only role badge next to it, so it did not
+                                read as a control at all, and a mis-tap took a live study down.
+
+                                It is now sized like a control, marked as one, and confirms the two
+                                transitions that are visible to participants. Going to draft or
+                                closed stops collection; going live starts it. -#}
                             <form action="{{ url_for('public.update_status', slug=p.slug) }}" method="post" class="inline-flex items-center">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <select name="status" onchange="this.form.submit()" class="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full border cursor-pointer outline-none transition-colors
-                                    {% if p.status == 'live' %}bg-emerald-50 text-emerald-700 border-emerald-300
-                                    {% elif p.status == 'draft' %}bg-amber-50 text-amber-700 border-amber-300
-                                    {% else %}bg-slate-100 text-slate-600 border-slate-300{% endif %}">
+                                <label for="status-{{ p.slug }}" class="sr-only">Status of {{ p.name }}</label>
+                                <select id="status-{{ p.slug }}" name="status" data-status="{{ p.status }}" data-study="{{ p.name }}"
+                                        class="js-status min-h-8 text-[11px] font-semibold uppercase pl-2.5 pr-7 rounded-full border cursor-pointer outline-none transition-colors focus:ring-2 focus:ring-brand/40
+                                    {% if p.status == 'live' %}bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-400/10 dark:text-emerald-300 dark:border-emerald-700
+                                    {% elif p.status == 'draft' %}bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-400/10 dark:text-amber-300 dark:border-amber-700
+                                    {% else %}bg-surface-subtle text-ink-muted border-line{% endif %}">
                                     <option value="draft" {% if p.status == 'draft' %}selected{% endif %}>Draft</option>
                                     <option value="live" {% if p.status == 'live' %}selected{% endif %}>Live</option>
                                     <option value="closed" {% if p.status == 'closed' %}selected{% endif %}>Closed</option>
                                 </select>
+                                <noscript><button type="submit" class="ml-1 text-[11px] underline">Apply</button></noscript>
                             </form>
                         </div>
 
-                        <p class="text-xs text-slate-500 line-clamp-1 max-w-2xl">
+                        <p class="text-xs text-ink-subtle line-clamp-1 max-w-2xl">
                             {{ p.description or 'No description provided.' }}
                         </p>
 
-                        <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 tabular-nums pt-1">
-                            <span><i class="fa-solid fa-users text-slate-400 mr-1"></i><strong>{{ item.participants }}</strong> participants</span>
-                            <span><i class="fa-solid fa-shapes text-slate-400 mr-1"></i><strong>{{ p.modules|length }}</strong> modules</span>
+                        <div class="flex flex-wrap items-center gap-4 text-xs text-ink-subtle tabular-nums pt-1">
+                            <span><i class="fa-solid fa-users text-ink-subtle mr-1"></i><strong>{{ item.participants }}</strong> participants</span>
+                            <span><i class="fa-solid fa-shapes text-ink-subtle mr-1"></i><strong>{{ p.modules|length }}</strong> modules</span>
                             {% if item.last_seen %}
-                            <span><i class="fa-solid fa-clock text-slate-400 mr-1"></i>Last active {{ item.last_seen[:10] }}</span>
+                            <span><i class="fa-solid fa-clock text-ink-subtle mr-1"></i>Last active {{ item.last_seen[:10] }}</span>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                        <a href="{{ url_for('web.home', slug=p.slug) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors" title="Open Participant View">
-                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Study Link
-                        </a>
-                        <a href="/{{ p.slug }}/admin/" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand bg-brand/10 hover:bg-brand/20 rounded-lg transition-colors">
+                    {#- Four buttons at `py-1.5 text-xs` came out around 26px tall, which is a
+                        reliable miss on a phone and a squint on a desktop. They are now 40px, and
+                        only the one people actually come here for keeps an accent — the other
+                        three are quiet, so a list of eight studies is not eight rows of four
+                        equally loud targets. -#}
+                    <div class="flex flex-wrap items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-line">
+                        <a href="/{{ p.slug }}/admin/" class="inline-flex min-h-10 items-center gap-1.5 px-3.5 text-xs font-semibold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/50 hover:bg-brand-100 dark:hover:bg-brand-950 rounded-lg transition-colors">
                             <i class="fa-solid fa-chart-line text-[10px]"></i> Results &amp; Admin
                         </a>
-                        {% if item.role in ('owner', 'admin') %}
-                        <a href="{{ url_for('public.members', slug=p.slug) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors">
-                            <i class="fa-solid fa-user-group text-[10px]"></i> Team
+                        <a href="{{ url_for('web.home', slug=p.slug) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center gap-1.5 px-3.5 text-xs font-medium text-ink-muted bg-card border border-line hover:bg-surface-subtle rounded-lg transition-colors" title="Open the participant view in a new tab">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Study Link
+                        </a>
+                        {% if p.editable %}
+                        <a href="{{ url_for('studio.home', slug=p.slug) }}" class="inline-flex min-h-10 items-center gap-1.5 px-3.5 text-xs font-medium text-ink-muted bg-card border border-line hover:bg-surface-subtle rounded-lg transition-colors">
+                            <i class="fa-solid fa-sliders text-[10px]"></i> Studio
                         </a>
                         {% endif %}
-                        {% if p.editable %}
-                        <a href="{{ url_for('studio.home', slug=p.slug) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors">
-                            <i class="fa-solid fa-sliders text-[10px]"></i> Studio
+                        {% if item.role in ('owner', 'admin') %}
+                        <a href="{{ url_for('public.members', slug=p.slug) }}" class="inline-flex min-h-10 items-center gap-1.5 px-3.5 text-xs font-medium text-ink-muted bg-card border border-line hover:bg-surface-subtle rounded-lg transition-colors">
+                            <i class="fa-solid fa-user-group text-[10px]"></i> Team
                         </a>
                         {% endif %}
                     </div>
@@ -147,4 +165,30 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    // Auto-submitting on change is the right behaviour here — it is one control and a round trip
+    // is cheap. What it was missing is a moment to catch the mis-tap, for the two transitions a
+    // participant would actually notice. Cancelling puts the control back where it was, or the
+    // select would sit there showing a state the server never accepted.
+    document.querySelectorAll('.js-status').forEach(function (select) {
+        select.addEventListener('change', function () {
+            var was = select.dataset.status;
+            var now = select.value;
+            var name = select.dataset.study;
+            var ask = null;
+
+            if (was === 'live' && now !== 'live') {
+                ask = 'Stop collecting responses for "' + name + '"? Anyone part-way through loses the rest of the study.';
+            } else if (now === 'live') {
+                ask = 'Open "' + name + '" to participants now?';
+            }
+            if (ask && !confirm(ask)) {
+                select.value = was;
+                return;
+            }
+            select.form.submit();
+        });
+    });
+</script>
 {% endblock %}

@@ -7,7 +7,7 @@
     <i class="fa-solid fa-circle-check mt-1"></i><span>{{ t('home.just_done', title=just_done.title) }}</span>
 </div>
 {% endif %}
-<h1 class="text-2xl leading-tight font-bold text-slate-900 mb-2">{{ t('home.heading') }}</h1>
+<h1 class="text-2xl leading-tight font-bold text-ink mb-2">{{ t('home.heading') }}</h1>
 <p class="mb-2">{{ t('home.intro') }}</p>
 {% if project.identity.mode == 'anonymous' %}
 <p class="mb-6 text-[14px] p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900"><i class="fa-solid fa-key mr-1.5"></i>{{ t('home.save_code', code=participant.identity) }}</p>
@@ -22,16 +22,16 @@
 
 <ul class="space-y-3">
 {% for c in cards %}{% set m = c.m %}
-    <li class="border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 {% if c.status == 'locked' %}border-slate-200 bg-slate-50{% else %}border-slate-200{% endif %}">
+    <li class="border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 {% if c.status == 'locked' %}border-line bg-surface-subtle{% else %}border-line{% endif %}">
         <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2 mb-1">
-                <p class="font-semibold text-slate-900">{{ m.title }}</p>
-                {% set badge = {'new': 'bg-sky-100 text-sky-800', 'in_progress': 'bg-amber-100 text-amber-900', 'done': 'bg-emerald-100 text-emerald-800', 'locked': 'bg-slate-200 text-slate-600'}[c.status] %}
+                <p class="font-semibold text-ink">{{ m.title }}</p>
+                {% set badge = {'new': 'bg-sky-100 text-sky-800', 'in_progress': 'bg-amber-100 text-amber-900', 'done': 'bg-emerald-100 text-emerald-800', 'locked': 'bg-line text-ink-muted'}[c.status] %}
                 <span class="text-[12px] font-semibold px-2 py-0.5 rounded {{ badge }}">{{ t('home.status_' ~ c.status) }}</span>
-                {% if m.minutes %}<span class="text-[12px] text-slate-500"><i class="fa-regular fa-clock mr-1"></i>{{ t('home.minutes', n=m.minutes) }}</span>{% endif %}
+                {% if m.minutes %}<span class="text-[12px] text-ink-subtle"><i class="fa-regular fa-clock mr-1"></i>{{ t('home.minutes', n=m.minutes) }}</span>{% endif %}
             </div>
-            {% if m.description %}<p class="text-[14px] text-slate-600">{{ m.description }}</p>{% endif %}
-            {% if c.status == 'locked' %}<p class="text-[13px] text-slate-500 mt-1"><i class="fa-solid fa-lock mr-1"></i>{{ t('home.requires', names=c.requires|join(', ')) }}</p>{% endif %}
+            {% if m.description %}<p class="text-[14px] text-ink-muted">{{ m.description }}</p>{% endif %}
+            {% if c.status == 'locked' %}<p class="text-[13px] text-ink-subtle mt-1"><i class="fa-solid fa-lock mr-1"></i>{{ t('home.requires', names=c.requires|join(', ')) }}</p>{% endif %}
         </div>
         <div class="flex-none">
             {% if c.status == 'new' %}{{ link_button(url_for('web.module_start', slug=project.slug, mid=m.id), t('home.start'), 'fa-play') }}
@@ -40,7 +40,7 @@
         </div>
     </li>
 {% else %}
-    <li class="text-slate-500">{{ t('home.empty') }}</li>
+    <li class="text-ink-subtle">{{ t('home.empty') }}</li>
 {% endfor %}
 </ul>
 {% endblock %}

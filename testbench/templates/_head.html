@@ -1,13 +1,22 @@
-{#- Shared <head> for every page: the stylesheets, the Tailwind theme, and the brand palette.
+{#- Shared <head> for every page: the stylesheets, the Tailwind theme, and the colour tokens.
 
     Both the CDN build and the compiled build (LOCAL_ASSETS=1) read their theme from the same CSS
     custom properties, so one definition serves every page and each project's own colour reaches
     all of them. tailwind.config.js maps the same names for the compiled build; keep the two in
     step when adding a token.
 
-    A project sets one primary colour in project.yaml. The 50–950 steps below are tints and
-    shades of it, computed here, so a page can reach for a lighter or darker version of the brand
-    without hard-coding a second palette that stops matching. `brand` on its own means 500. -#}
+    Two things live here:
+
+    1. The brand scale. A project sets one primary colour in project.yaml; the 50–950 steps are
+       tints and shades of it, computed below, so a page can reach for a lighter or darker version
+       of the brand without hard-coding a second palette that stops matching. `brand` means 500.
+
+    2. The surface tokens — `surface`, `card`, `line`, `ink` and friends. These are what make one
+       set of markup work in both themes. Writing `bg-card text-ink` gives a card that is white
+       with near-black text in the light theme and near-black with white text in the dark one,
+       because the token flips, not the class. Hand-writing `dark:` on every element is how you
+       end up with a dark card whose heading is still `text-ink` and therefore invisible.
+       Reach for `dark:` only for a genuine one-off. -#}
 
 {%- set brand = project.brand if project else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
 
@@ -26,6 +35,19 @@
 {{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}
 {%- endmacro -%}
 
+{#- Set the theme class before the first paint, or a dark-theme visitor gets a white flash on
+    every page load. This has to be inline and before the stylesheet; a deferred script is too
+    late. An explicit choice wins; otherwise follow the operating system. -#}
+<script>
+    (function () {
+        try {
+            var saved = localStorage.getItem('tb-theme');
+            var dark = saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', dark);
+        } catch (e) { /* private mode, blocked storage: stay on the light theme */ }
+    })();
+</script>
+
 {% if config.LOCAL_ASSETS %}
 {#- Every asset served from this instance, so a participant's browser contacts nobody else and
     their IP address reaches no third party. Build them with scripts/build-assets.sh. -#}
@@ -33,13 +55,14 @@
 <link href="{{ url_for('static', filename='vendor/icons.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='vendor/fonts.css') }}" rel="stylesheet">
 {% else %}
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script>
     tailwind.config = {
+        darkMode: 'class',
         theme: { extend: {
             fontFamily: { sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
             colors: {
@@ -58,6 +81,13 @@
                     950: 'rgb(var(--brand-950) / <alpha-value>)',
                 },
                 nav: 'rgb(var(--nav-rgb) / <alpha-value>)',
+                surface: 'rgb(var(--surface) / <alpha-value>)',
+                'surface-subtle': 'rgb(var(--surface-subtle) / <alpha-value>)',
+                card: 'rgb(var(--card) / <alpha-value>)',
+                line: 'rgb(var(--line) / <alpha-value>)',
+                ink: 'rgb(var(--ink) / <alpha-value>)',
+                'ink-muted': 'rgb(var(--ink-muted) / <alpha-value>)',
+                'ink-subtle': 'rgb(var(--ink-subtle) / <alpha-value>)',
             },
             height: { 18: '4.5rem' },
             spacing: { 18: '4.5rem' },
@@ -68,6 +98,7 @@
 
 <style>
     :root {
+        /* Brand: one colour from project.yaml, expanded into a scale. */
         --brand-rgb: {{ rgb(brand.primary) }};
         --nav-rgb: {{ rgb(brand.nav) }};
         --brand-50:  {{ tint(brand.primary, 0.95) }};
@@ -81,5 +112,36 @@
         --brand-800: {{ shade(brand.primary, 0.42) }};
         --brand-900: {{ shade(brand.primary, 0.55) }};
         --brand-950: {{ shade(brand.primary, 0.72) }};
+
+        /* Light theme: the base. White page, near-black text. */
+        --surface: 255 255 255;
+        --surface-subtle: 248 250 252;
+        --card: 255 255 255;
+        --line: 226 232 240;
+        --ink: 15 23 42;
+        --ink-muted: 71 85 105;
+        --ink-subtle: 100 116 139;
+    }
+
+    .dark {
+        /* Dark theme. Not pure black: a slight blue cast sits better under the brand colour,
+           and pure black against pure white text is harsher than it needs to be. */
+        --surface: 9 11 17;
+        --surface-subtle: 14 17 25;
+        --card: 18 22 31;
+        --line: 39 45 58;
+        --ink: 248 250 252;
+        --ink-muted: 148 163 184;
+        --ink-subtle: 113 128 150;
+    }
+
+    /* Only the theme switch animates the page colours. Without this every hover and focus on the
+       page would also fade, which reads as lag. */
+    .theme-anim, .theme-anim * {
+        transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .theme-anim, .theme-anim * { transition: none; }
     }
 </style>

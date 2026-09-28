@@ -1,29 +1,164 @@
-{% extends "base.html" %}
-{% block title %}Documentation: {{ page|title }}{% endblock %}
-{% block width %}max-w-6xl{% endblock %}
+{#- Documentation reader. Standalone like the landing page, so it can use the surface tokens and
+    serve both themes; base.html is still light-only.
 
-{% block content %}
-<div class="py-6 flex flex-col md:flex-row gap-8 items-start">
-    <!-- Sidebar -->
-    <aside class="w-full md:w-60 flex-none bg-slate-50 border border-slate-200 rounded-2xl p-4 sticky top-6">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-2">Documentation</h3>
-        <nav class="space-y-1">
-            {% for f in doc_files %}
-            <a href="{{ url_for('public.docs', page=f) }}" class="block px-3 py-2 rounded-xl text-xs font-medium transition-colors {% if page == f %}bg-brand text-white font-semibold{% else %}text-slate-600 hover:bg-slate-200/60{% endif %}">
-                {{ f|replace('-', ' ')|replace('_', ' ')|title }}
+    The prose itself is styled by Tailwind's typography plugin (`prose`, and `dark:prose-invert`
+    for the dark theme). testbench/markdown.py emits plain semantic HTML and never mentions a
+    colour, so everything below is the only place the docs' appearance is decided. -#}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|title }} · UX Testbench docs</title>
+    {% include "_head.html" %}
+    <style>
+        /* The few things the typography plugin does not cover, because markdown.py emits its own
+           wrapper for them: the language chip on a code block, and a table that can scroll on a
+           phone without dragging the page sideways with it. */
+        .prose .code-block { position: relative; }
+        .prose .code-lang {
+            position: absolute; top: .55rem; right: .7rem; z-index: 1;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+            color: rgb(var(--ink-subtle)); pointer-events: none;
+        }
+        .prose .table-wrap {
+            overflow-x: auto; margin: 1.75rem 0;
+            border: 1px solid rgb(var(--line)); border-radius: .75rem;
+        }
+        .prose .table-wrap > table { margin: 0; min-width: 34rem; font-size: .875rem; }
+        .prose .table-wrap th {
+            background: rgb(var(--surface-subtle)); font-size: .75rem;
+            text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+        }
+        .prose .table-wrap th, .prose .table-wrap td {
+            padding: .625rem .875rem; border-bottom: 1px solid rgb(var(--line)); vertical-align: top;
+        }
+        .prose .table-wrap tr:last-child td { border-bottom: 0; }
+        /* Inline code only: `:not(pre) >` keeps this away from code blocks, which a
+           `prose-code:` utility cannot do and which otherwise boxes every line of a block. */
+        .prose :not(pre) > code {
+            background: rgb(var(--surface-subtle)); color: rgb(var(--ink));
+            border: 1px solid rgb(var(--line)); border-radius: .3rem;
+            padding: .1rem .35rem; font-size: .85em; font-weight: 500;
+        }
+        .prose :not(pre) > code::before, .prose :not(pre) > code::after { content: none; }
+        .prose pre code {
+            background: none; border: 0; padding: 0; font-weight: 400; color: inherit;
+        }
+        /* A heading linked to from the contents list should not hide under the sticky header. */
+        .prose :where(h2, h3, h4) { scroll-margin-top: 6rem; }
+    </style>
+</head>
+
+<body class="theme-anim bg-surface text-ink-muted font-sans antialiased">
+
+<header class="sticky top-0 z-50 border-b border-line bg-surface/80 backdrop-blur-xl">
+    <nav class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-6">
+        <a href="/" class="flex flex-none items-center gap-2.5">
+            <span class="grid size-9 place-items-center rounded-xl bg-brand-600 text-white">
+                <i class="fa-solid fa-flask-vial text-sm"></i>
+            </span>
+            <span class="whitespace-nowrap text-lg font-bold tracking-tight text-ink">UX Testbench</span>
+            <span class="hidden text-sm font-medium text-ink-subtle sm:inline">docs</span>
+        </a>
+        <div class="flex flex-none items-center gap-2 sm:gap-3">
+            {% include "_theme_toggle.html" %}
+            {% if user %}
+            <a href="{{ url_for('public.dashboard') }}"
+               class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700">
+                Dashboard
+            </a>
+            {% else %}
+            <a href="{{ url_for('auth.signup') }}"
+               class="whitespace-nowrap rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700">
+                Start free
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+<div class="mx-auto flex max-w-7xl items-start gap-10 px-6 py-10">
+
+    {#- ------------------------------------------------ pages -#}
+    <aside class="sticky top-28 hidden w-56 flex-none lg:block">
+        {% for group, files in groups.items() %}
+        <p class="mb-2 mt-5 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle first:mt-0">
+            {{ group.replace('-', ' ')|title if group else 'Guides' }}
+        </p>
+        <nav class="space-y-0.5">
+            {% for f in files %}
+            <a href="{{ url_for('public.docs', page=f.slug) }}"
+               class="block rounded-lg px-3 py-1.5 text-sm transition-colors
+                      {% if page == f.slug %}bg-brand-600 font-semibold text-white
+                      {% else %}text-ink-muted hover:bg-surface-subtle hover:text-ink{% endif %}">
+                {{ f.title }}
             </a>
             {% endfor %}
         </nav>
-        <div class="mt-6 pt-4 border-t border-slate-200/80 px-2 text-[11px] text-slate-500">
-            Source docs in <code class="font-mono text-[10px] bg-slate-200 px-1 py-0.5 rounded">docs/</code>
-        </div>
+        {% endfor %}
     </aside>
 
-    <!-- Content Area -->
-    <main class="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-sm">
-        <div class="prose prose-slate max-w-none">
+    {#- ------------------------------------------------ the document -#}
+    <main class="min-w-0 flex-1">
+        <div class="mb-6 flex items-center gap-2 text-sm text-ink-subtle lg:hidden">
+            <label for="doc-jump" class="sr-only">Jump to another page</label>
+            <select id="doc-jump" onchange="if(this.value) location.href=this.value"
+                    class="w-full rounded-xl border border-line bg-card px-3 py-2.5 text-sm text-ink">
+                {% for group, files in groups.items() %}
+                <optgroup label="{{ group.replace('-', ' ')|title if group else 'Guides' }}">
+                    {% for f in files %}
+                    <option value="{{ url_for('public.docs', page=f.slug) }}"
+                            {% if page == f.slug %}selected{% endif %}>{{ f.title }}</option>
+                    {% endfor %}
+                </optgroup>
+                {% endfor %}
+            </select>
+        </div>
+
+        <article class="prose prose-slate max-w-none dark:prose-invert
+                        prose-headings:tracking-tight prose-headings:text-ink
+                        prose-h1:text-3xl prose-h1:font-extrabold sm:prose-h1:text-4xl
+                        prose-h2:mt-12 prose-h2:border-t prose-h2:border-line prose-h2:pt-8
+                        prose-p:text-pretty prose-p:leading-relaxed
+                        prose-a:font-medium prose-a:text-brand-600 dark:prose-a:text-brand-400
+                        prose-strong:text-ink
+                        prose-pre:rounded-xl prose-pre:border prose-pre:border-line
+                        prose-pre:bg-slate-950 prose-pre:text-slate-200
+                        prose-blockquote:border-brand-500 prose-blockquote:text-ink-muted
+                        prose-li:marker:text-ink-subtle
+                        prose-hr:border-line">
             {{ content }}
+        </article>
+
+        <div class="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 text-sm">
+            <p class="text-ink-subtle">
+                Source: <code class="rounded bg-surface-subtle px-1.5 py-0.5 text-xs text-ink-muted">docs/{{ page }}.md</code>
+            </p>
+            <a href="/" class="font-medium text-brand-600 hover:underline dark:text-brand-400">
+                Back to the home page
+            </a>
         </div>
     </main>
+
+    {#- ------------------------------------------------ on this page -#}
+    {% if toc|length > 2 %}
+    <aside class="sticky top-28 hidden w-52 flex-none xl:block">
+        <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">On this page</p>
+        <nav class="space-y-1.5 border-l border-line">
+            {% for level, text, slug in toc %}
+            <a href="#{{ slug }}"
+               class="-ml-px block border-l border-transparent py-0.5 text-[13px] leading-snug text-ink-muted
+                      transition-colors hover:border-brand-500 hover:text-ink
+                      {% if level == 2 %}pl-3{% else %}pl-6{% endif %}">
+                {{ text }}
+            </a>
+            {% endfor %}
+        </nav>
+    </aside>
+    {% endif %}
 </div>
-{% endblock %}
+
+</body>
+</html>

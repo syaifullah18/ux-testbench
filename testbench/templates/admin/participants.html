@@ -1,22 +1,22 @@
 {% extends "admin/_layout.html" %}
 {% block title %}{{ t('admin.participants') }}{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 mb-6">{{ t('admin.participants') }} <span class="text-slate-500 font-normal text-lg">({{ people|length }})</span></h1>
-<div class="border border-slate-200 rounded-xl overflow-x-auto">
+<h1 class="text-2xl font-bold text-ink mb-6">{{ t('admin.participants') }} <span class="text-ink-subtle font-normal text-lg">({{ people|length }})</span></h1>
+<div class="border border-line rounded-xl overflow-x-auto">
     <table class="w-full text-[14px]">
-        <thead><tr class="border-b border-slate-200 text-left text-slate-500">
+        <thead><tr class="border-b border-line text-left text-ink-subtle">
             <th class="px-3 py-2 font-semibold">{{ t('admin.identity') }}</th>
             {% for m in project.modules.values() %}<th class="px-3 py-2 font-semibold">{{ m.title }}</th>{% endfor %}
             <th class="px-3 py-2 font-semibold">{{ t('admin.last_seen') }}</th><th></th>
         </tr></thead>
         <tbody>
         {% for p in people %}{% set ss = sessions.get(p.id, {}) %}
-        <tr class="border-b border-slate-200 last:border-0">
-            <td class="px-3 py-2 font-semibold"><a class="text-brand hover:underline" href="{{ url_for('admin.participant', slug=project.slug, pid=p.id) }}">{{ p.identity }}</a></td>
+        <tr class="border-b border-line last:border-0">
+            <td class="px-3 py-2 font-semibold"><a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('admin.participant', slug=project.slug, pid=p.id) }}">{{ p.identity }}</a></td>
             {% for m in project.modules.values() %}{% set s = ss.get(m.id) %}
-            <td class="px-3 py-2">{% if not s %}<span class="text-slate-400">-</span>{% elif s.finished_at %}<i class="fa-solid fa-check text-emerald-600" title="{{ t('home.status_done') }}"></i>{% else %}<span class="text-amber-700 text-[13px]">{{ s.step }}</span>{% endif %}</td>
+            <td class="px-3 py-2">{% if not s %}<span class="text-ink-subtle">-</span>{% elif s.finished_at %}<i class="fa-solid fa-check text-emerald-600" title="{{ t('home.status_done') }}"></i>{% else %}<span class="text-amber-700 text-[13px]">{{ s.step }}</span>{% endif %}</td>
             {% endfor %}
-            <td class="px-3 py-2 text-[13px] text-slate-500 whitespace-nowrap">{{ p.last_seen_at[:16].replace('T', ' ') }}</td>
+            <td class="px-3 py-2 text-[13px] text-ink-subtle whitespace-nowrap">{{ p.last_seen_at[:16].replace('T', ' ') }}</td>
             <td class="px-3 py-2 text-right">
                 <form method="post" action="{{ url_for('admin.delete_participant', slug=project.slug, pid=p.id) }}" onsubmit="return confirm({{ t('admin.delete_confirm', who=p.identity)|tojson }})">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -25,7 +25,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td class="px-3 py-3 text-slate-500" colspan="99">{{ t('admin.no_participants') }}</td></tr>
+        <tr><td class="px-3 py-3 text-ink-subtle" colspan="99">{{ t('admin.no_participants') }}</td></tr>
         {% endfor %}
         </tbody>
     </table>
