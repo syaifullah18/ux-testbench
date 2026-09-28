@@ -81,7 +81,7 @@
     <nav aria-label="Study" class="tabs">
       <a class="tab" href="{{ url_for('admin.dashboard', slug=project.slug) }}" {% if cur_tab == 'overview' %}aria-current="page"{% endif %}>Overview</a>
       <a class="tab" href="{{ url_for('studio.home', slug=project.slug) }}" {% if cur_tab == 'build' %}aria-current="page"{% endif %}>Build</a>
-      <a class="tab" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}" {% if cur_tab == 'launch' %}aria-current="page"{% endif %}>Launch</a>
+      <a class="tab" href="{{ url_for('admin.launch', slug=project.slug) }}" {% if cur_tab == 'launch' %}aria-current="page"{% endif %}>Launch</a>
       <a class="tab" href="{{ url_for('admin.results', slug=project.slug) }}" {% if cur_tab == 'results' %}aria-current="page"{% endif %}>Results</a>
       {% if is_public %}
       <a class="tab" href="{{ url_for('admin.team', slug=project.slug) if 'admin.team' in url_for.__globals__ else '#' }}" {% if cur_tab == 'team' %}aria-current="page"{% endif %}>Team</a>
@@ -97,7 +97,7 @@
     <p id="dlg-status-body" class="mt-2 text-muted text-sm leading-relaxed"></p>
     <p id="dlg-status-block" class="mt-4 rounded-md bg-bad-soft p-3 text-sm font-semibold text-bad is-hidden"></p>
     <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
-      <a href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}" class="link text-sm">Review the checklist</a>
+      <a href="{{ url_for('admin.launch', slug=project.slug) }}" class="link text-sm">Review the checklist</a>
       <div class="flex gap-2">
         <button type="button" class="btn btn-secondary" id="dlg-status-cancel" value="cancel">Cancel</button>
         <button type="button" id="dlg-status-ok" class="btn btn-primary" value="ok"></button>
@@ -187,39 +187,45 @@
     });
 
     // Handle status option click
+    function triggerStatusDialog(targetStatus) {
+      var curStatus = wrap.getAttribute('data-current-status');
+      menu.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+
+      if (targetStatus === curStatus) return;
+
+      pendingStatus = targetStatus;
+      var c = COPY[targetStatus] || [targetStatus, '', targetStatus];
+      if (h) h.textContent = c[0];
+      if (body) body.textContent = c[1];
+      if (okBtn) okBtn.textContent = c[2];
+
+      var failItems = document.querySelectorAll('[data-item="fail"]');
+      var fails = failItems.length;
+      var blocked = targetStatus === 'live' && fails > 0;
+      if (blk) {
+        blk.classList.toggle('is-hidden', !blocked);
+        blk.textContent = blocked ? 'Participants would be locked out. Set the participant passcode first.' : '';
+      }
+      if (okBtn) {
+        okBtn.disabled = blocked;
+      }
+
+      if (typeof dlg.showModal === 'function') {
+        dlg.showModal();
+      } else {
+        dlg.setAttribute('open', '');
+      }
+    }
+
+    window.UTB = window.UTB || {};
+    window.UTB.askStatus = triggerStatusDialog;
+
     menu.querySelectorAll('[data-set-status]').forEach(function(optBtn) {
       optBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        var targetStatus = optBtn.getAttribute('data-set-status');
-        var curStatus = wrap.getAttribute('data-current-status');
-        menu.classList.add('hidden');
-        btn.setAttribute('aria-expanded', 'false');
-
-        if (targetStatus === curStatus) return;
-
-        pendingStatus = targetStatus;
-        var c = COPY[targetStatus] || [targetStatus, '', targetStatus];
-        if (h) h.textContent = c[0];
-        if (body) body.textContent = c[1];
-        if (okBtn) okBtn.textContent = c[2];
-
-        var failItems = document.querySelectorAll('[data-item="fail"]');
-        var fails = failItems.length;
-        var blocked = targetStatus === 'live' && fails > 0;
-        if (blk) {
-          blk.classList.toggle('is-hidden', !blocked);
-          blk.textContent = blocked ? 'Participants would be locked out. Set the participant passcode first.' : '';
-        }
-        if (okBtn) {
-          okBtn.disabled = blocked;
-        }
-
-        if (typeof dlg.showModal === 'function') {
-          dlg.showModal();
-        } else {
-          dlg.setAttribute('open', '');
-        }
+        triggerStatusDialog(optBtn.getAttribute('data-set-status'));
       });
     });
 
@@ -231,6 +237,7 @@
         if (dlg.open) {
           dlg.close();
         }
+        document.dispatchEvent(new CustomEvent('utb:status-cancel', { detail: wrap.getAttribute('data-current-status') }));
       });
     }
 
@@ -238,11 +245,15 @@
     dlg.addEventListener('click', function(e) {
       if (e.target === dlg && dlg.open) {
         dlg.close();
+        document.dispatchEvent(new CustomEvent('utb:status-cancel', { detail: wrap.getAttribute('data-current-status') }));
       }
     });
 
     // Native close event
     dlg.addEventListener('close', function() {
+      if (pendingStatus) {
+        document.dispatchEvent(new CustomEvent('utb:status-cancel', { detail: wrap.getAttribute('data-current-status') }));
+      }
       pendingStatus = null;
       btn.focus();
     });

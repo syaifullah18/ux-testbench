@@ -84,7 +84,7 @@
     var passState = {{ pass_state|tojson }};
     var TYPES = {{ module_types|tojson }};
     var saveUrl = {{ url_for('studio.settings', slug=project.slug)|tojson }};
-    var launchUrl = {{ (url_for('admin.dashboard', slug=project.slug) ~ '#launch')|tojson }};
+    var launchUrl = {{ url_for('admin.launch', slug=project.slug)|tojson }};
     var CSRF_TOKEN = {{ csrf_token|tojson if csrf_token is defined else '""' }};
     var RAW_YAML = {{ raw_yaml|tojson }};
 

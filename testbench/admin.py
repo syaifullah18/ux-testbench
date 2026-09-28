@@ -1093,3 +1093,85 @@ def settings_data(slug):
         can_edit=can_edit,
     )
 
+
+@bp.route("/app/p/<slug>/launch")
+@bp.route("/<slug>/admin/launch")
+def launch(slug):
+    ctx, early = admin_ctx(slug)
+    if early:
+        return early
+    project = ctx.project
+    ddata = build_study_dashboard_data(ctx, project)
+
+    participant_url = url_for("web.home", slug=project.slug, _external=True)
+    admin_url = url_for("admin.dashboard", slug=project.slug, _external=True)
+
+    p_source = passcodes.source(project, "participant")
+    a_source = passcodes.source(project, "admin")
+
+    est_mins = max(5, len(project.modules) * 3)
+    can_edit = is_super() or getattr(project, "editable", True)
+    is_public = os.environ.get("TESTBENCH_MODE", "internal") == "public"
+
+    return ctx.render(
+        "admin/launch.html",
+        project=project,
+        active_tab="launch",
+        participant_url=participant_url,
+        admin_url=admin_url,
+        participant_passcode_source=p_source or "none",
+        admin_passcode_source=a_source or "none",
+        est_minutes=est_mins,
+        can_edit=can_edit,
+        is_public=is_public,
+        **ddata
+    )
+
+
+@bp.route("/app/p/<slug>/launch/passcode", methods=["POST"])
+@bp.route("/<slug>/admin/launch/passcode", methods=["POST"])
+def launch_passcode(slug):
+    ctx, early = admin_ctx(slug)
+    if early:
+        return early
+    project = ctx.project
+    can_edit = is_super() or getattr(project, "editable", True)
+    if not can_edit:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Read-only study."}), 403
+        abort(403)
+
+    if request.is_json:
+        data = request.get_json() or {}
+        kind = data.get("kind", "participant")
+        action = data.get("action", "set")
+        val = (data.get("passcode") or "").strip()
+    else:
+        kind = request.form.get("kind", "participant")
+        action = request.form.get("action", "set")
+        val = (request.form.get("passcode") or "").strip()
+
+    if kind not in ("participant", "admin"):
+        abort(400)
+
+    if action == "clear":
+        passcodes.clear(slug, kind)
+        with storage.connect(slug) as conn:
+            storage.audit(conn, "clear_passcode", request.remote_addr, {"kind": kind})
+        if request.is_json:
+            return jsonify({"ok": True, "action": "clear", "kind": kind})
+        return redirect(url_for("admin.launch", slug=slug, notice=f"{kind.title()} passcode removed."))
+
+    if len(val) < 6:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Use at least 6 characters."}), 400
+        return redirect(url_for("admin.launch", slug=slug, error="Use at least 6 characters."))
+
+    passcodes.set_passcode(slug, kind, val)
+    with storage.connect(slug) as conn:
+        storage.audit(conn, "set_passcode", request.remote_addr, {"kind": kind})
+    if request.is_json:
+        return jsonify({"ok": True, "action": "set", "kind": kind})
+    return redirect(url_for("admin.launch", slug=slug, notice=f"{kind.title()} passcode saved."))
+
+

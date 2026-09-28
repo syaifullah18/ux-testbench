@@ -95,7 +95,7 @@
       <div class="panel-b">
         <p class="t-strong">No one has entered this study yet</p>
         <p class="t-meta mt-1">Share the participant link from Launch. People appear here as they sign in.</p>
-        <a class="btn btn-primary mt-4" href="{{ url_for('admin.dashboard', slug=project.slug) }}#launch">Go to Launch</a>
+        <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
       </div>
       {% endif %}
     </section>

@@ -78,7 +78,7 @@
           <div class="panel-b">
             <p class="t-strong">No one has entered this study yet</p>
             <p class="t-meta mt-1">Results appear here once people finish a module. Go to Launch to share the participant link.</p>
-            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}">Go to Launch</a>
+            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
           </div>
         </section>
       {% endif %}
@@ -146,7 +146,7 @@
           <div class="panel-b">
             <p class="t-strong">No one has entered this module yet.</p>
             <p class="t-meta mt-1">Share the participant link from Launch, then check back here.</p>
-            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}">Go to Launch</a>
+            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
           </div>
         </section>
       {% elif cur_stat.finished == 0 %}

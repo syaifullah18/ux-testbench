@@ -48,7 +48,7 @@
         </div>
         <div>
           {% if status == 'draft' %}
-          <a class="btn btn-primary" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('studio.home', slug=project.slug) }}">Finish setup</a>
+          <a class="btn btn-primary" href="{{ url_for('admin.launch', slug=project.slug) }}">Finish setup</a>
           {% elif status == 'live' %}
           <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Read results</a>
           {% else %}
