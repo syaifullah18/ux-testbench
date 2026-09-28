@@ -229,6 +229,18 @@ dialog::backdrop { background: rgba(21,26,35,.5); }
 .side a:hover { background: var(--paper); color: var(--ink); }
 .side a[aria-current="page"] { background: var(--brand-soft); color: var(--ink); font-weight: 600; }
 .side .count { font-size: 14px; font-weight: 400; color: var(--muted); }
+.side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+
+/* Results module summary grid and tables */
+.res-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) 112px minmax(0, 2fr) 120px; gap: 16px; align-items: center; padding: 16px 24px; }
+@media (max-width: 960px) { .res-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; } .res-head { display: none; } }
+.verdict-note { font-size: 14px; color: var(--muted); }
+.tbl tbody.task-g th { font-size: 16px; color: var(--ink); background: #fff; border-bottom: 0; padding-top: 16px; }
+.tbl tbody.task-g + tbody.task-g th { border-top: 1px solid var(--line); }
+.sub-r td { padding-top: 8px; padding-bottom: 8px; border-bottom: 0; }
+.tbl td.num, .tbl th.text-right { white-space: nowrap; }
+.tbl tfoot td { border-top: 1px solid var(--line); background: #FAFBFC; font-weight: 600; }
 
 /* Ordered module list: aligned columns, drag to reorder */
 .mod-grid { display: grid; grid-template-columns: 20px 24px minmax(0, 1fr) 128px 128px 104px; gap: 16px; align-items: center; padding: 16px 24px; }

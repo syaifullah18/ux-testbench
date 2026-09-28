@@ -404,7 +404,7 @@ def build_study_dashboard_data(ctx, project):
                 "detail": f"{f_count} of {s_count} finished ({pct_val}% completion).",
                 "status": "warn",
                 "label": "Drop-off",
-                "action_url": url_for("admin.module_report", slug=project.slug, mid=m.id),
+                "action_url": url_for("admin.results", slug=project.slug, m=m.id),
                 "action_text": "Open report"
             })
     if project.access == "open":
@@ -526,11 +526,122 @@ def super_logout():
     return redirect(url_for("admin.overview"))
 
 
+MODULE_TYPE_LABELS = {
+    "survey": "Survey",
+    "ab_test": "A/B test",
+    "ab": "A/B test",
+    "first_click": "First click",
+    "card_sort": "Card sort",
+    "tree_test": "Tree test",
+    "tree": "Tree test",
+}
+
+
+def make_headline(ctx, m, m_stat):
+    finished = m_stat.get("finished", 0)
+    started = m_stat.get("started", 0)
+    if finished == 0:
+        return '<span class="text-muted">No one has finished this module yet.</span>'
+    try:
+        if m.type in ("ab", "ab_test"):
+            c = m.conf
+            runs = m.impl._finished_runs(ctx)
+            if runs:
+                base = c.get("baseline")
+                keys = [k for k in c.get("variants", {}) if k != base]
+                if keys:
+                    challenger = keys[0]
+                    people = {}
+                    for r in runs:
+                        people.setdefault(r["session"]["id"], {})[r["variant"]] = r
+                    pairs = [p for p in people.values() if base in p and challenger in p]
+                    min_n = c.get("rule", {}).get("min_participants", 8)
+                    if len(pairs) < min_n:
+                        return f"Indicative: {len(pairs)} of {min_n} people tried both variants."
+                    else:
+                        return f"{len(pairs)} people tried both variants. Rules evaluated against baseline."
+        elif m.type in ("tree", "tree_test"):
+            n_tasks = len(m.conf.get("tasks", []))
+            return f"{finished} finished across {n_tasks} task{'s' if n_tasks != 1 else ''}."
+        elif m.type == "first_click":
+            return f"{finished} participant{'s' if finished != 1 else ''} completed the click task."
+        elif m.type == "card_sort":
+            return f"{finished} participant{'s' if finished != 1 else ''} sorted cards."
+        elif m.type == "survey":
+            return f"{finished} response{'s' if finished != 1 else ''} collected."
+    except Exception:
+        pass
+    p_word = "person" if started == 1 else "people"
+    return f"{started} {p_word} started, {finished} finished."
+
+
+@bp.route("/app/p/<slug>/results")
+@bp.route("/<slug>/admin/results")
+def results(slug, mid=None):
+    ctx, early = admin_ctx(slug)
+    if early:
+        return early
+    project = ctx.project
+    ddata = build_study_dashboard_data(ctx, project)
+    stats = ddata["stats"]
+    n_participants = ddata["n_participants"]
+
+    if mid is None:
+        mid = request.args.get("m")
+    cur_module = project.module(mid) if mid else None
+
+    modules_list = []
+    for m in project.modules.values():
+        m_stat = stats.get(m.id, {"started": 0, "finished": 0})
+        m_type_label = MODULE_TYPE_LABELS.get(m.type, m.type)
+        mctx = Ctx(project, module=m, admin=True)
+        headline_text = make_headline(mctx, m, m_stat)
+        desc = getattr(m, "description", "") or (m.conf.get("description", "") if hasattr(m, "conf") and isinstance(m.conf, dict) else "")
+        modules_list.append({
+            "id": m.id,
+            "title": m.title,
+            "type": m.type,
+            "type_label": m_type_label,
+            "description": desc,
+            "started": m_stat["started"],
+            "finished": m_stat["finished"],
+            "headline": headline_text,
+        })
+
+    needs_attention = [item for item in ddata["needs_attention"] if item.get("label") == "Drop-off"]
+
+    report_body = None
+    cur_stat = None
+    cur_module_type_label = None
+    if cur_module:
+        cur_stat = stats.get(cur_module.id, {"started": 0, "finished": 0})
+        cur_module_type_label = MODULE_TYPE_LABELS.get(cur_module.type, cur_module.type)
+        if cur_stat["finished"] > 0:
+            mctx = Ctx(project, module=cur_module, admin=True)
+            try:
+                report_body = cur_module.impl.report(mctx)
+            except Exception as e:
+                report_body = f'<div class="panel-b"><p class="err">Could not render report: {e}</p></div>'
+
+    can_edit = getattr(project, "editable", True)
+
+    return ctx.render("admin/results.html",
+                      project=project,
+                      active_tab="results",
+                      modules_list=modules_list,
+                      cur_module=cur_module,
+                      cur_stat=cur_stat,
+                      cur_module_type_label=cur_module_type_label,
+                      report_body=report_body,
+                      needs_attention=needs_attention,
+                      n_participants=n_participants,
+                      can_edit=can_edit)
+
+
 @bp.route("/app/p/<slug>/m/<mid>/")
 @bp.route("/<slug>/admin/m/<mid>/")
 def module_report(slug, mid):
-    ctx, early = admin_ctx(slug, mid)
-    return early or ctx.render("admin/module_report.html", body=ctx.module.impl.report(ctx))
+    return results(slug, mid=mid)
 
 
 @bp.route("/app/p/<slug>/m/<mid>/export.csv")

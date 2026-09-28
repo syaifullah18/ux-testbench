@@ -262,7 +262,7 @@
               {% endif %}
             </td>
             <td class="whitespace-nowrap text-right">
-              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}">Report</a>
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}">Report</a>
               <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.module_edit', slug=project.slug, mid=m.id) }}">Edit</a>
             </td>
           </tr>
