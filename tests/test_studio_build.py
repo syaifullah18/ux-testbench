@@ -142,7 +142,7 @@ def test_visual_module_editor_flow(projects_dir, make_app):
     assert "Setup" in html and "Content" in html and "Advanced" in html
     assert "What a participant does" in html
     assert "savebar" in html
-    assert "ab_test" in html
+    assert "openKeys = {};" in html
     # Check header outside main
     assert html.count('<main id="main"') == 1
     assert html.find('class="page-head"') < html.find('<main id="main"')

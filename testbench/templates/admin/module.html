@@ -152,7 +152,7 @@
   var INITIAL = {{ initial_data|tojson }};
   var S = clone(INITIAL);
   var dirty = false;
-  var openKeys = isAB ? { 'task-0': true } : { 'sq-0-0': true, 'tt-0': true, 'ct-0': true };
+  var openKeys = {};
   var errors = [];
   var showSummary = false;
 
@@ -919,7 +919,7 @@
       S = clone(INITIAL);
       dirty = false;
       showSummary = false;
-      openKeys = isAB ? { 'task-0': true } : { 'sq-0-0': true, 'tt-0': true, 'ct-0': true };
+      openKeys = {};
       render();
       showToast('Changes discarded.');
     });
