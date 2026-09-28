@@ -101,7 +101,7 @@
             {% endif %}
           </div>
           <div class="mod-act">
-            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.edit', slug=project.slug, file='modules/' ~ m.id ~ '.yaml') }}">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.module_edit', slug=project.slug, mid=m.id) }}">
               {{ 'Edit' if project.editable else 'View' }}
             </a>
             <div class="pop">

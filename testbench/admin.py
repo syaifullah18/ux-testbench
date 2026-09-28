@@ -528,7 +528,7 @@ def super_logout():
 @bp.route("/<slug>/admin/m/<mid>/")
 def module_report(slug, mid):
     ctx, early = admin_ctx(slug, mid)
-    return early or ctx.render("admin/module.html", body=ctx.module.impl.report(ctx))
+    return early or ctx.render("admin/module_report.html", body=ctx.module.impl.report(ctx))
 
 
 @bp.route("/app/p/<slug>/m/<mid>/export.csv")

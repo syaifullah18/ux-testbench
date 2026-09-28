@@ -1,0 +1,22 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ module.title }} · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}results{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'results' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-ink">{{ module.title }}</h1>
+        <p class="text-[14px] text-ink-subtle">{{ module.type }}{% if module.description %} · {{ module.description }}{% endif %}</p>
+    </div>
+    <a href="{{ url_for('admin.module_export', slug=project.slug, mid=module.id) }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-download mr-1"></i>CSV</a>
+</div>
+{{ body }}
+{% endblock %}

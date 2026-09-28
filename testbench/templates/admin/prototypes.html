@@ -136,7 +136,7 @@
           <span class="num file-hide">{{ f.size_formatted }}</span>
           <div class="file-hide">
             {% if f.use %}
-            <a class="link" href="{{ url_for('studio.edit', slug=project.slug, file='modules/' ~ f.use.id ~ '.yaml') }}">{{ f.use.title }}</a>
+            <a class="link" href="{{ url_for('studio.module_edit', slug=project.slug, mid=f.use.id) }}">{{ f.use.title }}</a>
             <span class="t-meta block">{{ f.use.note }}</span>
             {% elif f.loaded_by %}
             <span>Loaded by {{ f.loaded_by }} prototype pages</span>

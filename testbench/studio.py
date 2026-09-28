@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from flask import (Blueprint, abort, current_app, redirect, render_template, request, send_file,
+from flask import (Blueprint, abort, current_app, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, session as cookie, url_for)
 
 from . import limits, passcodes, storage
@@ -669,7 +669,351 @@ def module_new(slug):
     for rel, text in writes.items():
         write_text(project.dir, rel, text)
     reload()
-    return redirect(url_for("studio.edit", slug=slug, file=f"modules/{mid}.yaml"))
+    return redirect(url_for("studio.module_edit", slug=slug, mid=mid, file=f"modules/{mid}.yaml"))
+
+
+def module_to_ui_data(mid, m, data):
+    """Normalizes raw YAML dictionary into the state object expected by admin/module.html."""
+    mtype = data.get("type") or (m.type if m else "ab_test")
+    title = str(data.get("title") or (m.title if m else mid))
+    desc = str(data.get("description") or (m.description if m else ""))
+    mins = data.get("minutes")
+    if mins is None and m:
+        mins = m.minutes
+    mins = mins if mins is not None else ""
+    reqs = list(data.get("requires") or (m.requires if m else []))
+    aud = data.get("audience") or (m.audience if m else {}) or {}
+
+    out = {
+        "title": title,
+        "description": desc,
+        "minutes": mins,
+        "requires": reqs,
+        "audPattern": str(aud.get("identity_pattern") or ""),
+        "audModule": str(aud.get("module") or ""),
+        "audQuestion": str(aud.get("question") or ""),
+        "audOp": str(aud.get("op") or "equals"),
+        "audValue": str(aud.get("value") or ""),
+        "yaml": None,
+    }
+
+    if mtype == "ab_test":
+        variants = []
+        raw_vars = data.get("variants") or {}
+        if isinstance(raw_vars, dict):
+            for k, v in raw_vars.items():
+                v = v or {}
+                variants.append({
+                    "key": str(k),
+                    "label": str(v.get("label") or k),
+                    "file": str(v.get("file") or ""),
+                })
+        out["variants"] = variants
+        out["baseline"] = str(data.get("baseline") or (variants[0]["key"] if variants else "A"))
+        out["order"] = str(data.get("order") or "rotate")
+        out["intro"] = str(data.get("intro") or "")
+
+        tasks = []
+        for i, t in enumerate(data.get("tasks") or []):
+            tid = str(t.get("id") or f"task_{i+1}")
+            fields = t.get("fields") or []
+            f0 = fields[0] if fields else {}
+            kind = f0.get("kind", "text")
+            options = f0.get("options") or []
+            options_str = "\n".join(str(o) for o in options) if isinstance(options, list) else str(options)
+            accept_map = t.get("accept") or {}
+            if isinstance(accept_map, dict):
+                accept_list = accept_map.get(f0.get("id", tid)) or accept_map.get(tid) or []
+                if not accept_list and accept_map:
+                    accept_list = next(iter(accept_map.values()), [])
+            elif isinstance(accept_map, list):
+                accept_list = accept_map
+            else:
+                accept_list = [str(accept_map)]
+            tasks.append({
+                "id": tid,
+                "title": str(t.get("title") or tid),
+                "prompt": str(t.get("prompt") or ""),
+                "fieldLabel": str(f0.get("label") or "Your answer"),
+                "placeholder": str(f0.get("placeholder") or ""),
+                "kind": kind,
+                "options": options_str,
+                "accept": [str(a) for a in accept_list],
+                "probe": str(t.get("probe") or ""),
+            })
+        out["tasks"] = tasks
+        out["ease"] = bool(data.get("ease_question", True))
+
+        def norm_qs(qs):
+            res = []
+            for q in qs or []:
+                labels = q.get("labels") or []
+                low = str(labels[0]) if len(labels) > 0 else str(q.get("low") or "")
+                high = str(labels[-1]) if len(labels) > 1 else str(q.get("high") or "")
+                opts = q.get("options") or []
+                opts_str = "\n".join(str(o) for o in opts) if isinstance(opts, list) else str(opts)
+                res.append({
+                    "id": str(q.get("id") or ""),
+                    "type": str(q.get("type") or "scale"),
+                    "label": str(q.get("label") or ""),
+                    "required": bool(q.get("required", True)),
+                    "points": int(q.get("points") or 5),
+                    "low": low,
+                    "high": high,
+                    "options": opts_str,
+                })
+            return res
+
+        out["post"] = norm_qs(data.get("post_survey") or data.get("post") or [])
+        out["preference"] = bool(data.get("preference", len(variants) > 1))
+        out["final"] = norm_qs(data.get("final_survey") or data.get("final") or [])
+
+        rule = data.get("decision_rule") or {}
+        sqs = list(rule.get("survey_questions") or [])
+        out["rule"] = {
+            "min": int(rule.get("min_participants", 8)),
+            "question": str(sqs[0]) if sqs else "",
+            "gain": float(rule.get("min_survey_gain", 0.5)),
+        }
+
+    elif mtype == "survey":
+        pages = data.get("pages")
+        if pages is None and "questions" in data:
+            pages = [{"title": "Questions", "questions": data["questions"]}]
+        pages = pages or []
+        ui_pages = []
+        for pi, page in enumerate(pages):
+            p_title = str(page.get("title") or f"Page {pi+1}")
+            qs = []
+            for qi, q in enumerate(page.get("questions") or []):
+                labels = q.get("labels") or []
+                low = str(labels[0]) if len(labels) > 0 else str(q.get("low") or "")
+                high = str(labels[-1]) if len(labels) > 1 else str(q.get("high") or "")
+                raw_opts = q.get("options") or []
+                if isinstance(raw_opts, dict):
+                    opts_str = "\n".join(str(v) for v in raw_opts.values())
+                elif isinstance(raw_opts, list):
+                    opts_str = "\n".join(str(o) for o in raw_opts)
+                else:
+                    opts_str = str(raw_opts)
+                raw_rows = q.get("rows") or []
+                rows_str = "\n".join(str(r) for r in raw_rows) if isinstance(raw_rows, list) else str(raw_rows)
+                show_if = q.get("show_if") or {}
+                on = bool(show_if)
+                op = "equals"
+                val = ""
+                if "equals" in show_if:
+                    op = "equals"
+                    val = str(show_if["equals"])
+                elif "in" in show_if:
+                    op = "in"
+                    val = ", ".join(str(x) for x in show_if["in"])
+                elif "not_in" in show_if:
+                    op = "not_in"
+                    val = ", ".join(str(x) for x in show_if["not_in"])
+                ref_q = str(show_if.get("question") or show_if.get("ref") or "")
+                qs.append({
+                    "id": str(q.get("id") or f"q_{pi+1}_{qi+1}"),
+                    "type": str(q.get("type") or "single"),
+                    "label": str(q.get("label") or ""),
+                    "required": bool(q.get("required", True)),
+                    "points": int(q.get("points") or 5),
+                    "low": low,
+                    "high": high,
+                    "options": opts_str,
+                    "rows": rows_str,
+                    "max": q.get("max", ""),
+                    "showIf": {
+                        "on": on,
+                        "module": str(show_if.get("module") or ""),
+                        "q": ref_q,
+                        "op": op,
+                        "value": val,
+                    },
+                })
+            ui_pages.append({"title": p_title, "questions": qs})
+        if not ui_pages:
+            ui_pages = [{"title": "Page 1", "questions": []}]
+        out["pages"] = ui_pages
+
+    elif mtype == "tree_test":
+        out["intro"] = str(data.get("instructions") or data.get("intro") or "")
+
+        def tree_to_lines(nodes, depth=0):
+            res = []
+            for n in nodes or []:
+                if isinstance(n, dict):
+                    name = str(n.get("label") or n.get("name") or n.get("id") or "")
+                    res.append("  " * depth + name)
+                    if n.get("children"):
+                        res.extend(tree_to_lines(n["children"], depth + 1))
+                elif isinstance(n, str):
+                    res.append("  " * depth + n)
+            return res
+        out["outline"] = "\n".join(tree_to_lines(data.get("tree") or []))
+
+        id_to_path = {}
+
+        def map_ids(nodes, stack=()):
+            for n in nodes or []:
+                if isinstance(n, dict):
+                    lbl = str(n.get("label") or n.get("name") or n.get("id") or "")
+                    cur = stack + (lbl,)
+                    nid = str(n.get("id") or "")
+                    if nid:
+                        id_to_path[nid] = " > ".join(cur)
+                    id_to_path[lbl] = " > ".join(cur)
+                    if n.get("children"):
+                        map_ids(n["children"], cur)
+        map_ids(data.get("tree") or [])
+
+        tasks = []
+        for i, t in enumerate(data.get("tasks") or []):
+            raw_acc = t.get("accept") or t.get("correct") or []
+            correct = [id_to_path.get(str(x), str(x)) for x in raw_acc]
+            tasks.append({
+                "id": str(t.get("id") or f"task_{i+1}"),
+                "prompt": str(t.get("prompt") or ""),
+                "correct": correct,
+            })
+        out["tasks"] = tasks
+
+    elif mtype == "card_sort":
+        out["intro"] = str(data.get("instructions") or data.get("intro") or "")
+        cards = data.get("cards") or []
+        card_lines = []
+        for c in cards:
+            if isinstance(c, dict):
+                card_lines.append(str(c.get("label") or c.get("id") or ""))
+            else:
+                card_lines.append(str(c))
+        out["cards"] = "\n".join(card_lines)
+        cats = data.get("categories") or []
+        out["categories"] = "\n".join(str(c) for c in cats)
+        allow_new = data.get("allow_new_categories", not bool(cats))
+        if not cats:
+            out["mode"] = "open"
+        elif allow_new:
+            out["mode"] = "hybrid"
+        else:
+            out["mode"] = "closed"
+
+    elif mtype == "first_click":
+        out["intro"] = str(data.get("instructions") or data.get("intro") or "")
+        tasks = []
+        for i, t in enumerate(data.get("tasks") or []):
+            tgt = t.get("target") or {}
+            tasks.append({
+                "id": str(t.get("id") or f"task_{i+1}"),
+                "prompt": str(t.get("prompt") or ""),
+                "image": str(t.get("image") or ""),
+                "x": int(tgt.get("x", 0)),
+                "y": int(tgt.get("y", 0)),
+                "w": int(tgt.get("width") or tgt.get("w") or 100),
+                "h": int(tgt.get("height") or tgt.get("h") or 40),
+                "label": str(tgt.get("name") or tgt.get("label") or ""),
+            })
+        out["tasks"] = tasks
+
+    return out
+
+
+@bp.route("/app/p/<slug>/studio/modules/<mid>", methods=["GET", "POST"])
+@bp.route("/<slug>/admin/studio/modules/<mid>", methods=["GET", "POST"])
+def module_edit(slug, mid):
+    if not ID_RE.match(mid):
+        abort(400)
+    project = studio_project(slug, write=request.method == "POST")
+    rel = f"modules/{mid}.yaml"
+    path = project.dir / rel
+    if not path.is_file() and mid not in project.modules:
+        abort(404)
+
+    if request.method == "POST":
+        action = request.form.get("action", "save")
+        content = request.form.get("content", "").replace("\r\n", "\n")
+        writes = {rel: content}
+        problems = trial(project.dir, slug, writes=writes)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+        if problems:
+            if is_ajax:
+                return jsonify({"ok": False, "problems": problems})
+            return redirect(url_for("studio.module_edit", slug=slug, mid=mid, error="; ".join(problems[:3])))
+        if action == "check":
+            if is_ajax:
+                return jsonify({"ok": True, "problems": []})
+            return redirect(url_for("studio.module_edit", slug=slug, mid=mid, notice="Check passed. No problems found."))
+        if action == "save":
+            write_text(project.dir, rel, content)
+            reload()
+            with storage.connect(slug) as conn:
+                storage.audit(conn, "edit_module", request.remote_addr, {"mid": mid, "file": rel})
+            if is_ajax:
+                return jsonify({"ok": True})
+            return redirect(url_for("studio.module_edit", slug=slug, mid=mid, saved=1))
+        if is_ajax:
+            return jsonify({"ok": False, "problems": [f"Unknown action: {action}"]})
+        abort(400)
+
+    # GET request
+    restore = request.args.get("restore")
+    if restore:
+        src = inside(project.dir / ".history", restore)
+        if not src.is_file():
+            abort(404)
+        raw_yaml = src.read_text(encoding="utf-8")
+    elif path.is_file():
+        raw_yaml = path.read_text(encoding="utf-8")
+    else:
+        abort(404)
+
+    try:
+        data = yaml.safe_load(raw_yaml) or {}
+    except Exception:
+        data = {}
+
+    m_obj = project.modules.get(mid)
+    m_type = data.get("type") or (m_obj.type if m_obj else "ab_test")
+    initial_data = module_to_ui_data(mid, m_obj, data)
+
+    # Available prototype files
+    prototypes_dir = project.dir / "prototypes"
+    available_files = []
+    if prototypes_dir.is_dir():
+        for f in sorted(prototypes_dir.rglob("*")):
+            if f.is_file() and not f.name.startswith("."):
+                available_files.append(str(f.relative_to(project.dir)).replace("\\", "/"))
+
+    # Other modules
+    other_modules = [{"id": m.id, "title": m.title, "type": m.type} for m in project.modules.values()]
+
+    type_label_map = {
+        "ab_test": "A/B test",
+        "survey": "Survey",
+        "tree_test": "Tree test",
+        "card_sort": "Card sort",
+        "first_click": "First click",
+    }
+
+    ctx = studio_ctx(project)
+    started = ctx.conn.execute("SELECT COUNT(*) FROM sessions WHERE module_id = ?", (mid,)).fetchone()[0] if mid else 0
+    hist = history(project.dir, rel)[:10] if project.editable else []
+
+    can_edit_flag = can_edit(slug) and project.editable
+
+    return ctx.render(
+        "admin/module.html",
+        module=m_obj or {"id": mid, "title": data.get("title", mid), "type": m_type},
+        module_type=m_type,
+        module_type_label=type_label_map.get(m_type, m_type),
+        started=started,
+        can_edit=can_edit_flag,
+        available_files=available_files,
+        other_modules=other_modules,
+        initial_data=initial_data,
+        raw_yaml=raw_yaml,
+        history=hist,
+    )
 
 
 @bp.post("/app/p/<slug>/studio/modules/<mid>/duplicate")
