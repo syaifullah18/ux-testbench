@@ -1,11 +1,16 @@
 {% extends "admin/_layout.html" %}
 {% block title %}Prototypes and files · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}build{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'build' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
 {% block main_class %}wrap main{% endblock %}
 
 {% block content %}
-{% set active_tab = 'build' %}
-{% include "admin/_study_header.html" %}
-
 <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
   {% set active_build_subnav = 'prototypes' %}
   {% include "admin/_build_nav.html" %}
