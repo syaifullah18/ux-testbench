@@ -14,9 +14,9 @@
           <h1 class="t-page">{{ project.name }}</h1>
           <span class="font-mono text-sm text-muted">/{{ project.slug }}</span>
           
-          <div class="relative">
-            <button type="button" id="st-btn" data-dropdown-toggle="st-menu" data-dropdown-placement="bottom-start" class="st-btn" aria-label="Change study status">
-              <span>
+          <div class="relative pop" id="st-dropdown-wrap" data-current-status="{{ st }}">
+            <button type="button" id="st-btn" class="st-btn" aria-label="Change study status" aria-expanded="false" aria-haspopup="true">
+              <span data-status-pill>
                 {% if st == 'live' %}
                 <span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>
                 {% elif st == 'closed' %}
@@ -27,22 +27,19 @@
               </span>
               <i class="fa-solid fa-chevron-down text-xs text-muted" aria-hidden="true"></i>
             </button>
-            <div id="st-menu" class="menu z-40 hidden w-80">
-              <form method="post" action="{{ url_for('admin.set_status', slug=project.slug) if 'admin.set_status' in url_for.__globals__ else '#' }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
-                <button type="submit" name="status" value="draft" class="mi mi-status w-full text-left {% if st == 'draft' %}aria-current="true"{% endif %}">
-                  <span><span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span></span>
-                  <span class="t-meta">Participants see "This study is being prepared". You can still pilot it.</span>
-                </button>
-                <button type="submit" name="status" value="live" class="mi mi-status w-full text-left {% if st == 'live' %}aria-current="true"{% endif %}">
-                  <span><span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span></span>
-                  <span class="t-meta">Participants can enter at the study link.</span>
-                </button>
-                <button type="submit" name="status" value="closed" class="mi mi-status w-full text-left {% if st == 'closed' %}aria-current="true"{% endif %}">
-                  <span><span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span></span>
-                  <span class="t-meta">Nobody new enters and nobody can resume. Results stay open.</span>
-                </button>
-              </form>
+            <div id="st-menu" class="menu z-40 hidden w-80 absolute left-0 top-[calc(100%+4px)] shadow-lg">
+              <button type="button" class="mi mi-status w-full text-left" data-set-status="draft" {% if st == 'draft' %}aria-current="true"{% endif %}>
+                <span><span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span></span>
+                <span class="t-meta">Participants see "This study is being prepared". You can still pilot it.</span>
+              </button>
+              <button type="button" class="mi mi-status w-full text-left" data-set-status="live" {% if st == 'live' %}aria-current="true"{% endif %}>
+                <span><span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span></span>
+                <span class="t-meta">Participants can enter at the study link.</span>
+              </button>
+              <button type="button" class="mi mi-status w-full text-left" data-set-status="closed" {% if st == 'closed' %}aria-current="true"{% endif %}>
+                <span><span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span></span>
+                <span class="t-meta">Nobody new enters and nobody can resume. Results stay open.</span>
+              </button>
             </div>
           </div>
 
@@ -93,3 +90,226 @@
     </nav>
   </div>
 </div>
+
+<dialog id="dlg-status" aria-labelledby="dlg-status-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="dialog" class="p-6">
+    <h2 id="dlg-status-h" class="t-panel"></h2>
+    <p id="dlg-status-body" class="mt-2 text-muted text-sm leading-relaxed"></p>
+    <p id="dlg-status-block" class="mt-4 rounded-md bg-bad-soft p-3 text-sm font-semibold text-bad is-hidden"></p>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+      <a href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}" class="link text-sm">Review the checklist</a>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn-secondary" id="dlg-status-cancel" value="cancel">Cancel</button>
+        <button type="button" id="dlg-status-ok" class="btn btn-primary" value="ok"></button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function() {
+  function initStatusDropdown() {
+    var wrap = document.getElementById('st-dropdown-wrap');
+    var btn = document.getElementById('st-btn');
+    var menu = document.getElementById('st-menu');
+    var dlg = document.getElementById('dlg-status');
+    var okBtn = document.getElementById('dlg-status-ok');
+    var cancelBtn = document.getElementById('dlg-status-cancel');
+    var h = document.getElementById('dlg-status-h');
+    var body = document.getElementById('dlg-status-body');
+    var blk = document.getElementById('dlg-status-block');
+
+    if (!btn || !menu || !dlg) return;
+
+    var pendingStatus = null;
+    var setStatusUrl = "{{ url_for('admin.set_status', slug=project.slug) }}";
+    var csrfToken = "{{ csrf_token if csrf_token is defined else '' }}";
+
+    var COPY = {
+      live: ['Go live?', 'Participants can enter at the study link. Editing questions after this may affect results you already have.', 'Go live'],
+      closed: ['Close this study?', 'Nobody new can enter, and people already inside can no longer resume. You can reopen it later.', 'Close study'],
+      draft: ['Move back to draft?', 'Participants will see "This study is being prepared". Data already collected stays.', 'Move to draft']
+    };
+
+    var ST_PILLS = {
+      live: '<span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>',
+      draft: '<span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>',
+      closed: '<span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>'
+    };
+
+    var ST_LABELS = {
+      live: 'Live',
+      draft: 'Draft',
+      closed: 'Closed'
+    };
+
+    function showToast(msg) {
+      if (window.UTB && typeof window.UTB.toast === 'function') {
+        window.UTB.toast(msg);
+      } else {
+        var t = document.getElementById('toast');
+        if (t) {
+          t.textContent = msg;
+          t.classList.remove('is-hidden');
+          setTimeout(function () { t.classList.add('is-hidden'); }, 3200);
+        }
+      }
+    }
+
+    // Toggle dropdown
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isHidden = menu.classList.contains('hidden');
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+      if (!wrap.contains(e.target)) {
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Handle status option click
+    menu.querySelectorAll('[data-set-status]').forEach(function(optBtn) {
+      optBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var targetStatus = optBtn.getAttribute('data-set-status');
+        var curStatus = wrap.getAttribute('data-current-status');
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+
+        if (targetStatus === curStatus) return;
+
+        pendingStatus = targetStatus;
+        var c = COPY[targetStatus] || [targetStatus, '', targetStatus];
+        if (h) h.textContent = c[0];
+        if (body) body.textContent = c[1];
+        if (okBtn) okBtn.textContent = c[2];
+
+        var failItems = document.querySelectorAll('[data-item="fail"]');
+        var fails = failItems.length;
+        var blocked = targetStatus === 'live' && fails > 0;
+        if (blk) {
+          blk.classList.toggle('is-hidden', !blocked);
+          blk.textContent = blocked ? 'Participants would be locked out. Set the participant passcode first.' : '';
+        }
+        if (okBtn) {
+          okBtn.disabled = blocked;
+        }
+
+        if (typeof dlg.showModal === 'function') {
+          dlg.showModal();
+        } else {
+          dlg.setAttribute('open', '');
+        }
+      });
+    });
+
+    // Cancel dialog
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function() {
+        if (typeof dlg.close === 'function') dlg.close();
+        else dlg.removeAttribute('open');
+        pendingStatus = null;
+      });
+    }
+
+    // Backdrop click
+    dlg.addEventListener('click', function(e) {
+      var rect = dlg.getBoundingClientRect();
+      var inDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!inDialog) {
+        if (typeof dlg.close === 'function') dlg.close();
+        else dlg.removeAttribute('open');
+        pendingStatus = null;
+      }
+    });
+
+    // Confirm dialog
+    if (okBtn) {
+      okBtn.addEventListener('click', async function() {
+        if (!pendingStatus) return;
+        okBtn.disabled = true;
+        var origText = okBtn.textContent;
+        okBtn.textContent = 'Saving...';
+
+        try {
+          var formData = new FormData();
+          formData.append('status', pendingStatus);
+          formData.append('csrf_token', csrfToken);
+
+          var res = await fetch(setStatusUrl, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrfToken
+            },
+            body: formData
+          });
+
+          var data = {};
+          try { data = await res.json(); } catch(err) {}
+
+          if (res.ok && data.ok) {
+            wrap.setAttribute('data-current-status', pendingStatus);
+            var pillEl = btn.querySelector('[data-status-pill]');
+            if (pillEl && ST_PILLS[pendingStatus]) {
+              pillEl.innerHTML = ST_PILLS[pendingStatus];
+            }
+            menu.querySelectorAll('[data-set-status]').forEach(function(b) {
+              if (b.getAttribute('data-set-status') === pendingStatus) {
+                b.setAttribute('aria-current', 'true');
+              } else {
+                b.removeAttribute('aria-current');
+              }
+            });
+
+            if (typeof dlg.close === 'function') dlg.close();
+            else dlg.removeAttribute('open');
+
+            showToast('Status changed to ' + (ST_LABELS[pendingStatus] || pendingStatus).toLowerCase() + '.');
+            document.dispatchEvent(new CustomEvent('utb:status', { detail: pendingStatus }));
+
+            var path = window.location.pathname;
+            if (path.endsWith('/admin/') || path.endsWith('/admin') || path.endsWith('/dashboard')) {
+              setTimeout(function() { window.location.reload(); }, 600);
+            }
+          } else {
+            alert((data && data.error) || 'Failed to update study status.');
+          }
+        } catch(err) {
+          console.error('Error changing status:', err);
+          alert('Network error while updating status.');
+        } finally {
+          okBtn.disabled = false;
+          okBtn.textContent = origText;
+          pendingStatus = null;
+        }
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStatusDropdown);
+  } else {
+    initStatusDropdown();
+  }
+})();
+</script>

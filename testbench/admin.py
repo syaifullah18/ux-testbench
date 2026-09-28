@@ -4,7 +4,7 @@ import csv
 import io
 import os
 
-from flask import Blueprint, Response, abort, redirect, render_template, request, session as cookie, url_for
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, session as cookie, url_for
 
 from . import passcodes, storage
 from .context import Ctx, is_admin, is_super
@@ -493,22 +493,24 @@ def set_status(slug):
     if new_status not in ("draft", "live", "closed"):
         abort(400)
     
-    if project.editable:
-        pyaml_path = project.dir / "project.yaml"
-        if pyaml_path.is_file():
-            try:
-                import yaml
-                data = yaml.safe_load(pyaml_path.read_text(encoding="utf-8")) or {}
-                data["status"] = new_status
-                pyaml_path.write_text(yaml.dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
-                registry().refresh(force=True)
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Could not update status in project.yaml: {e}")
+    pyaml_path = project.dir / "project.yaml"
+    if pyaml_path.is_file():
+        try:
+            import yaml
+            data = yaml.safe_load(pyaml_path.read_text(encoding="utf-8")) or {}
+            data["status"] = new_status
+            pyaml_path.write_text(yaml.dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            registry().refresh(force=True)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Could not update status in project.yaml: {e}")
     project.status = new_status
     with storage.connect(slug) as conn:
         storage.audit(conn, "set_status", request.remote_addr, {"status": new_status})
-    return redirect(url_for("admin.dashboard", slug=slug, notice=f"Status set to {new_status}."))
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+        return jsonify({"ok": True, "status": new_status})
+    next_url = request.form.get("next") or request.referrer or url_for("admin.dashboard", slug=slug, notice=f"Status set to {new_status}.")
+    return redirect(next_url)
 
 
 @bp.route("/app/p/<slug>/logout")
