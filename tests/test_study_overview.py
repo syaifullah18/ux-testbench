@@ -91,5 +91,37 @@ def test_study_status_change(projects_dir, make_app):
     assert "Export results" in closed_html
 
 
+def test_studies_list_dropdown_and_markup(projects_dir, make_app):
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+
+    # View studies list
+    res = c.get("/admin/")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+
+    # Check table and study row
+    assert "City Library Portal" in html
+    assert "class=\"pop\"" in html
+    assert "data-pop" in html
+    assert "class=\"menu is-hidden\"" in html
+
+    # Check action items inside dropdown
+    assert "Results" in html
+    assert "Build" in html
+    assert "Copy participant link" in html
+    assert "data-copy=" in html
+    assert "Duplicate" in html
+    assert "Export as zip" in html
+    assert "Delete study" in html
+    assert "data-delete=" in html
+
+    # Check script handlers
+    assert "closeMenus" in html
+    assert "data-pop" in html
+    assert "data-copy" in html
+
+
 def html_clean(text):
     return " ".join(text.split())
+

@@ -121,17 +121,21 @@
           <td>
             <div class="flex items-center justify-end gap-2">
               <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.dashboard', slug=s.slug) }}">Open</a>
-              <button type="button" class="btn btn-secondary btn-sm btn-icon" data-dropdown-toggle="menu-{{ loop.index }}" data-dropdown-placement="bottom-end" aria-label="More actions for {{ s.name }}">
-                <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
-              </button>
-              <div id="menu-{{ loop.index }}" class="menu z-40 hidden w-56">
-                <a href="{{ url_for('admin.dashboard', slug=s.slug) }}">Results</a>
-                <a href="{{ url_for('studio.home', slug=s.slug) }}">Build</a>
-                <button type="button" class="mi" data-copy="{{ s.participant_url }}">Copy participant link</button>
-                <a href="{{ new_study_url }}?start=duplicate&from={{ s.slug }}">Duplicate</a>
-                <a href="{{ url_for('studio.export_zip', slug=s.slug) }}">Export as zip</a>
-                <hr class="my-1 border-line">
-                <button type="button" class="mi t-strong text-bad" data-delete="{{ s.slug }}" data-name="{{ s.name }}" data-people="{{ s.participants }}">Delete study</button>
+              <div class="pop">
+                <button type="button" class="btn btn-secondary btn-sm btn-icon" data-pop aria-haspopup="menu" aria-expanded="false" aria-label="More actions for {{ s.name }}">
+                  <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+                </button>
+                <div class="menu is-hidden" role="menu">
+                  <a href="{{ url_for('admin.dashboard', slug=s.slug) }}" role="menuitem">Results</a>
+                  <a href="{{ url_for('studio.home', slug=s.slug) }}" role="menuitem">Build</a>
+                  <button type="button" class="mi" role="menuitem" data-copy="{{ s.participant_url }}">Copy participant link</button>
+                  <a href="{{ new_study_url }}?start=duplicate&from={{ s.slug }}" role="menuitem">Duplicate</a>
+                  <a href="{{ url_for('studio.export_zip', slug=s.slug) }}" role="menuitem">Export as zip</a>
+                  {% if is_super or s.role == 'owner' or s.editable %}
+                  <hr class="my-1 border-line">
+                  <button type="button" class="mi t-strong text-bad" role="menuitem" data-delete="{{ s.slug }}" data-name="{{ s.name }}" data-people="{{ s.participants }}">Delete study</button>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </td>
@@ -206,6 +210,59 @@
     });
     apply();
 
+    // Toast helper
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.remove('is-hidden');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.classList.add('is-hidden'); }, 2400);
+    }
+
+    // Popover action menus
+    function closeMenus(except) {
+      document.querySelectorAll('.pop .menu').forEach(function (m) {
+        if (m !== except) {
+          m.classList.add('is-hidden');
+          if (m.previousElementSibling) m.previousElementSibling.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pop]');
+      if (b) {
+        var menu = b.nextElementSibling;
+        var open = menu.classList.contains('is-hidden');
+        closeMenus(open ? menu : null);
+        menu.classList.toggle('is-hidden', !open);
+        b.setAttribute('aria-expanded', open);
+        return;
+      }
+
+      var copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn) {
+        var url = copyBtn.dataset.copy;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url);
+        } else {
+          var inp = document.createElement('input');
+          inp.value = url;
+          document.body.appendChild(inp);
+          inp.select();
+          document.execCommand('copy');
+          document.body.removeChild(inp);
+        }
+        showToast('Participant link copied to clipboard.');
+        closeMenus();
+        return;
+      }
+
+      if (!e.target.closest('.pop')) closeMenus();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+
     // Delete confirmation
     var dlg = document.getElementById('dlg-delete');
     var deleteForm = document.getElementById('delete-form');
@@ -215,6 +272,7 @@
 
     document.querySelectorAll('[data-delete]').forEach(function (b) {
       b.addEventListener('click', function () {
+        closeMenus();
         target = b.dataset.delete;
         document.getElementById('del-name').textContent = b.dataset.name;
         document.getElementById('del-people').textContent = b.dataset.people;
@@ -223,7 +281,6 @@
         ok.disabled = true;
         document.getElementById('del-data').checked = false;
         deleteForm.action = '/' + encodeURIComponent(target) + '/admin/studio/delete';
-        document.querySelectorAll('[id^="menu-"]').forEach(function (m) { m.classList.add('hidden'); });
         dlg.showModal();
         slugIn.focus();
       });
