@@ -85,6 +85,8 @@
     var TYPES = {{ module_types|tojson }};
     var saveUrl = {{ url_for('studio.settings', slug=project.slug)|tojson }};
     var launchUrl = {{ (url_for('admin.dashboard', slug=project.slug) ~ '#launch')|tojson }};
+    var CSRF_TOKEN = {{ csrf_token|tojson if csrf_token is defined else '""' }};
+    var RAW_YAML = {{ raw_yaml|tojson }};
 
     var INITIAL = {{ initial_settings|tojson }};
 
@@ -252,7 +254,7 @@
         (modLines ? '\nmodules:\n' + modLines + '\n' : '');
 
       if ($('yaml') && !yamlTouched) {
-        $('yaml').value = y;
+        $('yaml').value = RAW_YAML ? RAW_YAML : y;
       }
     }
 
@@ -349,6 +351,7 @@
     }
 
     function touch() {
+      RAW_YAML = null;
       dirty = true;
       toggles();
       refresh();
@@ -480,27 +483,33 @@
         var yamlText = $('yaml').value;
         saveBtn.disabled = true;
 
+        var formData = new FormData();
+        formData.append('csrf_token', CSRF_TOKEN);
+        formData.append('action', 'save');
+        formData.append('content', yamlText);
+
         fetch(saveUrl, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': CSRF_TOKEN
           },
-          body: new URLSearchParams({ action: 'save', content: yamlText })
+          body: formData
         })
         .then(function (res) { return res.json(); })
         .then(function (data) {
-          if (data.ok) {
+          if (data && data.ok) {
             dirty = false;
             showSummary = false;
             yamlTouched = false;
+            RAW_YAML = yamlText;
             INITIAL = clone(S);
             refresh();
             toggles();
             showToast('Saved. Live now.');
           } else {
             showSummary = true;
-            errors = (data.problems || ['Save failed']).map(function (p) {
+            errors = ((data && data.problems) || ['Save failed']).map(function (p) {
               return { id: 'yaml', msg: p };
             });
             bar();
@@ -517,6 +526,8 @@
         })
         .catch(function (err) {
           showToast('Network error saving settings.');
+        })
+        .finally(function () {
           bar();
         });
       });
@@ -529,22 +540,27 @@
         validate();
         var yamlText = $('yaml').value;
 
+        var formData = new FormData();
+        formData.append('csrf_token', CSRF_TOKEN);
+        formData.append('action', 'check');
+        formData.append('content', yamlText);
+
         fetch(saveUrl, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': CSRF_TOKEN
           },
-          body: new URLSearchParams({ action: 'check', content: yamlText })
+          body: formData
         })
         .then(function (res) { return res.json(); })
         .then(function (data) {
-          if (data.ok && !errors.length) {
+          if (data && data.ok && !errors.length) {
             $('summary').classList.add('is-hidden');
             showToast('No problems found. Not saved.');
           } else {
             var allProblems = errors.map(function (e) { return e.msg; });
-            (data.problems || []).forEach(function (p) {
+            ((data && data.problems) || []).forEach(function (p) {
               if (allProblems.indexOf(p) < 0) allProblems.push(p);
             });
             $('summary').classList.remove('is-hidden');
@@ -554,11 +570,12 @@
             }).join('');
             showToast(allProblems.length + (allProblems.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving.');
           }
-          bar();
         })
         .catch(function () {
-          bar();
           showToast('Checked client validation.');
+        })
+        .finally(function () {
+          bar();
         });
       });
     }

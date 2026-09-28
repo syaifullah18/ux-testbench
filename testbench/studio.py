@@ -644,7 +644,10 @@ def edit(slug):
 @bp.route("/app/p/<slug>/studio/settings", methods=["GET", "POST"])
 @bp.route("/<slug>/admin/studio/settings", methods=["GET", "POST"])
 def settings(slug):
-    project = studio_project(slug, write=request.method == "POST")
+    project = studio_project(slug, write=False)
+    if request.method == "POST":
+        if not can_edit(slug):
+            abort(403)
     rel = "project.yaml"
     path = project.dir / rel
     t = translator(project.locale)
@@ -763,7 +766,7 @@ def settings(slug):
         "modules": modules_list,
     }
 
-    can_edit_flag = can_edit(slug) and project.editable
+    can_edit_flag = can_edit(slug)
 
     return ctx.render(
         "admin/settings.html",
@@ -1066,7 +1069,10 @@ def module_to_ui_data(mid, m, data):
 def module_edit(slug, mid):
     if not ID_RE.match(mid):
         abort(400)
-    project = studio_project(slug, write=request.method == "POST")
+    project = studio_project(slug, write=False)
+    if request.method == "POST":
+        if not can_edit(slug):
+            abort(403)
     rel = f"modules/{mid}.yaml"
     path = project.dir / rel
     if not path.is_file() and mid not in project.modules:
@@ -1142,7 +1148,7 @@ def module_edit(slug, mid):
     started = ctx.conn.execute("SELECT COUNT(*) FROM sessions WHERE module_id = ?", (mid,)).fetchone()[0] if mid else 0
     hist = history(project.dir, rel)[:10] if project.editable else []
 
-    can_edit_flag = can_edit(slug) and project.editable
+    can_edit_flag = can_edit(slug)
 
     return ctx.render(
         "admin/module.html",

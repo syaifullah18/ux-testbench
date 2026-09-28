@@ -82,3 +82,25 @@ def test_study_settings_unauthenticated(projects_dir, make_app):
     r = c.get("/example/admin/studio/settings")
     # Unauthenticated study admin returns 403
     assert r.status_code == 403
+
+
+def test_study_settings_save_example_as_superadmin(projects_dir, make_app):
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+    r = c.get("/example/admin/studio/settings")
+    assert r.status_code == 200
+
+    pdir = projects_dir / "example"
+    current_yaml = (pdir / "project.yaml").read_text(encoding="utf-8")
+    updated_yaml = current_yaml.replace("City Library Portal", "Modern City Library")
+
+    r = c.post(
+        "/example/admin/studio/settings",
+        data={"action": "save", "content": updated_yaml},
+        headers={"X-Requested-With": "XMLHttpRequest"}
+    )
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["ok"] is True
+    assert "Modern City Library" in (pdir / "project.yaml").read_text(encoding="utf-8")
+
