@@ -35,7 +35,7 @@
           <a class="btn btn-secondary btn-sm" id="prev-link" href="{{ url_for('admin.preview', slug=project.slug) if 'admin.preview' in url_for.__globals__ else url_for('web.home', slug=project.slug) }}?m={{ module.id }}">
             <i class="fa-regular fa-eye text-xs" aria-hidden="true"></i>Preview this module
           </a>
-          <a class="btn btn-secondary btn-sm" id="rep-link" href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) }}?m={{ module.id }}">
+          <a class="btn btn-secondary btn-sm" id="rep-link" href="{{ url_for('admin.results', slug=project.slug, m=module.id) }}">
             View report
           </a>
         </div>

@@ -50,9 +50,9 @@
           {% if status == 'draft' %}
           <a class="btn btn-primary" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('studio.home', slug=project.slug) }}">Finish setup</a>
           {% elif status == 'live' %}
-          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#results' }}">Read results</a>
+          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Read results</a>
           {% else %}
-          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#results' }}">Export results</a>
+          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Export results</a>
           {% endif %}
         </div>
       </div>

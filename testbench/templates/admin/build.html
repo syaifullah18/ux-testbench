@@ -110,7 +110,7 @@
               </button>
               <div class="menu is-hidden" role="menu">
                 <a href="{{ url_for('admin.preview', slug=project.slug) if 'admin.preview' in url_for.__globals__ else url_for('web.home', slug=project.slug) }}?m={{ m.id }}" role="menuitem">Preview this module</a>
-                <a href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) }}?m={{ m.id }}" role="menuitem">View report</a>
+                <a href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}" role="menuitem">View report</a>
                 {% if project.editable %}
                 <span>
                   <button type="button" class="mi" role="menuitem" data-act="dup" data-id="{{ m.id }}">Duplicate</button>

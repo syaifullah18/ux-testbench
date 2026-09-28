@@ -82,7 +82,7 @@
       <a class="tab" href="{{ url_for('admin.dashboard', slug=project.slug) }}" {% if cur_tab == 'overview' %}aria-current="page"{% endif %}>Overview</a>
       <a class="tab" href="{{ url_for('studio.home', slug=project.slug) }}" {% if cur_tab == 'build' %}aria-current="page"{% endif %}>Build</a>
       <a class="tab" href="{{ url_for('admin.launch', slug=project.slug) if 'admin.launch' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) ~ '#launch' }}" {% if cur_tab == 'launch' %}aria-current="page"{% endif %}>Launch</a>
-      <a class="tab" href="{{ url_for('admin.results', slug=project.slug) if 'admin.results' in url_for.__globals__ else url_for('admin.dashboard', slug=project.slug) }}" {% if cur_tab == 'results' %}aria-current="page"{% endif %}>Results</a>
+      <a class="tab" href="{{ url_for('admin.results', slug=project.slug) }}" {% if cur_tab == 'results' %}aria-current="page"{% endif %}>Results</a>
       {% if is_public %}
       <a class="tab" href="{{ url_for('admin.team', slug=project.slug) if 'admin.team' in url_for.__globals__ else '#' }}" {% if cur_tab == 'team' %}aria-current="page"{% endif %}>Team</a>
       {% endif %}

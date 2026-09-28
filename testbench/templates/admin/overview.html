@@ -126,7 +126,7 @@
                   <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
                 </button>
                 <div class="menu is-hidden" role="menu">
-                  <a href="{{ url_for('admin.dashboard', slug=s.slug) }}" role="menuitem">Results</a>
+                  <a href="{{ url_for('admin.results', slug=s.slug) }}" role="menuitem">Results</a>
                   <a href="{{ url_for('studio.home', slug=s.slug) }}" role="menuitem">Build</a>
                   <button type="button" class="mi" role="menuitem" data-copy="{{ s.participant_url }}">Copy participant link</button>
                   <a href="{{ new_study_url }}?start=duplicate&from={{ s.slug }}" role="menuitem">Duplicate</a>
