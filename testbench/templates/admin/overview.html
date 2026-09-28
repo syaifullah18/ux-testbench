@@ -221,6 +221,23 @@
     }
 
     // Popover action menus
+    function positionMenu(menu, button) {
+      var rect = button.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.right = (window.innerWidth - rect.right) + 'px';
+      menu.style.left = 'auto';
+      menu.style.zIndex = '100';
+      var spaceBelow = window.innerHeight - rect.bottom;
+      var menuH = menu.offsetHeight || 240;
+      if (spaceBelow < menuH && rect.top > menuH) {
+        menu.style.top = 'auto';
+        menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      } else {
+        menu.style.bottom = 'auto';
+        menu.style.top = (rect.bottom + 4) + 'px';
+      }
+    }
+
     function closeMenus(except) {
       document.querySelectorAll('.pop .menu').forEach(function (m) {
         if (m !== except) {
@@ -234,10 +251,16 @@
       var b = e.target.closest('[data-pop]');
       if (b) {
         var menu = b.nextElementSibling;
-        var open = menu.classList.contains('is-hidden');
-        closeMenus(open ? menu : null);
-        menu.classList.toggle('is-hidden', !open);
-        b.setAttribute('aria-expanded', open);
+        var willOpen = menu.classList.contains('is-hidden');
+        closeMenus(willOpen ? menu : null);
+        if (willOpen) {
+          menu.classList.remove('is-hidden');
+          b.setAttribute('aria-expanded', 'true');
+          positionMenu(menu, b);
+        } else {
+          menu.classList.add('is-hidden');
+          b.setAttribute('aria-expanded', 'false');
+        }
         return;
       }
 
@@ -262,6 +285,8 @@
       if (!e.target.closest('.pop')) closeMenus();
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+    window.addEventListener('scroll', function () { closeMenus(); }, true);
+    window.addEventListener('resize', function () { closeMenus(); });
 
     // Delete confirmation
     var dlg = document.getElementById('dlg-delete');
