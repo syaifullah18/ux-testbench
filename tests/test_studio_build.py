@@ -24,8 +24,9 @@ def test_build_modules_page_and_actions(projects_dir, make_app):
     assert "What participants see" in html
     assert "events-ab" in html
     assert "feedback" in html
-    # Check that inner <main> is NOT nested
+    # Check that inner <main> is NOT nested and page-head is outside/before main
     assert html.count('<main id="main"') == 1
+    assert html.find('class="page-head"') < html.find('<main id="main"')
 
     # 2. Add a new module with custom title
     res_add = c.post("/flow-study/admin/studio/modules/new", data={
