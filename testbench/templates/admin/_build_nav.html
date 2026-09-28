@@ -8,7 +8,7 @@
       <span>Prototypes and files</span>
       <span class="count">{{ n_files or 0 }}</span>
     </a>
-    <a href="{{ url_for('studio.edit', slug=project.slug, file='project.yaml') }}" {% if active_build_subnav == 'settings' %}aria-current="page"{% endif %}>
+    <a href="{{ url_for('studio.settings', slug=project.slug) }}" {% if active_build_subnav == 'settings' %}aria-current="page"{% endif %}>
       <span>Study settings</span>
     </a>
   </nav>

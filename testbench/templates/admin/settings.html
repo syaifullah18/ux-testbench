@@ -1,0 +1,589 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Study settings · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}build{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'build' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  {% set active_build_subnav = 'settings' %}
+  {% include "admin/_build_nav.html" %}
+
+  <div class="stack min-w-0">
+    {% if not can_edit %}
+    <div id="ro" class="panel">
+      <div class="panel-b flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="t-strong">This study is read-only</p>
+          <p class="t-meta">Duplicate it to change these settings.</p>
+        </div>
+        {% if is_super %}
+        <form method="post" action="{{ url_for('studio.new_project') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+          <input type="hidden" name="source" value="duplicate">
+          <input type="hidden" name="from" value="{{ project.slug }}">
+          <input type="hidden" name="slug" value="{{ project.slug }}-copy">
+          <button type="submit" class="btn btn-primary">Duplicate to edit</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if notice %}
+    <div class="panel border-l-4 border-l-emerald-600 bg-emerald-50/50 p-4 text-sm text-emerald-900 flex items-center justify-between">
+      <span>{{ notice }}</span>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="panel border-l-4 border-l-bad bg-bad/10 p-4 text-sm text-bad flex items-center justify-between" role="alert">
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <section id="summary" class="is-hidden panel" aria-labelledby="sum-h" role="alert">
+      <header class="panel-h"><h2 id="sum-h" class="text-bad"></h2></header>
+      <ul class="rows" id="sum-list"></ul>
+    </section>
+
+    <div id="form" class="stack"></div>
+
+    <div class="savebar" id="savebar" role="region" aria-label="Save changes">
+      <div class="flex flex-wrap items-center gap-4">
+        <span id="sb-dirty" class="t-meta">All changes saved</span>
+        <span id="sb-errors" class="is-hidden st st-fail"></span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        {% if can_edit %}
+        <button type="button" class="btn btn-secondary" id="discard">Discard</button>
+        <button type="button" class="btn btn-secondary" id="check">Check</button>
+        <button type="button" class="btn btn-primary" id="save" disabled>Save</button>
+        {% else %}
+        <p class="t-meta">You have view access. Editing is turned off.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='admin/narrate.js') }}"></script>
+<script>
+  (function () {
+    var slug = {{ project.slug|tojson }};
+    var canEdit = {{ 'true' if can_edit else 'false' }};
+    var dis = canEdit ? '' : ' disabled';
+    var participants = {{ n_participants }};
+    var passState = {{ pass_state|tojson }};
+    var TYPES = {{ module_types|tojson }};
+    var saveUrl = {{ url_for('studio.settings', slug=project.slug)|tojson }};
+    var launchUrl = {{ (url_for('admin.dashboard', slug=project.slug) ~ '#launch')|tojson }};
+
+    var INITIAL = {{ initial_settings|tojson }};
+
+    function esc(t) {
+      return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+
+    function clone(o) { return JSON.parse(JSON.stringify(o)); }
+    function setP(o, p, v) {
+      var ks = p.split('.'), last = ks.pop();
+      ks.reduce(function (a, k) { return a[k]; }, o)[last] = v;
+    }
+
+    var S = clone(INITIAL);
+    var dirty = false;
+    var errors = [];
+    var showSummary = false;
+    var yamlTouched = false;
+
+    // WCAG 2.1 relative luminance and contrast
+    function lum(hex) {
+      if (!/^#[0-9a-f]{6}$/i.test(hex)) return 0;
+      var n = parseInt(hex.slice(1), 16);
+      var c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    }
+    function contrastRatio(a, b) {
+      var x = lum(a), y = lum(b);
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    }
+
+    // UI helpers
+    var $ = function (id) { return document.getElementById(id); };
+    function field(label, inner, help, opt) {
+      return '<div class="field"><label class="label">' + label + (opt ? ' <span class="font-normal text-muted">(optional)</span>' : '') + '</label>' + inner + (help ? '<p class="help">' + help + '</p>' : '') + '</div>';
+    }
+    function inp(id, path, val, o) {
+      o = o || {};
+      return '<input id="' + id + '" class="input' + (o.mono ? ' font-mono' : '') + '" data-b="' + path + '" value="' + esc(val) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + (o.type ? ' type="' + o.type + '"' : '') + (o.style ? ' style="' + o.style + '"' : '') + dis + ' autocomplete="off"><p class="err is-hidden" data-err-for="' + id + '"></p>';
+    }
+    function panel(id, title, sub, body, action) {
+      return '<section class="panel" id="' + id + '" aria-labelledby="' + id + '-h"><header class="panel-h"><div><h2 id="' + id + '-h">' + title + '</h2>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (action || '') + '</header>' + body + '</section>';
+    }
+    function opt(name, val, title, desc, checked) {
+      return '<label class="opt"><input type="radio" name="' + name + '" value="' + val + '" data-b="' + name + '"' + (checked ? ' checked' : '') + dis + '><span class="radio"></span><span><span class="opt-title">' + title + '</span><span class="opt-desc">' + desc + '</span></span><span></span></label>';
+    }
+
+    var TYPE_LABEL = {
+      survey: 'survey',
+      ab_test: 'A/B test',
+      tree_test: 'tree test',
+      card_sort: 'card sort',
+      first_click: 'first-click test'
+    };
+
+    function recordedNow() {
+      var seen = {}, out = [];
+      (TYPES || []).forEach(function (t) {
+        if (!seen[t] && TYPE_LABEL[t]) {
+          seen[t] = 1;
+          out.push(TYPE_LABEL[t]);
+        }
+      });
+      return out.length ? out.join(', ') : 'no active tests';
+    }
+
+    function render() {
+      var h = '';
+
+      // Basics
+      h += panel('sec-basics', 'Basics', 'What participants see first.', '<div class="panel-b">' +
+        field('Study name', inp('f-name', 'name', S.name)) +
+        field('Description', '<textarea id="f-desc" class="input" rows="3" data-b="description"' + dis + '>' + esc(S.description) + '</textarea>', 'Shown on the sign-in page and the home screen.', true) +
+        field('Language for participants', '<select class="input" data-b="locale"' + dis + '><option value="en"' + (S.locale === 'en' ? ' selected' : '') + '>English</option><option value="id"' + (S.locale === 'id' ? ' selected' : '') + '>Bahasa Indonesia</option></select>', 'Buttons and messages participants see.') +
+        field('Link', '<input class="input font-mono" value="' + esc(slug) + '" readonly style="max-width:360px">', 'The link is permanent. It can’t change after the study is created.') +
+        '</div>');
+
+      // People / Identity
+      h += panel('sec-people', 'How participants identify themselves', 'This decides what you store about each person.',
+        '<div class="rows">' +
+        opt('identity', 'code', 'Codes you hand out', 'For moderated sessions. You decide each code, so nothing personal is stored.', S.identity === 'code') +
+        opt('identity', 'email', 'Work email', 'For internal staff. Their email address is stored with their answers.', S.identity === 'email') +
+        opt('identity', 'anonymous', 'Anonymous, with a resume code', 'For open surveys. The app gives each person a code like K7Q2-9FXA so they can come back.', S.identity === 'anonymous') +
+        '<div id="id-warn" class="panel-b is-hidden" style="background:var(--warn-soft,#FEF3C7)"><p class="t-strong text-warn"><i class="fa-solid fa-triangle-exclamation mr-2" aria-hidden="true"></i>' + participants + (participants === 1 ? ' person has' : ' people have') + ' already signed in.</p><p class="mt-1">Existing people may no longer match the new way of identifying. Change this only before you go live, or duplicate the study.</p></div>' +
+        '<div id="id-code" class="panel-b">' +
+          field('Code pattern', inp('f-pattern', 'pattern', S.pattern, { mono: true }), 'A code must match this to be accepted.') +
+          '<div class="field grid gap-6 sm:grid-cols-2"><div><label class="label">Hint under the code field <span class="font-normal text-muted">(optional)</span></label>' + inp('f-hint', 'hint', S.hint, { ph: 'The code your moderator gave you' }) + '</div>' +
+          '<div><label class="label" for="try">Test a code</label><input id="try" class="input font-mono" placeholder="P07" spellcheck="false" autocomplete="off"><p id="try-msg" class="help" role="status">Type a sample to check it.</p></div></div></div>' +
+        '<div id="id-email" class="panel-b">' + field('Allowed email domains', inp('f-domains', 'domains', S.domains, { ph: 'company.com, partner.org' }), 'Separate with commas. Leave empty to allow any email address.', true) + '</div>' +
+        '</div>');
+
+      // Access
+      h += panel('sec-access', 'Who may enter', 'The passcode itself is set on the Launch page.',
+        '<div class="rows">' +
+        opt('access', 'passcode', 'Passcode', 'Participants type a shared passcode.', S.access === 'passcode') +
+        opt('access', 'open', 'Open', 'Anyone with the link can take part.', S.access === 'open') +
+        '<p class="panel-f">Participant passcode: <span class="t-strong text-ink">' + esc(passState) + '</span>. <a class="link" href="' + esc(launchUrl) + '">Go to Launch</a></p>' +
+        '</div>');
+
+      // Consent
+      h += panel('sec-consent', 'Consent', 'Participants tick this box before they start. Leave it empty for no checkbox.',
+        '<div class="panel-b">' +
+        field('Consent text', '<textarea id="f-consent" class="input" rows="4" data-b="consent"' + dis + '>' + esc(S.consent) + '</textarea><p class="err is-hidden" data-err-for="f-consent"></p>', '', true) +
+        (canEdit ? '<button type="button" class="btn btn-secondary btn-sm" id="suggest">Suggest wording</button><p class="help">The suggestion follows the module types in this study: ' + esc(recordedNow()) + '.</p>' : '') +
+        '</div>');
+
+      // Look
+      h += panel('sec-look', 'Look', 'The colors participants and your team see.',
+        '<div class="panel-b"><div class="grid gap-6 sm:grid-cols-2">' +
+        '<div><label class="label" for="f-primary">Primary color</label><div class="flex flex-wrap items-center gap-4"><input type="color" id="pk-primary" value="' + esc(S.primary.toLowerCase()) + '" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick the primary color"' + dis + '>' + inp('f-primary', 'primary', S.primary, { mono: true, style: 'width:140px' }) + '</div><p id="contrast" class="help" role="status"></p></div>' +
+        '<div><label class="label" for="f-nav">Navigation color</label><div class="flex flex-wrap items-center gap-4"><input type="color" id="pk-nav" value="' + esc(S.nav.toLowerCase()) + '" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick the navigation color"' + dis + '>' + inp('f-nav', 'nav', S.nav, { mono: true, style: 'width:140px' }) + '</div><p class="help">The top bar participants see.</p></div>' +
+        '</div></div>');
+
+      // Notifications
+      h += panel('sec-notify', 'Notifications', 'Get told when people finish.',
+        '<div class="panel-b"><div class="grid gap-6 sm:grid-cols-[minmax(0,1fr)_160px]">' +
+        '<div><label class="label" for="f-webhook">Webhook address</label>' + inp('f-webhook', 'webhook', S.webhook, { ph: 'https://example.org/hooks/testbench' }) + '<p class="help">Called when a module reaches a multiple of the number on the right.</p></div>' +
+        '<div><label class="label" for="f-thr">Every N finishes</label><input id="f-thr" class="input" type="number" min="1" data-b="threshold" data-num value="' + esc(S.threshold) + '"' + dis + '><p class="err is-hidden" data-err-for="f-thr"></p></div>' +
+        '</div></div>');
+
+      // Public listing
+      h += '<section class="panel" id="sec-listing" aria-labelledby="li-h"><header class="panel-h"><div><h2 id="li-h">Public listing</h2><p>Show this study on the Explore page. The operator has to approve it first.</p></div></header>' +
+        '<label class="row switch-row"><span class="row-main"><span class="row-title block">List this study on Explore</span><span class="t-meta block">Also set from the Launch page.</span></span><span class="switch"><input type="checkbox" data-b="listed"' + (S.listed ? ' checked' : '') + dis + '><span class="track"></span></span></label></section>';
+
+      // Edit as YAML
+      h += panel('sec-yaml', 'Edit as YAML', 'The same file the form writes. Saving from here replaces what the form shows.',
+        '<div class="panel-b"><textarea id="yaml" class="input mono-area" rows="14" spellcheck="false"' + dis + '></textarea><p class="help">Every save checks the whole study first. If anything is wrong, nothing is written.</p></div>');
+
+      $('form').innerHTML = h;
+      toggles();
+      yamlOut();
+      refresh();
+    }
+
+    function toggles() {
+      var idCode = $('id-code');
+      var idEmail = $('id-email');
+      var idWarn = $('id-warn');
+      if (idCode) idCode.classList.toggle('is-hidden', S.identity !== 'code');
+      if (idEmail) idEmail.classList.toggle('is-hidden', S.identity !== 'email');
+      if (idWarn) idWarn.classList.toggle('is-hidden', !(participants > 0 && S.identity !== INITIAL.identity));
+    }
+
+    function yamlOut() {
+      var mods = S.modules || [];
+      var modLines = mods.map(function (m) { return '  - ' + m; }).join('\n');
+      var doms = (S.domains || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+
+      var y = 'name: ' + S.name + '\n' +
+        (S.description ? 'description: >-\n  ' + S.description.replace(/\n/g, '\n  ') + '\n' : '') +
+        'locale: ' + S.locale + '\n' +
+        'listed: ' + (S.listed ? 'true' : 'false') + '\n\n' +
+        'identity:\n  mode: ' + S.identity + '\n' +
+        (S.identity === 'code' ? '  pattern: "' + S.pattern + '"\n' + (S.hint ? '  hint: ' + S.hint + '\n' : '') : '') +
+        (S.identity === 'email' && doms.length ? '  domains: [' + doms.join(', ') + ']\n' : '') +
+        '\naccess: ' + S.access + '\n' +
+        (S.consent ? '\nconsent: >-\n  ' + S.consent.replace(/\n/g, '\n  ') + '\n' : '') +
+        '\nbrand:\n  primary: "' + S.primary + '"\n  nav: "' + S.nav + '"\n' +
+        (S.webhook ? '\nnotifications:\n  webhook: ' + S.webhook + '\n  threshold: ' + S.threshold + '\n' : '') +
+        (modLines ? '\nmodules:\n' + modLines + '\n' : '');
+
+      if ($('yaml') && !yamlTouched) {
+        $('yaml').value = y;
+      }
+    }
+
+    function validate() {
+      var e = [];
+      function add(id, msg) { e.push({ id: id, msg: msg }); }
+
+      if (!S.name || !S.name.trim()) add('f-name', 'Give the study a name.');
+      if (S.identity === 'code') {
+        if (!S.pattern || S.pattern.length > 200) add('f-pattern', 'The pattern is over 200 characters or missing.');
+        else {
+          try { new RegExp(S.pattern); } catch (x) { add('f-pattern', 'That pattern isn’t a valid expression.'); }
+        }
+      }
+      if (S.identity === 'email' && S.domains && S.domains.trim()) {
+        var bad = S.domains.split(',').map(function (x) { return x.trim(); }).filter(function (x) {
+          return x && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(x);
+        });
+        if (bad.length) add('f-domains', '“' + bad[0] + '” isn’t a domain. Use the form company.com.');
+      }
+      if (!/^#[0-9a-f]{6}$/i.test(S.primary)) add('f-primary', 'Use six hex digits, for example #0F766E.');
+      if (!/^#[0-9a-f]{6}$/i.test(S.nav)) add('f-nav', 'Use six hex digits, for example #0F172A.');
+      if (S.webhook && !/^https?:\/\/\S+$/.test(S.webhook)) add('f-webhook', 'The address must start with http:// or https://.');
+      if (!(Number(S.threshold) >= 1) || Number(S.threshold) % 1) add('f-thr', 'Use a whole number, 1 or more.');
+
+      errors = e;
+      document.querySelectorAll('[data-err-for]').forEach(function (p) {
+        p.classList.add('is-hidden');
+        p.textContent = '';
+      });
+      document.querySelectorAll('[aria-invalid="true"]').forEach(function (x) {
+        x.removeAttribute('aria-invalid');
+      });
+
+      e.forEach(function (x) {
+        var f = $(x.id);
+        var p = document.querySelector('[data-err-for="' + x.id + '"]');
+        if (f) f.setAttribute('aria-invalid', 'true');
+        if (p && !p.textContent) {
+          p.textContent = x.msg;
+          p.classList.remove('is-hidden');
+        }
+      });
+
+      var sum = $('summary');
+      if (sum) {
+        sum.classList.toggle('is-hidden', !e.length || !showSummary);
+        if (e.length) {
+          $('sum-h').textContent = e.length + (e.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving';
+          $('sum-list').innerHTML = e.map(function (x) {
+            return '<li class="row"><div class="row-main"><a class="link" href="#' + x.id + '" data-jump="' + x.id + '">' + esc(x.msg) + '</a></div></li>';
+          }).join('');
+        }
+      }
+    }
+
+    function bar() {
+      var sbDirty = $('sb-dirty');
+      if (sbDirty) {
+        sbDirty.innerHTML = dirty
+          ? '<span class="st st-warn"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Unsaved changes</span>'
+          : 'All changes saved';
+      }
+      var b = $('sb-errors');
+      if (b) {
+        b.classList.toggle('is-hidden', !errors.length);
+        b.innerHTML = '<i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>' + errors.length + (errors.length === 1 ? ' problem' : ' problems');
+      }
+      var saveBtn = $('save');
+      if (saveBtn) {
+        saveBtn.disabled = !dirty || errors.length > 0 || !canEdit;
+      }
+    }
+
+    function contrast() {
+      var cEl = $('contrast');
+      if (!cEl) return;
+      if (!/^#[0-9a-f]{6}$/i.test(S.primary)) {
+        cEl.textContent = '';
+        return;
+      }
+      var c = contrastRatio(S.primary, '#FFFFFF');
+      cEl.innerHTML = c >= 4.5
+        ? '<i class="fa-solid fa-circle-check mr-2 text-ok" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1. Good for links and buttons.'
+        : '<i class="fa-solid fa-triangle-exclamation mr-2 text-warn" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1, below 4.5. Button text switches to dark so it stays readable.';
+      document.documentElement.style.setProperty('--brand', S.primary);
+    }
+
+    function refresh() {
+      validate();
+      bar();
+      contrast();
+      yamlOut();
+    }
+
+    function touch() {
+      dirty = true;
+      toggles();
+      refresh();
+    }
+
+    function showToast(msg) {
+      var t = $('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.remove('is-hidden');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.classList.add('is-hidden'); }, 2400);
+    }
+
+    var host = $('form');
+    host.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t.id === 'try') {
+        var m = $('try-msg');
+        if (!t.value) {
+          m.textContent = 'Type a sample to check it.';
+          return;
+        }
+        var re;
+        try {
+          re = new RegExp(S.pattern);
+        } catch (x) {
+          m.innerHTML = '<span class="t-strong text-bad">The pattern isn’t valid.</span>';
+          return;
+        }
+        m.innerHTML = re.test(t.value)
+          ? '<span class="t-strong text-ok"><i class="fa-solid fa-circle-check mr-2" aria-hidden="true"></i>Accepted</span>'
+          : '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>Not accepted</span>';
+        return;
+      }
+      if (t.id === 'yaml') {
+        yamlTouched = true;
+        dirty = true;
+        bar();
+        return;
+      }
+      if (t.id === 'pk-primary') {
+        S.primary = t.value.toUpperCase();
+        var fp = $('f-primary');
+        if (fp) fp.value = S.primary;
+        touch();
+        return;
+      }
+      if (t.id === 'pk-nav') {
+        S.nav = t.value.toUpperCase();
+        var fn = $('f-nav');
+        if (fn) fn.value = S.nav;
+        touch();
+        return;
+      }
+      var b = t.dataset.b;
+      if (!b || t.type === 'radio') return;
+      setP(S, b, t.type === 'checkbox' ? t.checked : (t.dataset.num != null ? (t.value === '' ? '' : Number(t.value)) : t.value));
+      if (b === 'primary' && /^#[0-9a-f]{6}$/i.test(S.primary)) {
+        var pp = $('pk-primary');
+        if (pp) pp.value = S.primary.toLowerCase();
+      }
+      if (b === 'nav' && /^#[0-9a-f]{6}$/i.test(S.nav)) {
+        var pn = $('pk-nav');
+        if (pn) pn.value = S.nav.toLowerCase();
+      }
+      yamlTouched = false;
+      touch();
+    });
+
+    host.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t.type === 'radio' && t.dataset.b) {
+        setP(S, t.dataset.b, t.value);
+        yamlTouched = false;
+        touch();
+      }
+      if (t.tagName === 'SELECT') {
+        setP(S, t.dataset.b, t.value);
+        yamlTouched = false;
+        touch();
+      }
+    });
+
+    host.addEventListener('click', function (e) {
+      var j = e.target.closest('[data-jump]');
+      if (j) {
+        e.preventDefault();
+        var f = $(j.dataset.jump);
+        if (f) {
+          f.scrollIntoView({ block: 'center' });
+          f.focus();
+        }
+        return;
+      }
+      if (e.target.id === 'suggest') {
+        if (window.Narrate && window.Narrate.consentText) {
+          S.consent = window.Narrate.consentText({ types: TYPES || [], identity: S.identity });
+        } else {
+          S.consent = 'I agree that my answers are recorded for this research. My name is not collected.';
+        }
+        var fc = $('f-consent');
+        if (fc) fc.value = S.consent;
+        yamlTouched = false;
+        touch();
+        showToast('Wording suggested from what this study records. Edit it before you save.');
+      }
+    });
+
+    var sumEl = $('summary');
+    if (sumEl) {
+      sumEl.addEventListener('click', function (e) {
+        var j = e.target.closest('[data-jump]');
+        if (j) {
+          e.preventDefault();
+          var f = $(j.dataset.jump);
+          if (f) {
+            f.scrollIntoView({ block: 'center' });
+            f.focus();
+          }
+        }
+      });
+    }
+
+    var saveBtn = $('save');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        if (saveBtn.disabled) return;
+        var yamlText = $('yaml').value;
+        saveBtn.disabled = true;
+
+        fetch(saveUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: new URLSearchParams({ action: 'save', content: yamlText })
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            dirty = false;
+            showSummary = false;
+            yamlTouched = false;
+            INITIAL = clone(S);
+            refresh();
+            toggles();
+            showToast('Saved. Live now.');
+          } else {
+            showSummary = true;
+            errors = (data.problems || ['Save failed']).map(function (p) {
+              return { id: 'yaml', msg: p };
+            });
+            bar();
+            var sum = $('summary');
+            if (sum) {
+              sum.classList.remove('is-hidden');
+              $('sum-h').textContent = errors.length + ' problem' + (errors.length === 1 ? '' : 's') + ' stop this from saving';
+              $('sum-list').innerHTML = errors.map(function (x) {
+                return '<li class="row"><div class="row-main">' + esc(x.msg) + '</div></li>';
+              }).join('');
+            }
+            showToast('Cannot save: problems found.');
+          }
+        })
+        .catch(function (err) {
+          showToast('Network error saving settings.');
+          bar();
+        });
+      });
+    }
+
+    var checkBtn = $('check');
+    if (checkBtn) {
+      checkBtn.addEventListener('click', function () {
+        showSummary = true;
+        validate();
+        var yamlText = $('yaml').value;
+
+        fetch(saveUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: new URLSearchParams({ action: 'check', content: yamlText })
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.ok && !errors.length) {
+            $('summary').classList.add('is-hidden');
+            showToast('No problems found. Not saved.');
+          } else {
+            var allProblems = errors.map(function (e) { return e.msg; });
+            (data.problems || []).forEach(function (p) {
+              if (allProblems.indexOf(p) < 0) allProblems.push(p);
+            });
+            $('summary').classList.remove('is-hidden');
+            $('sum-h').textContent = allProblems.length + (allProblems.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving';
+            $('sum-list').innerHTML = allProblems.map(function (msg) {
+              return '<li class="row"><div class="row-main">' + esc(msg) + '</div></li>';
+            }).join('');
+            showToast(allProblems.length + (allProblems.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving.');
+          }
+          bar();
+        })
+        .catch(function () {
+          bar();
+          showToast('Checked client validation.');
+        });
+      });
+    }
+
+    var discardBtn = $('discard');
+    if (discardBtn) {
+      discardBtn.addEventListener('click', function () {
+        S = clone(INITIAL);
+        dirty = false;
+        showSummary = false;
+        yamlTouched = false;
+        render();
+        document.documentElement.style.setProperty('--brand', S.primary);
+        showToast('Changes discarded.');
+      });
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    render();
+  })();
+</script>
+{% endblock %}

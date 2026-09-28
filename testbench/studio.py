@@ -641,6 +641,149 @@ def edit(slug):
                       history=history(project.dir, rel)[:10] if project.editable else [])
 
 
+@bp.route("/app/p/<slug>/studio/settings", methods=["GET", "POST"])
+@bp.route("/<slug>/admin/studio/settings", methods=["GET", "POST"])
+def settings(slug):
+    project = studio_project(slug, write=request.method == "POST")
+    rel = "project.yaml"
+    path = project.dir / rel
+    t = translator(project.locale)
+
+    if request.method == "POST":
+        action = request.form.get("action", "save")
+        content = request.form.get("content", "").replace("\r\n", "\n")
+        writes = {rel: content}
+        problems = trial(project.dir, slug, writes=writes)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+        if problems:
+            if is_ajax:
+                return jsonify({"ok": False, "problems": problems})
+            return redirect(url_for("studio.settings", slug=slug, error="; ".join(problems[:3])))
+        if action == "check":
+            if is_ajax:
+                return jsonify({"ok": True, "problems": []})
+            return redirect(url_for("studio.settings", slug=slug, notice="Check passed. No problems found."))
+        if action == "save":
+            write_text(project.dir, rel, content)
+            reload()
+            with storage.connect(slug) as conn:
+                storage.audit(conn, "edit_settings", request.remote_addr, {"file": rel})
+            if is_ajax:
+                return jsonify({"ok": True})
+            return redirect(url_for("studio.settings", slug=slug, saved=1))
+        if is_ajax:
+            return jsonify({"ok": False, "problems": [f"Unknown action: {action}"]})
+        abort(400)
+
+    # GET request
+    restore = request.args.get("restore")
+    if restore:
+        src = inside(project.dir / ".history", restore)
+        if not src.is_file():
+            abort(404)
+        raw_yaml = src.read_text(encoding="utf-8")
+    elif path.is_file():
+        raw_yaml = path.read_text(encoding="utf-8")
+    else:
+        abort(404)
+
+    try:
+        data = yaml.safe_load(raw_yaml) or {}
+    except Exception:
+        data = {}
+
+    ctx = studio_ctx(project)
+    n_participants = ctx.conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0]
+    last_act = ctx.conn.execute("SELECT MAX(started_at) FROM sessions").fetchone()[0]
+    last_activity_text = "Recently"
+    if last_act:
+        try:
+            dt = datetime.fromisoformat(str(last_act).replace("Z", "+00:00"))
+            diff = datetime.now(timezone.utc) - dt
+            if diff.days == 0:
+                last_activity_text = "Today"
+            elif diff.days == 1:
+                last_activity_text = "Yesterday"
+            else:
+                last_activity_text = f"{diff.days} days ago"
+        except Exception:
+            last_activity_text = "Recently"
+
+    proto = project.dir / "prototypes"
+    n_files = 0
+    if proto.is_dir():
+        for p in proto.rglob("*"):
+            if p.is_file() and not any(part.startswith(".") for part in p.relative_to(project.dir).parts):
+                n_files += 1
+
+    p_src = passcodes.source(project, "participant")
+    pass_state = {"env": "Set by the server", "studio": "Set on Launch", None: "Not set"}.get(p_src, "Not set")
+
+    # Module types present in study for consent narration
+    module_types = [m.type for m in project.modules.values()]
+
+    # Extract clean initial values for JS
+    ident = data.get("identity") or {}
+    if isinstance(ident, str):
+        ident = {"mode": ident}
+    ident_mode = ident.get("mode", "code")
+    pattern = ident.get("pattern", "^P\\d{2}$")
+    hint = ident.get("hint", "")
+    domains = ident.get("domains", [])
+    if isinstance(domains, list):
+        domains_str = ", ".join(domains)
+    else:
+        domains_str = str(domains or "")
+
+    brand = data.get("brand") or {}
+    primary = brand.get("primary", "#2563EB")
+    nav = brand.get("nav", "#0F172A")
+
+    notif = data.get("notifications") or {}
+    webhook = notif.get("webhook", "")
+    threshold = notif.get("threshold", 10)
+
+    modules_list = data.get("modules") or list(project.modules.keys())
+
+    initial_settings = {
+        "name": data.get("name", project.name),
+        "description": data.get("description", project.description),
+        "locale": data.get("locale", project.locale or "en"),
+        "listed": bool(data.get("listed", project.listed)),
+        "identity": ident_mode,
+        "pattern": pattern,
+        "hint": hint,
+        "domains": domains_str,
+        "access": data.get("access", project.access or "passcode"),
+        "consent": data.get("consent", project.consent or ""),
+        "primary": primary,
+        "nav": nav,
+        "webhook": webhook,
+        "threshold": threshold,
+        "modules": modules_list,
+    }
+
+    can_edit_flag = can_edit(slug) and project.editable
+
+    return ctx.render(
+        "admin/settings.html",
+        raw_yaml=raw_yaml,
+        initial_settings=initial_settings,
+        pass_state=pass_state,
+        module_types=module_types,
+        n_participants=n_participants,
+        n_files=n_files,
+        last_activity_text=last_activity_text,
+        can_edit=can_edit_flag,
+        is_super=is_super(),
+        role="owner" if can_edit(slug) else "viewer",
+        notice=request.args.get("notice"),
+        error=request.args.get("error"),
+        saved=request.args.get("saved"),
+    )
+
+
+
 @bp.post("/app/p/<slug>/studio/modules/new")
 @bp.post("/<slug>/admin/studio/modules/new")
 def module_new(slug):
