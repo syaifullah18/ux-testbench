@@ -325,11 +325,38 @@
     var types = SQT.map(function (t) { return '<option value="' + t[0] + '"' + (q.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
     var scale = '<div class="field grid gap-6 sm:grid-cols-3"><div><label class="label">Points</label><input class="input" type="number" min="2" max="11" data-b="' + p + '.points" data-num value="' + esc(q.points) + '"' + dis + '></div><div><label class="label">Low end</label>' + inp(id + '-low', p + '.low', q.low) + '</div><div><label class="label">High end</label>' + inp(id + '-high', p + '.high', q.high) + '</div></div>';
     var body = field('Question', inp(id + '-label', p + '.label', q.label)) +
+      field('Hint', inp(id + '-hint', p + '.hint', q.hint), 'Shown under the question label.', true) +
       '<div class="field grid gap-6 sm:grid-cols-2"><div><label class="label">Type</label><select class="input" data-b="' + p + '.type" data-rerender' + dis + '>' + types + '</select></div><div><label class="label">Id</label>' + inp(id + '-id', p + '.id', q.id, { mono: true }) + '<p class="help">Used in your data export and in conditions.</p></div></div>';
     if (q.type === 'scale') body += scale;
-    if (q.type === 'single' || q.type === 'multi') body += field('Choices', area(id + '-opts', p + '.options', q.options, 4), 'One per line.');
+    if (q.type === 'single' || q.type === 'multi') {
+      var allEarlier = allQs();
+      var myIdx = allEarlier.findIndex(function (x) { return x.pi === pi && x.qi === qi; });
+      var srcCandidates = (myIdx >= 0 ? allEarlier.slice(0, myIdx) : []).filter(function (x) {
+        return (x.q.type === 'matrix' || x.q.type === 'single' || x.q.type === 'multi') && x.q.id;
+      });
+      var optFromChoices = '<option value="">Custom choices below</option>' + srcCandidates.map(function (c) {
+        return '<option value="' + esc(c.q.id) + '"' + (q.optionsFrom === c.q.id ? ' selected' : '') + '>' + esc(c.q.id) + ' (' + (SQL[c.q.type] || c.q.type) + ': ' + esc(c.q.label.slice(0, 30)) + ')</option>';
+      }).join('');
+      if (q.optionsFrom && !srcCandidates.some(function (c) { return c.q.id === q.optionsFrom; })) {
+        optFromChoices += '<option value="' + esc(q.optionsFrom) + '" selected>' + esc(q.optionsFrom) + ' (earlier question)</option>';
+      }
+      body += field('Choices source', '<select class="input" data-b="' + p + '.optionsFrom" data-rerender' + dis + '>' + optFromChoices + '</select><p class="err is-hidden" data-err-for="' + id + '-from"></p>', 'Take choices dynamically from an earlier question.', true);
+      if (!q.optionsFrom) {
+        body += field('Choices', area(id + '-opts', p + '.options', q.options, 4), 'One per line. Format as <code>label</code> or <code>id: label</code>.');
+      } else {
+        body += '<div class="field"><p class="t-meta" style="padding:4px 0"><i class="fa-solid fa-link" style="margin-right:6px"></i>Choices are populated dynamically from <strong>' + esc(q.optionsFrom) + '</strong>.</p></div>';
+      }
+      body += field('Columns', '<input class="input" style="max-width:160px" type="number" min="1" max="4" data-b="' + p + '.columns" data-num value="' + esc(q.columns || (q.type === 'single' ? 2 : 1)) + '"' + dis + '>', 'Layout choices in 1 to 4 columns.', true);
+    }
     if (q.type === 'multi') body += field('Most they can pick', '<input class="input" style="max-width:160px" type="number" min="1" data-b="' + p + '.max" data-num value="' + esc(q.max) + '"' + dis + '>', 'Leave empty to let them pick any number.', true);
-    if (q.type === 'matrix') body += field('Rows', area(id + '-rows', p + '.rows', q.rows, 4), 'One per line. Each row gets the same rating scale, plus “Never done this”.') + scale;
+    if (q.type === 'matrix') {
+      body += field('Rows', area(id + '-rows', p + '.rows', q.rows, 5), 'One per line. Format as <code>label</code> or <code>id: label</code>.') +
+        scale +
+        field('“Never done” / N/A label', inp(id + '-na', p + '.na_label', q.na_label, { ph: 'Never done' }), 'Text for the extra N/A column. Leave empty if not needed.', true);
+    }
+    if (q.type === 'text') {
+      body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-b="' + p + '.long"' + (q.long ? ' checked' : '') + dis + '><span class="track"></span></span><span>Multi-line text area (long answer)</span></label></div>';
+    }
     body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-b="' + p + '.required"' + (q.required ? ' checked' : '') + dis + '><span class="track"></span></span><span>Required</span></label></div>';
     body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-rerender data-b="' + p + '.showIf.on"' + (q.showIf && q.showIf.on ? ' checked' : '') + dis + '><span class="track"></span></span><span>Only show this question when an earlier answer matches</span></label>';
     if (q.showIf && q.showIf.on) {
@@ -353,7 +380,10 @@
       }).join('');
       var act = canEdit ? '<div class="flex gap-2">' + (pi > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-up" data-i="' + pi + '">Move up</button>' : '') + (pi < S.pages.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-down" data-i="' + pi + '">Move down</button>' : '') + (S.pages.length > 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-del" data-i="' + pi + '">Delete page</button>' : '') + '</div>' : '';
       return panel('sec-page-' + pi, 'Page ' + (pi + 1), plural(pg.questions.length, 'question') + ' on this page.', act,
-        '<div class="panel-b">' + field('Page title', inp('f-sp-' + pi + '-title', 'pages.' + pi + '.title', pg.title), 'Shown at the top of the page and in the progress list.', true) + '</div>' +
+        '<div class="panel-b">' +
+        field('Page title', inp('f-sp-' + pi + '-title', 'pages.' + pi + '.title', pg.title), 'Shown at the top of the page and in the progress list.', true) +
+        field('Page introduction', area('f-sp-' + pi + '-intro', 'pages.' + pi + '.intro', pg.intro, 2), 'Instructions or context shown under the page title before questions.', true) +
+        '</div>' +
         '<div class="rows">' + rows + (canEdit ? '<div class="row"><button type="button" class="btn btn-secondary btn-sm" data-act="sq-add" data-p="' + pi + '"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add question</button></div>' : '') + '</div>');
     }).join('') + (canEdit ? '<div><button type="button" class="btn btn-secondary" data-act="pg-add"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add page</button></div>' : '');
   }
@@ -464,22 +494,79 @@
     y += '\npost_survey:\n' + ql('post') + '\n\nfinal_survey:\n' + ql('final') + '\n\ndecision_rule:\n  min_participants: ' + S.rule.min + '\n' + (S.rule.question ? '  survey_questions: [' + S.rule.question + ']\n' : '') + '  min_survey_gain: ' + S.rule.gain + '\n';
     return y;
   }
-  function yq(s) { return /[:#\[\]{},&*!|>'"%@`]|^\s|\s$/.test(s) || s === '' ? '"' + String(s).replace(/"/g, '\\"') + '"' : s; }
+  function yq(s) {
+    var str = String(s == null ? '' : s);
+    if (/[:#\[\]{},&*!|>'"%@`]|^\s|\s$|^(yes|no|true|false|null|on|off)$/i.test(str) || str === '') {
+      return '"' + str.replace(/"/g, '\\"') + '"';
+    }
+    return str;
+  }
+  function formatYamlLines(rawText, indent) {
+    var lns = lines(rawText);
+    if (!lns.length) return '';
+    var hasKv = lns.some(function (l) { return l.indexOf(':') > 0; });
+    if (hasKv) {
+      return lns.map(function (l) {
+        var idx = l.indexOf(':');
+        if (idx > 0) {
+          var k = l.slice(0, idx).trim();
+          var v = l.slice(idx + 1).trim();
+          return indent + yq(k) + ': ' + yq(v);
+        }
+        return indent + yq(l.trim()) + ': ' + yq(l.trim());
+      }).join('\n') + '\n';
+    } else {
+      return lns.map(function (l) {
+        return indent + '- ' + yq(l);
+      }).join('\n') + '\n';
+    }
+  }
   function head(type) { var y = 'type: ' + type + '\ntitle: ' + yq(S.title) + '\n'; if (S.description) y += 'description: ' + yq(S.description) + '\n'; if (S.minutes !== '' && S.minutes != null) y += 'minutes: ' + S.minutes + '\n'; if (S.requires.length) y += 'requires: [' + S.requires.join(', ') + ']\n'; return y; }
   function toYamlOther() {
     var y = head(TYPE);
     if (TYPE === 'survey') {
       y += '\npages:\n';
       S.pages.forEach(function (pg) {
-        y += '  - title: ' + yq(pg.title) + '\n    questions:\n';
+        y += '  - title: ' + yq(pg.title) + '\n';
+        if (pg.intro) y += '    intro: ' + yq(pg.intro) + '\n';
+        y += '    questions:\n';
         pg.questions.forEach(function (q) {
           y += '      - id: ' + q.id + '\n        type: ' + q.type + '\n        label: ' + yq(q.label) + '\n';
-          if (q.type === 'single' || q.type === 'multi') y += '        options: [' + lines(q.options).map(yq).join(', ') + ']\n';
+          if (q.hint) y += '        hint: ' + yq(q.hint) + '\n';
+          if (q.type === 'single' || q.type === 'multi') {
+            if (q.optionsFrom) {
+              y += '        options_from: ' + q.optionsFrom + '\n';
+            } else {
+              var optLns = lines(q.options);
+              if (optLns.some(function (l) { return l.indexOf(':') > 0; })) {
+                y += '        options:\n' + formatYamlLines(q.options, '          ');
+              } else {
+                y += '        options: [' + optLns.map(yq).join(', ') + ']\n';
+              }
+            }
+            if (q.columns && Number(q.columns) !== (q.type === 'single' ? 2 : 1)) {
+              y += '        columns: ' + q.columns + '\n';
+            }
+          }
           if (q.type === 'multi' && q.max !== '' && q.max != null) y += '        max: ' + q.max + '\n';
-          if (q.type === 'matrix') y += '        rows: [' + lines(q.rows).map(yq).join(', ') + ']\n';
-          if (q.type === 'scale' || q.type === 'matrix') y += '        points: ' + q.points + '\n        labels: [' + yq(q.low || 'Very difficult') + ', ' + yq(q.high || 'Very easy') + ']\n';
+          if (q.type === 'matrix') {
+            y += '        rows:\n' + formatYamlLines(q.rows, '          ');
+            if (q.na_label) y += '        na_label: ' + yq(q.na_label) + '\n';
+          }
+          if (q.type === 'scale' || q.type === 'matrix') {
+            y += '        points: ' + q.points + '\n        labels: [' + yq(q.low || 'Very difficult') + ', ' + yq(q.high || 'Very easy') + ']\n';
+          }
+          if (q.type === 'text') {
+            if (q.long === false) y += '        long: false\n';
+          }
           if (!q.required) y += '        required: false\n';
-          if (q.showIf && q.showIf.on) y += '        show_if: { ' + (q.showIf.module ? 'module: ' + q.showIf.module + ', ' : '') + 'question: ' + q.showIf.q + ', ' + q.showIf.op + ': ' + (q.showIf.op === 'equals' ? yq(q.showIf.value) : '[' + q.showIf.value.split(',').map(function (v) { return yq(v.trim()); }).join(', ') + ']') + ' }\n';
+          if (q.showIf && q.showIf.on) {
+            var ref = q.showIf.module ? (q.showIf.module + '.' + q.showIf.q) : q.showIf.q;
+            var valPart = (q.showIf.op === 'equals')
+              ? yq(q.showIf.value)
+              : '[' + q.showIf.value.split(',').map(function (v) { return yq(v.trim()); }).filter(Boolean).join(', ') + ']';
+            y += '        show_if: { ref: ' + ref + ', ' + q.showIf.op + ': ' + valPart + ' }\n';
+          }
         });
       });
     } else if (TYPE === 'tree_test') {
@@ -586,13 +673,35 @@
         else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(q.id)) add(id + '-id', 'Use letters, digits and underscores. Start with a letter.');
         else if (seen[q.id]) add(id + '-id', '“' + q.id + '” is used twice. Ids must be unique.');
         seen[q.id] = true;
-        if ((q.type === 'single' || q.type === 'multi') && lines(q.options).length < 2) add(id + '-opts', 'The ' + at + ' needs at least 2 choices.');
-        if (q.type === 'multi' && q.max !== '' && q.max != null && (!(Number(q.max) >= 1) || Number(q.max) > lines(q.options).length)) add(id + '-opts', 'The most they can pick must be between 1 and the number of choices.');
+        if (q.type === 'single' || q.type === 'multi') {
+          if (q.optionsFrom) {
+            var srcExists = all.slice(0, idx).some(function (x) {
+              return x.q.id === q.optionsFrom && (x.q.type === 'matrix' || x.q.type === 'single' || x.q.type === 'multi');
+            });
+            if (!srcExists) add(id + '-from', '“' + q.optionsFrom + '” must be an earlier matrix, single or multi question in this module.');
+          } else if (lines(q.options).length < 2) {
+            add(id + '-opts', 'The ' + at + ' needs at least 2 choices.');
+          }
+        }
+        if (q.type === 'multi' && q.max !== '' && q.max != null) {
+          if (!(Number(q.max) >= 1)) add(id + '-opts', 'The most they can pick must be 1 or more.');
+          else if (!q.optionsFrom && Number(q.max) > lines(q.options).length) add(id + '-opts', 'The most they can pick must be between 1 and the number of choices.');
+        }
         if (q.type === 'matrix' && !lines(q.rows).length) add(id + '-rows', 'The ' + at + ' needs at least 1 row.');
         if ((q.type === 'scale' || q.type === 'matrix') && !(Number(q.points) >= 2 && Number(q.points) <= 11)) add(id + '-low', 'Points must be between 2 and 11.');
         if (q.showIf && q.showIf.on) {
           if (!q.showIf.q.trim()) add(id + '-cq', 'The condition on the ' + at + ' needs a question id.');
-          else if (!q.showIf.module) { var earlier = all.slice(0, idx).some(function (x) { return x.q.id === q.showIf.q; }); if (!earlier) add(id + '-cq', '“' + q.showIf.q + '” is not an earlier question in this module.'); }
+          else if (!q.showIf.module) {
+            if (q.showIf.q.indexOf('.') > 0) {
+              var modPart = q.showIf.q.split('.')[0];
+              if (S.requires.indexOf(modPart) < 0) {
+                add(id + '-cq', 'Tick “' + ((MODULE_LIST.filter(function (m) { return m.id === modPart; })[0] || {}).title || modPart) + '” under “Must finish first” so its answer exists.');
+              }
+            } else {
+              var earlier = all.slice(0, idx).some(function (x) { return x.q.id === q.showIf.q; });
+              if (!earlier) add(id + '-cq', '“' + q.showIf.q + '” is not an earlier question in this module.');
+            }
+          }
           else if (S.requires.indexOf(q.showIf.module) < 0) add(id + '-cq', 'Tick “' + ((MODULE_LIST.filter(function (m) { return m.id === q.showIf.module; })[0] || {}).title || q.showIf.module) + '” under “Must finish first” so its answer exists.');
         }
       });
@@ -804,11 +913,11 @@
     else if (act === 'q-del') { S[a.dataset.l].splice(i, 1); openKeys = {}; }
     else if (act === 'q-up') { move(S[a.dataset.l], i, i - 1); openKeys = {}; }
     else if (act === 'q-down') { move(S[a.dataset.l], i, i + 1); openKeys = {}; }
-    else if (act === 'pg-add') { S.pages.push({ title: 'Page ' + (S.pages.length + 1), questions: [ { id: uniqueSid(), type: 'single', label: '', required: true, points: 5, low: '', high: '', options: '', rows: '', max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } } ] }); openKeys['sq-' + (S.pages.length - 1) + '-0'] = true; }
+    else if (act === 'pg-add') { S.pages.push({ title: 'Page ' + (S.pages.length + 1), intro: '', questions: [ { id: uniqueSid(), type: 'single', label: '', hint: '', required: true, points: 5, low: '', high: '', options: '', optionsFrom: '', rows: '', na_label: '', columns: 2, long: true, max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } } ] }); openKeys['sq-' + (S.pages.length - 1) + '-0'] = true; }
     else if (act === 'pg-del') { S.pages.splice(i, 1); openKeys = {}; }
     else if (act === 'pg-up') { move(S.pages, i, i - 1); openKeys = {}; }
     else if (act === 'pg-down') { move(S.pages, i, i + 1); openKeys = {}; }
-    else if (act === 'sq-add') { var pp = Number(a.dataset.p); S.pages[pp].questions.push({ id: uniqueSid(), type: 'single', label: '', required: true, points: 5, low: '', high: '', options: '', rows: '', max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } }); openKeys['sq-' + pp + '-' + (S.pages[pp].questions.length - 1)] = true; }
+    else if (act === 'sq-add') { var pp = Number(a.dataset.p); S.pages[pp].questions.push({ id: uniqueSid(), type: 'single', label: '', hint: '', required: true, points: 5, low: '', high: '', options: '', optionsFrom: '', rows: '', na_label: '', columns: 2, long: true, max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } }); openKeys['sq-' + pp + '-' + (S.pages[pp].questions.length - 1)] = true; }
     else if (act === 'sq-del') { S.pages[Number(a.dataset.p)].questions.splice(i, 1); openKeys = {}; }
     else if (act === 'sq-up') { move(S.pages[Number(a.dataset.p)].questions, i, i - 1); openKeys = {}; }
     else if (act === 'sq-down') { move(S.pages[Number(a.dataset.p)].questions, i, i + 1); openKeys = {}; }

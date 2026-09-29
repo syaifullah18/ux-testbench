@@ -859,6 +859,30 @@ def module_to_ui_data(mid, m, data):
         "yaml": None,
     }
 
+    def format_options_or_rows(raw):
+        if isinstance(raw, dict):
+            lines = []
+            for k, v in raw.items():
+                if str(k) != str(v):
+                    lines.append(f"{k}: {v}")
+                else:
+                    lines.append(str(v))
+            return "\n".join(lines)
+        elif isinstance(raw, list):
+            res = []
+            for o in raw:
+                if isinstance(o, dict) and "value" in o and "label" in o:
+                    v, l = o["value"], o["label"]
+                    res.append(f"{v}: {l}" if str(v) != str(l) else str(l))
+                elif isinstance(o, (list, tuple)) and len(o) == 2:
+                    res.append(f"{o[0]}: {o[1]}" if str(o[0]) != str(o[1]) else str(o[1]))
+                else:
+                    res.append(str(o))
+            return "\n".join(res)
+        elif raw is not None:
+            return str(raw)
+        return ""
+
     if mtype == "ab_test":
         variants = []
         raw_vars = data.get("variants") or {}
@@ -882,7 +906,7 @@ def module_to_ui_data(mid, m, data):
             f0 = fields[0] if fields else {}
             kind = f0.get("kind", "text")
             options = f0.get("options") or []
-            options_str = "\n".join(str(o) for o in options) if isinstance(options, list) else str(options)
+            options_str = format_options_or_rows(options)
             accept_map = t.get("accept") or {}
             if isinstance(accept_map, dict):
                 accept_list = accept_map.get(f0.get("id", tid)) or accept_map.get(tid) or []
@@ -912,8 +936,7 @@ def module_to_ui_data(mid, m, data):
                 labels = q.get("labels") or []
                 low = str(labels[0]) if len(labels) > 0 else str(q.get("low") or "")
                 high = str(labels[-1]) if len(labels) > 1 else str(q.get("high") or "")
-                opts = q.get("options") or []
-                opts_str = "\n".join(str(o) for o in opts) if isinstance(opts, list) else str(opts)
+                opts_str = format_options_or_rows(q.get("options"))
                 res.append({
                     "id": str(q.get("id") or ""),
                     "type": str(q.get("type") or "scale"),
@@ -946,20 +969,14 @@ def module_to_ui_data(mid, m, data):
         ui_pages = []
         for pi, page in enumerate(pages):
             p_title = str(page.get("title") or f"Page {pi+1}")
+            p_intro = str(page.get("intro") or "")
             qs = []
             for qi, q in enumerate(page.get("questions") or []):
                 labels = q.get("labels") or []
                 low = str(labels[0]) if len(labels) > 0 else str(q.get("low") or "")
                 high = str(labels[-1]) if len(labels) > 1 else str(q.get("high") or "")
-                raw_opts = q.get("options") or []
-                if isinstance(raw_opts, dict):
-                    opts_str = "\n".join(str(v) for v in raw_opts.values())
-                elif isinstance(raw_opts, list):
-                    opts_str = "\n".join(str(o) for o in raw_opts)
-                else:
-                    opts_str = str(raw_opts)
-                raw_rows = q.get("rows") or []
-                rows_str = "\n".join(str(r) for r in raw_rows) if isinstance(raw_rows, list) else str(raw_rows)
+                opts_str = format_options_or_rows(q.get("options"))
+                rows_str = format_options_or_rows(q.get("rows"))
                 show_if = q.get("show_if") or {}
                 on = bool(show_if)
                 op = "equals"
@@ -973,29 +990,37 @@ def module_to_ui_data(mid, m, data):
                 elif "not_in" in show_if:
                     op = "not_in"
                     val = ", ".join(str(x) for x in show_if["not_in"])
-                ref_q = str(show_if.get("question") or show_if.get("ref") or "")
+                ref_q = str(show_if.get("ref") or show_if.get("question") or "")
+                mod = str(show_if.get("module") or "")
+                if not mod and "." in ref_q:
+                    mod, _, ref_q = ref_q.rpartition(".")
                 qs.append({
                     "id": str(q.get("id") or f"q_{pi+1}_{qi+1}"),
                     "type": str(q.get("type") or "single"),
                     "label": str(q.get("label") or ""),
+                    "hint": str(q.get("hint") or ""),
                     "required": bool(q.get("required", True)),
                     "points": int(q.get("points") or 5),
                     "low": low,
                     "high": high,
                     "options": opts_str,
+                    "optionsFrom": str(q.get("options_from") or ""),
                     "rows": rows_str,
+                    "na_label": str(q.get("na_label") or ""),
+                    "columns": int(q.get("columns") or (2 if q.get("type") == "single" else 1)),
+                    "long": bool(q.get("long", True)),
                     "max": q.get("max", ""),
                     "showIf": {
                         "on": on,
-                        "module": str(show_if.get("module") or ""),
+                        "module": mod,
                         "q": ref_q,
                         "op": op,
                         "value": val,
                     },
                 })
-            ui_pages.append({"title": p_title, "questions": qs})
+            ui_pages.append({"title": p_title, "intro": p_intro, "questions": qs})
         if not ui_pages:
-            ui_pages = [{"title": "Page 1", "questions": []}]
+            ui_pages = [{"title": "Page 1", "intro": "", "questions": []}]
         out["pages"] = ui_pages
 
     elif mtype == "tree_test":

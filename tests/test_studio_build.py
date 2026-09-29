@@ -193,3 +193,170 @@ def test_visual_module_editor_flow(projects_dir, make_app):
     ro_html = res_ro.get_data(as_text=True)
     assert "You have view access" in ro_html or "disabled" in ro_html
 
+
+def test_survey_module_editor_flow(projects_dir, make_app):
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+
+    # 1. View journey in example study (read-only)
+    res = c.get("/example/admin/studio/modules/journey")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    # Ensure raw dict string is NOT rendered in initial_data or html
+    assert "{&#39;find_event&#39;: &#39;Finding an event&#39;" not in html
+    assert "{'find_event': 'Finding an event'" not in html
+    assert "find_event: Finding an event" in html
+    assert "Answer from your own experience" in html
+    assert "member_steps" in html
+    assert "staff_steps" in html
+
+    # 2. Test module_to_ui_data directly with the exact config
+    from testbench.studio import module_to_ui_data
+    import yaml
+    project = app.extensions["testbench"].get("example")
+    m_journey = project.modules["journey"]
+    raw_yaml = (project.dir / "modules" / "journey.yaml").read_text(encoding="utf-8")
+    data = yaml.safe_load(raw_yaml)
+    ui_data = module_to_ui_data("journey", m_journey, data)
+
+    # Check pages and intro
+    assert len(ui_data["pages"]) == 2
+    assert ui_data["pages"][0]["title"] == "Rate each step"
+    assert "Never done" in ui_data["pages"][0]["intro"]
+
+    # Check member_steps matrix
+    q0 = ui_data["pages"][0]["questions"][0]
+    assert q0["id"] == "member_steps"
+    assert q0["type"] == "matrix"
+    assert "find_event: Finding an event\n" in q0["rows"]
+    assert q0["na_label"] == "Never done"
+    assert q0["low"] == "Very easy"
+    assert q0["high"] == "Very hard"
+    assert q0["showIf"]["module"] == "profile"
+    assert q0["showIf"]["q"] == "role"
+    assert q0["showIf"]["op"] == "in"
+    assert q0["showIf"]["value"] == "member, visitor"
+
+    # Check staff_steps matrix
+    q1 = ui_data["pages"][0]["questions"][1]
+    assert q1["showIf"]["module"] == "profile"
+    assert q1["showIf"]["q"] == "role"
+    assert q1["showIf"]["op"] == "equals"
+    assert q1["showIf"]["value"] == "staff"
+
+    # Check priorities multi with optionsFrom
+    q2 = ui_data["pages"][0]["questions"][2]
+    assert q2["id"] == "priorities"
+    assert q2["optionsFrom"] == "member_steps"
+    assert q2["max"] == 2
+
+    # Check Page 2 questions
+    p2 = ui_data["pages"][1]
+    q_interview = p2["questions"][2]
+    assert q_interview["id"] == "interview"
+    assert "yes: Yes\nno: No" in q_interview["options"]
+
+    q_contact = p2["questions"][3]
+    assert q_contact["id"] == "contact"
+    assert q_contact["long"] is False
+    assert q_contact["showIf"]["module"] == ""
+    assert q_contact["showIf"]["q"] == "interview"
+    assert q_contact["showIf"]["value"] == "yes"
+
+    # 3. Create an editable study from example and test checking & saving survey module
+    c.post("/admin/projects/new", data={"slug": "survey-study", "name": "Survey Study", "source": "example"})
+    res_check = c.post("/survey-study/admin/studio/modules/journey", data={
+        "action": "check",
+        "content": raw_yaml
+    }, headers={"X-Requested-With": "XMLHttpRequest"})
+    assert res_check.status_code == 200
+    assert res_check.get_json()["ok"] is True
+
+    res_save = c.post("/survey-study/admin/studio/modules/journey", data={
+        "action": "save",
+        "content": raw_yaml
+    }, headers={"X-Requested-With": "XMLHttpRequest"})
+    assert res_save.status_code == 200
+    assert res_save.get_json()["ok"] is True
+
+    # 4. Test serialized YAML format (with options_from, ref: profile.role, rows mapping, na_label, etc.)
+    serialized_yaml = """type: survey
+title: Where things are hard
+description: Rate each part of the portal and tell us what gets in your way.
+minutes: 6
+requires: [profile]
+
+pages:
+  - title: Rate each step
+    intro: "Answer from your own experience. Choose \\"Never done\\" for anything you have not tried."
+    questions:
+      - id: member_steps
+        type: matrix
+        label: How difficult is each of these for you?
+        rows:
+          find_event: Finding an event
+          book_event: Booking a seat at an event
+          search_catalog: Searching the catalogue
+          renew: Renewing a loan
+          account: Managing my account
+        na_label: Never done
+        points: 5
+        labels: [Very easy, Very hard]
+        show_if: { ref: profile.role, in: [member, visitor] }
+      - id: staff_steps
+        type: matrix
+        label: How difficult is each of these for you?
+        rows:
+          publish_event: Publishing an event
+          manage_bookings: Managing bookings
+          reports: Getting attendance reports
+        na_label: Never done
+        points: 5
+        labels: [Very easy, Very hard]
+        show_if: { ref: profile.role, equals: staff }
+      - id: priorities
+        type: multi
+        label: Which should we fix first?
+        options_from: member_steps
+        max: 2
+        show_if: { ref: profile.role, in: [member, visitor] }
+      - id: staff_priorities
+        type: multi
+        label: Which should we fix first?
+        options_from: staff_steps
+        max: 2
+        show_if: { ref: profile.role, equals: staff }
+  - title: Your story
+    questions:
+      - id: stuck
+        type: multi
+        label: When you get stuck, what do you usually do?
+        options: [Ask staff, Search the help page, Try until it works, Give up]
+        columns: 2
+        required: false
+      - id: story
+        type: text
+        label: Describe the last time the portal got in your way.
+        hint: What were you trying to do, where did you get stuck, and how did it end?
+      - id: interview
+        type: single
+        label: Would you join a 20-minute follow-up interview?
+        options:
+          "yes": Yes
+          "no": No
+      - id: contact
+        type: text
+        label: Email or phone for scheduling
+        hint: Used only to schedule the interview, then deleted.
+        long: false
+        show_if: { ref: interview, equals: "yes" }
+"""
+    res_serialized = c.post("/survey-study/admin/studio/modules/journey", data={
+        "action": "check",
+        "content": serialized_yaml
+    }, headers={"X-Requested-With": "XMLHttpRequest"})
+    assert res_serialized.status_code == 200
+    assert res_serialized.get_json()["ok"] is True
+
+
+
