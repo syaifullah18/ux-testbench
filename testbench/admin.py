@@ -1232,7 +1232,7 @@ def instance():
     if is_public:
         from . import auth
         user = auth.current_user()
-        allowed = bool(user and user.get("is_platform_admin"))
+        allowed = bool(user and user["is_platform_admin"])
         if not user:
             return redirect(url_for("auth.login", next=request.path))
 
@@ -1342,10 +1342,10 @@ def instance_action():
     if is_public:
         from . import auth
         user = auth.current_user()
-        allowed = bool(user and user.get("is_platform_admin"))
+        allowed = bool(user and user["is_platform_admin"])
         if user:
-            actor = user.get("email", "Platform admin")
-            user_id = user.get("id")
+            actor = user["email"] if user["email"] else "Platform admin"
+            user_id = user["id"]
 
     if not allowed:
         if request.is_json:

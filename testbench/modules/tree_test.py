@@ -50,6 +50,9 @@ class TreeTest(ModuleType):
             return out
             
         for i, t in enumerate(raw["tasks"]):
+            if not isinstance(t, dict):
+                scope.add(f"tasks[{i}] must be a mapping")
+                continue
             tid = str(t.get("id") or "")
             if not tid or not re.fullmatch(r"[a-z0-9_-]+", tid):
                 scope.add(f"tasks[{i}] needs a valid `id:` (alphanumeric/dash/underscore)")
@@ -65,7 +68,7 @@ class TreeTest(ModuleType):
                 elif node_id not in leaf_nodes:
                     scope.add(f"tasks[{i}].accept: node '{node_id}' is not a leaf node (has children)")
                     
-            out["tasks"].append({"id": tid, "prompt": str(t["prompt"]), "accept": accept})
+            out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "accept": accept})
 
         out["post"] = Q.normalize(raw.get("post", []), scope, "post")
         out["final"] = Q.normalize(raw.get("final", []), scope, "final")

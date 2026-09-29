@@ -37,3 +37,21 @@ def test_flatten_tree():
     assert any("needs a valid `id:`" in s for s in scope_bad_task)
     assert any("needs a `prompt:`" in s for s in scope_bad_task)
     assert any("needs an `accept:` list" in s for s in scope_bad_task)
+
+
+def test_tree_test_validation_missing_prompt_key():
+    tt = TreeTest(SimpleNamespace(conf={}, project=None, id="tree_test"))
+    scope = Problems()
+    val = tt.validate({"tree": [{"id": "leaf", "label": "L"}], "tasks": [{"id": "t1", "accept": ["leaf"]}]}, scope)
+    assert any("needs a `prompt:`" in s for s in scope)
+    assert len(val["tasks"]) == 1
+    assert val["tasks"][0]["prompt"] == ""
+
+
+def test_tree_test_validation_non_dict_task():
+    tt = TreeTest(SimpleNamespace(conf={}, project=None, id="tree_test"))
+    scope = Problems()
+    val = tt.validate({"tree": [{"id": "leaf", "label": "L"}], "tasks": ["not_a_dict"]}, scope)
+    assert any("must be a mapping" in s for s in scope)
+
+

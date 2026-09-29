@@ -162,3 +162,33 @@ def test_participants_view_and_detail(projects_dir, make_app):
     assert "Save grades and notes" in d_html
     assert 'class="acc"' in d_html
 
+
+def test_combined_csv_export_with_ab_data(projects_dir, make_app):
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+
+    from testbench.web import get_project
+    with app.app_context():
+        proj = get_project("example")
+        ctx = Ctx(proj, admin=True)
+        conn = ctx.conn
+        conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES ('ab-tester', '2026-04-18T10:00:00Z', '2026-04-18T10:30:00Z')")
+        pid = conn.execute("SELECT id FROM participants WHERE identity = 'ab-tester'").fetchone()[0]
+        import json
+        st_json = json.dumps({"order": ["A", "B"]})
+        conn.execute("INSERT INTO sessions (participant_id, module_id, step, started_at, finished_at, state) VALUES (?, 'events-ab', 'done', '2026-04-18T10:00:00Z', '2026-04-18T10:30:00Z', ?)", (pid, st_json))
+        sid = conn.execute("SELECT id FROM sessions WHERE participant_id = ?", (pid,)).fetchone()[0]
+        conn.execute(
+            "INSERT INTO task_results (session_id, position, variant, task_id, time_ms, clicks, scroll_reversals, first_click, gave_up, ease, auto_pass, grade, answer, updated_at) "
+            "VALUES (?, 1, 'A', 'date', 1234, 3, 0, 'button', 0, 5, 1, 'pass', '14 March', '2026-04-18T10:30:00Z')",
+            (sid,)
+        )
+        conn.commit()
+
+    r = c.get("/example/admin/export.csv")
+    assert r.status_code == 200
+    csv_text = r.get_data(as_text=True)
+    assert "ab-tester" in csv_text
+    assert "1.2" in csv_text
+
+

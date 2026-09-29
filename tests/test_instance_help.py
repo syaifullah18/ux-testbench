@@ -112,3 +112,27 @@ def test_instance_actions_take_offline_and_restore(projects_dir, make_app):
 
     with app.app_context():
         assert not moderation.is_offline("example")
+
+
+def test_instance_public_mode_platform_admin(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    from testbench import users
+    with app.app_context():
+        uid, _ = users.create_user("admin@platform.org", "Platform Admin", "Password123!")
+        users.update_user(uid, is_platform_admin=1)
+
+    c = app.test_client()
+    # Log in
+    c.post("/login", data={"email": "admin@platform.org", "password": "Password123!"})
+
+    # Visiting /admin/instance must not crash with AttributeError
+    r = c.get("/admin/instance")
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert "At a glance" in html
+
+    # Performing action via /admin/instance/action must not crash with AttributeError
+    r_act = c.post("/admin/instance/action", json={"action": "offline", "slug": "example", "reason": "Test"})
+    assert r_act.status_code == 200
+    assert r_act.get_json()["ok"] is True
+

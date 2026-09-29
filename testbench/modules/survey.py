@@ -18,7 +18,10 @@ class Survey(ModuleType):
             return {"pages": []}
         out, all_q = [], []
         for i, page in enumerate(pages):
-            qs = Q.normalize((page or {}).get("questions"), scope, f"pages[{i}].questions")
+            if not isinstance(page, dict):
+                scope.add(f"pages[{i}] must be a mapping")
+                continue
+            qs = Q.normalize(page.get("questions"), scope, f"pages[{i}].questions")
             out.append({"title": str(page.get("title") or ""), "intro": str(page.get("intro") or ""), "questions": qs})
             all_q.extend(qs)
         ids = [q["id"] for q in all_q]

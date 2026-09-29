@@ -660,13 +660,13 @@ class ABTest(ModuleType):
                     x = rows.get(t["id"])
                     pfx = f"{self.m.id}.task{n}_{t['id']}"
                     cols[f"{pfx}.variant"] = variant
-                    cols[f"{pfx}.time_s"] = round(x["time_ms"] / 1000, 1) if x and x.get("time_ms") is not None else ""
+                    cols[f"{pfx}.time_s"] = round(x["time_ms"] / 1000, 1) if x and x["time_ms"] is not None else ""
                     cols[f"{pfx}.clicks"] = x["clicks"] if x else ""
                     cols[f"{pfx}.scroll_reversals"] = x["scroll_reversals"] if x else ""
                     cols[f"{pfx}.first_click"] = (x["first_click"] or "") if x else ""
                     cols[f"{pfx}.gave_up"] = x["gave_up"] if x else ""
                     cols[f"{pfx}.ease"] = (x["ease"] or "") if x else ""
-                    cols[f"{pfx}.auto_pass"] = ("" if not x or x.get("auto_pass") is None else x["auto_pass"])
+                    cols[f"{pfx}.auto_pass"] = ("" if not x or x["auto_pass"] is None else x["auto_pass"])
                     cols[f"{pfx}.grade"] = (effective_grade(x) or "") if x else ""
                     cols[f"{pfx}.answer"] = (x["answer"] or "") if x else ""
                     
