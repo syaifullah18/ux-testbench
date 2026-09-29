@@ -329,6 +329,7 @@
 
 <script>
 (function() {
+  var CSRF_TOKEN = {{ csrf_token|tojson if csrf_token is defined else '""' }};
   var dlg = document.getElementById('dlg');
   var dlgH = document.getElementById('dlg-h');
   var dlgBody = document.getElementById('dlg-body');
@@ -384,8 +385,12 @@
       try {
         var res = await fetch("{{ url_for('admin.instance_action') }}", {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          body: JSON.stringify({ action: pending.act, slug: pending.slug, reason: reason })
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': CSRF_TOKEN
+          },
+          body: JSON.stringify({ action: pending.act, slug: pending.slug, reason: reason, csrf_token: CSRF_TOKEN })
         });
         var data = await res.json();
         if (res.ok && data.ok) {

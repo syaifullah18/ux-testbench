@@ -112,6 +112,13 @@ def create_app(overrides=None):
             if not token:
                 abort(403, "Missing CSRF token")
             given = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+            if not given and request.is_json:
+                try:
+                    payload = request.get_json(silent=True) or {}
+                    if isinstance(payload, dict):
+                        given = payload.get("csrf_token")
+                except Exception:
+                    pass
             if not given or not hmac.compare_digest(given, token):
                 abort(403, "Invalid CSRF token")
 

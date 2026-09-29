@@ -303,3 +303,64 @@ def test_admin_and_studio_submits(projects_dir, make_app):
     r = c.post("/submit-study/admin/studio/delete", data={"confirm": "submit-study", "with_data": "1"})
     assert r.status_code == 302
     assert not (Path(app.config["DATA_DIR"]) / "projects" / "submit-study").exists()
+
+
+def test_launch_passcodes_csrf_and_submits(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="internal")
+    # Simulate production mode where app.testing is False to enforce CSRF validation
+    app.testing = False
+    c = app.test_client()
+
+    # 1. Establish session and obtain CSRF token
+    c.get("/admin/")
+    with c.session_transaction() as sess:
+        csrf_token = sess.get("csrf_token")
+        sess["tb_admin"] = ["*"]
+
+    # 2. POST without CSRF token must be rejected with 403
+    r = c.post(
+        "/example/admin/launch/passcode",
+        data=json.dumps({"kind": "participant", "action": "set", "passcode": "part123"}),
+        content_type="application/json"
+    )
+    assert r.status_code == 403
+
+    # 3. POST with X-CSRFToken header succeeds
+    r = c.post(
+        "/example/admin/launch/passcode",
+        data=json.dumps({"kind": "participant", "action": "set", "passcode": "part123"}),
+        headers={"X-CSRFToken": csrf_token},
+        content_type="application/json"
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    # 4. POST with csrf_token in JSON payload succeeds
+    r = c.post(
+        "/example/admin/launch/passcode",
+        data=json.dumps({"kind": "participant", "action": "clear", "csrf_token": csrf_token}),
+        content_type="application/json"
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    # 5. Admin passcode set with X-CSRFToken succeeds
+    r = c.post(
+        "/example/admin/launch/passcode",
+        data=json.dumps({"kind": "admin", "action": "set", "passcode": "adm12345"}),
+        headers={"X-CSRFToken": csrf_token},
+        content_type="application/json"
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    # 6. Admin passcode clear with X-CSRFToken succeeds
+    r = c.post(
+        "/example/admin/launch/passcode",
+        data=json.dumps({"kind": "admin", "action": "clear"}),
+        headers={"X-CSRFToken": csrf_token},
+        content_type="application/json"
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+

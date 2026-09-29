@@ -1134,6 +1134,8 @@ def launch(slug):
 def launch_passcode(slug):
     ctx, early = admin_ctx(slug)
     if early:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Unauthorized"}), 401
         return early
     project = ctx.project
     can_edit = is_super() or getattr(project, "editable", True)
