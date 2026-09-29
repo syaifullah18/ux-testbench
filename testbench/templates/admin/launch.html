@@ -387,7 +387,7 @@
 
     var pct = total > 0 ? Math.round((ready / total) * 100) : 100;
     var notes = [];
-    if (fail > 0) notes.append ? notes.push(fail + ' item' + (fail === 1 ? ' blocks' : 's block') + ' launch') : notes.push(fail + ' item' + (fail === 1 ? ' blocks' : 's block') + ' launch');
+    if (fail > 0) notes.push(fail + ' item' + (fail === 1 ? ' blocks' : 's block') + ' launch');
     if (warn > 0) notes.push(warn + ' warning' + (warn === 1 ? '' : 's'));
     var noteStr = notes.length > 0 ? notes.join(', ') : 'Nothing blocks launch';
 
