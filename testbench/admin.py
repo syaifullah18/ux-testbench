@@ -335,7 +335,7 @@ def build_study_dashboard_data(ctx, project):
             "title": "Consent is written",
             "meta": "The study records responses and timing, and no consent text is set.",
             "status": "warn",
-            "action_url": url_for("admin.study_settings", slug=project.slug) + "#sec-study",
+            "action_url": url_for("admin.settings_data", slug=project.slug) + "#sec-study",
             "action_text": "Write consent"
         })
 
