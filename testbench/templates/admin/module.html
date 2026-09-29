@@ -517,13 +517,15 @@
   }
 
   /* First click */
+  var IMAGE_EXTS = /\.(png|jpe?g|gif|webp|svg|avif|ico|bmp|tiff?)$/i;
   function clickContent() {
     var intro = panel('sec-intro', 'Introduction', 'What you tell people before they start.', '', '<div class="panel-b">' + field('Introduction', area('f-intro', 'intro', S.intro, 3), 'Shown on the first screen.', true) + '</div>');
+    var imgFiles = FILES.filter(function (f) { return IMAGE_EXTS.test(f); });
     var rows = S.tasks.map(function (t, i) {
       var k = 'ct-' + i;
-      var opts = '<option value="">Choose an image</option>' + FILES.map(function (f) { return '<option value="' + f + '"' + (t.image === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
+      var opts = '<option value="">Choose an image</option>' + imgFiles.map(function (f) { return '<option value="' + f + '"' + (t.image === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
       function num(f, label) { return '<div><label class="label" for="f-ct-' + i + '-' + f + '">' + label + '</label><input id="f-ct-' + i + '-' + f + '" class="input" type="number" min="0" data-b="tasks.' + i + '.' + f + '" data-num value="' + esc(t[f]) + '"' + dis + '></div>'; }
-      var hasImg = t.image && FILES.indexOf(t.image) !== -1;
+      var hasImg = t.image && imgFiles.indexOf(t.image) !== -1;
       var imgSrc = t.image ? (t.image.startsWith('prototypes/') ? '{{ url_for("studio.files_raw", slug=project.slug, rel="") }}' + esc(t.image) : esc(t.image)) : '';
       var previewHtml = '<div class="field"><p class="label">Preview</p>' +
         (hasImg
