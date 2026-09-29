@@ -1,31 +1,88 @@
-{% extends "base.html" %}
-{% block title %}Log In{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14 border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
-    <h1 class="text-xl font-bold text-ink mb-1.5 text-center">Welcome back</h1>
-    <p class="text-ink-subtle text-[14px] mb-6 text-center">Log in to manage your projects.</p>
-    
-    <form method="post" class="space-y-4">
+{% extends "admin/_layout.html" %}
+{% block title %}Sign in{% endblock %}
+{% block shell %}none{% endblock %}
+
+{% block page %}
+<div class="grid min-h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+
+  <!-- Left: what a study goes through. Same sequence as the phase rail inside a study. -->
+  <aside class="bg-ink px-8 py-8 text-white lg:px-12 lg:py-12">
+    <a href="{{ url_for('web.index') }}" class="inline-flex items-center gap-3 text-lg font-bold tracking-tight">
+      <svg width="26" height="26" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+      UX Testbench
+    </a>
+    <h1 class="mt-12 max-w-[22ch] text-[32px] font-bold leading-[1.2] tracking-tight">Find out which design people can actually use.</h1>
+    <ol class="mt-12 max-w-md" aria-label="How a study runs">
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Create</p><p class="text-sm text-white/75">Start from a template</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Build</p><p class="text-sm text-white/75">Add modules, upload prototypes</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Launch</p><p class="text-sm text-white/75">Check, set a passcode, go live</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Collect</p><p class="text-sm text-white/75">Watch responses arrive</p></li>
+      <li class="relative pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full bg-white"></span><p class="t-strong">Analyze</p><p class="text-sm text-white/75">Read the verdict and decide</p></li>
+    </ol>
+  </aside>
+
+  <!-- Right: the form -->
+  <main id="main" class="flex items-center justify-center bg-white px-6 py-12">
+    <div class="w-full max-w-[420px]">
+
+      <h2 class="t-page" id="title">Sign in</h2>
+      <p class="mt-2 text-muted" id="lede">Enter your email and password to continue.</p>
+
+      {% if errors.email or errors.password or errors.general %}
+      <div id="err" role="alert" class="mt-6 flex gap-3 rounded-lg border border-[#F0C4BF] bg-bad-soft p-4 text-bad">
+        <i class="fa-solid fa-circle-exclamation mt-1" aria-hidden="true"></i>
+        <p id="err-text" class="t-strong">{{ errors.email or errors.password or errors.general }}</p>
+      </div>
+      {% endif %}
+
+      <form id="form" method="post" class="mt-8 space-y-6" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
         <div>
-            <label class="block text-sm font-medium text-ink-muted mb-1" for="lo-email">Email</label>
-            <input id="lo-email" name="email" type="email" value="{{ form.email }}" required
-                   class="w-full border {{ 'border-red-400' if errors.email else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-            {% if errors.email %}<p class="text-red-600 text-[13px] mt-1">{{ errors.email }}</p>{% endif %}
+          <label class="label" for="email">Email</label>
+          <input id="email" name="email" class="input" type="email" autocomplete="email" placeholder="you@company.com" value="{{ form.email }}" required {% if errors.email %}aria-invalid="true"{% endif %} autofocus>
         </div>
+
         <div>
-            <div class="flex justify-between items-center mb-1">
-                <label class="block text-sm font-medium text-ink-muted" for="lo-pw">Password</label>
-                <a href="{{ url_for('auth.forgot') }}" class="text-[12px] text-brand-600 dark:text-brand-400 hover:underline">Forgot password?</a>
-            </div>
-            <input id="lo-pw" name="password" type="password" required
-                   class="w-full border border-line min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+          <div class="mb-2 flex items-baseline justify-between">
+            <label class="t-strong" for="password">Password</label>
+            <a href="{{ url_for('auth.forgot') }}" class="link text-sm">Forgot password</a>
+          </div>
+          <div class="relative">
+            <input id="password" name="password" class="input pr-12" type="password" autocomplete="current-password" required {% if errors.password %}aria-invalid="true"{% endif %}>
+            <button type="button" id="peek" class="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded text-muted hover:bg-paper" aria-label="Show password" aria-pressed="false"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+          </div>
         </div>
-        <button type="submit" class="w-full bg-brand-600 text-white font-semibold min-h-11 py-2.5 rounded-lg hover:bg-brand-700 transition-colors mt-2">
-            <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i>Log in
-        </button>
-    </form>
-    
-    <p class="text-center text-[14px] text-ink-subtle mt-5">Don't have an account yet? <a href="{{ url_for('auth.signup') }}" class="text-brand-600 dark:text-brand-400 hover:underline">Sign up</a></p>
+
+        <button type="submit" class="btn btn-primary w-full">Sign in</button>
+      </form>
+
+      <div class="mt-8 space-y-3 border-t border-line pt-6 text-sm text-muted">
+        <p>New here? <a href="{{ url_for('auth.signup') }}" class="link">Create an account</a></p>
+      </div>
+    </div>
+  </main>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var peek = document.getElementById('peek');
+    if (peek) {
+      peek.addEventListener('click', function () {
+        var input = document.getElementById('password');
+        if (!input) return;
+        var on = input.type === 'password';
+        input.type = on ? 'text' : 'password';
+        this.setAttribute('aria-pressed', on);
+        this.setAttribute('aria-label', on ? 'Hide password' : 'Show password');
+        var icon = this.querySelector('i');
+        if (icon) {
+          icon.className = on ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+        }
+      });
+    }
+  })();
+</script>
 {% endblock %}

@@ -11,12 +11,32 @@
   <script src="https://cdn.tail{{ '' }}windcss.com"></script>
   <script src="{{ url_for('static', filename='admin/tw.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin/app.css') }}">
+  {%- set brand = project.brand if project and project.brand and project.brand.primary else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
+  {%- macro _rgb(hex) -%}{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}{%- endmacro -%}
+  {%- macro _tint(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r + (255 - r) * p)|round|int }} {{ (g + (255 - g) * p)|round|int }} {{ (b + (255 - b) * p)|round|int }}{%- endmacro -%}
+  {%- macro _shade(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}{%- endmacro -%}
+  <style>
+    :root {
+      --brand-50:  {{ _tint(brand.primary, 0.95) }};
+      --brand-100: {{ _tint(brand.primary, 0.89) }};
+      --brand-200: {{ _tint(brand.primary, 0.76) }};
+      --brand-300: {{ _tint(brand.primary, 0.60) }};
+      --brand-400: {{ _tint(brand.primary, 0.33) }};
+      --brand-500: {{ _rgb(brand.primary) }};
+      --brand-600: {{ _shade(brand.primary, 0.12) }};
+      --brand-700: {{ _shade(brand.primary, 0.27) }};
+      --brand-800: {{ _shade(brand.primary, 0.42) }};
+      --brand-900: {{ _shade(brand.primary, 0.55) }};
+      --brand-950: {{ _shade(brand.primary, 0.72) }};
+    }
+  </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body data-shell="{% block shell %}workspace{% endblock %}" data-tab="{% block tab %}studies{% endblock %}">
 <div id="preloader" aria-hidden="true"><svg width="44" height="44" viewBox="0 0 22 22"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg></div>
 
 <a class="skip" href="#main">Skip to content</a>
+{% if self.shell() != 'none' %}
 <header class="topbar bg-ink text-white">
   <div class="wrap flex h-14 items-center gap-8" style="padding-top:0">
     {% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
@@ -69,7 +89,7 @@
         <a href="{{ url_for('auth.login') }}" class="text-base text-white/80 underline-offset-2 hover:text-white hover:underline">Sign in</a>
         {% endif %}
       {% else %}
-        <span class="rounded-md bg-white/10 px-3 py-1 font-semibold">{% if ns.is_super %}Superadmin{% else %}Study admin{% endif %}</span>
+        <span class="rounded-md bg-white/10 px-3 py-1 font-semibold">{% if ns.is_super %}Super Admin{% else %}Study Admin{% endif %}</span>
         {% if project %}
         <a href="{{ url_for('admin.logout', slug=project.slug) }}" class="text-base text-white/80 underline-offset-2 hover:text-white hover:underline">Log out</a>
         {% else %}
@@ -81,10 +101,13 @@
 </header>
 
 {% block header %}{% endblock %}
+{% endif %}
 
+{% block page %}
 <main id="main" class="{% block main_class %}wrap main stack{% endblock %}">
   {% block content %}{% endblock %}
 </main>
+{% endblock %}
 
 <div id="toast-wrap" class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none w-max max-w-[90vw]">
   {% set flash_msgs = get_flashed_messages(with_categories=true) %}
