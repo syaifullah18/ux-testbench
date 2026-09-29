@@ -25,15 +25,17 @@
     t.className = 'pointer-events-auto flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer ' + (isErr ? 'bg-[#B42318]' : 'bg-ink');
     var iconClass = isErr ? 'fa-solid fa-circle-exclamation text-amber-300' : 'fa-solid fa-circle-check text-emerald-400';
     t.innerHTML = '<i class="' + iconClass + '" aria-hidden="true"></i><span>' + msg + '</span>';
+    t.style.display = 'flex';
     t.style.opacity = '1';
     t.style.transform = 'translateY(0)';
-    t.classList.remove('is-hidden');
+    t.classList.remove('is-hidden', 'hidden');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () {
       t.style.opacity = '0';
       t.style.transform = 'translateY(8px)';
       setTimeout(function () {
-        t.classList.add('is-hidden');
+        t.style.display = 'none';
+        t.classList.add('is-hidden', 'hidden');
         t.style.opacity = '';
         t.style.transform = '';
       }, 350);
@@ -59,12 +61,13 @@
 
   document.addEventListener('click', function (e) {
     var item = e.target.closest('#toast-wrap .toast-item, #toast-wrap #toast');
-    if (item && !item.classList.contains('is-hidden')) {
+    if (item && !item.classList.contains('is-hidden') && !item.classList.contains('hidden') && item.style.display !== 'none') {
       item.style.opacity = '0';
       item.style.transform = 'translateY(8px)';
       setTimeout(function () {
         if (item.id === 'toast') {
-          item.classList.add('is-hidden');
+          item.style.display = 'none';
+          item.classList.add('is-hidden', 'hidden');
           item.style.opacity = '';
           item.style.transform = '';
         } else if (item.parentNode) {
