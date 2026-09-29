@@ -48,15 +48,17 @@
         {% set ns.is_super = is_super %}
       {% endif %}
     {% endif %}
-    {% set home_url = url_for('public.dashboard') if is_public else url_for('admin.overview') %}
+    {% set home_url = url_for('public.dashboard') if is_public else ((url_for('admin.dashboard', slug=project.slug) if project else url_for('admin.overview')) if not ns.is_super else url_for('admin.overview')) %}
     <a href="{{ home_url }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
       <svg width="24" height="24" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
       <span>UX Testbench</span>
     </a>
     <nav aria-label="Workspace" class="flex items-center gap-1">
+      {% if is_public or ns.is_super %}
       <a class="topnav" href="{{ home_url }}" {% if self.tab() == 'studies' %}aria-current="page"{% endif %}>Studies</a>
+      {% endif %}
       {% if is_public %}
-        {% if user and user.is_platform_admin %}
+        {% if (user and user.is_platform_admin) or ns.is_super %}
           <a class="topnav" href="{{ url_for('admin.instance') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Platform</a>
         {% endif %}
       {% else %}

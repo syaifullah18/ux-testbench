@@ -125,8 +125,21 @@ def create_app(overrides=None):
                 abort(403, "Invalid CSRF token")
 
     @app.context_processor
-    def inject_csrf():
-        return {"csrf_token": session.get("csrf_token", "")}
+    def inject_template_globals():
+        from .context import is_super
+        user = None
+        if os.environ.get("TESTBENCH_MODE", "internal") == "public":
+            try:
+                from . import auth
+                user = auth.current_user()
+            except Exception:
+                pass
+        return {
+            "csrf_token": session.get("csrf_token", ""),
+            "is_super": is_super(),
+            "user": user,
+            "current_user": user,
+        }
 
     from . import admin, auth, platform_admin, public, studio, web
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
