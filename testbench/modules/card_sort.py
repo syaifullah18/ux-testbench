@@ -17,7 +17,7 @@ class CardSort(ModuleType):
     type_name = "card_sort"
 
     def validate(self, raw, scope):
-        c = {"type": "card_sort", "id": self.m.id, "title": raw.get("title", self.m.id)}
+        c = {"type": "card_sort", "id": self.m.id, "title": str(raw.get("title") or self.m.id)}
         
         cards = raw.get("cards")
         if not isinstance(cards, list) or not cards:
@@ -33,6 +33,10 @@ class CardSort(ModuleType):
                 else:
                     scope.add(f"card {i} must be a string or object with a 'label'")
                     
+        card_ids = [card["id"] for card in c["cards"]]
+        if len(card_ids) != len(set(card_ids)):
+            scope.add("card ids must be unique")
+
         cats = raw.get("categories", [])
         if not isinstance(cats, list):
             scope.add("'categories' must be a list of strings")
@@ -42,20 +46,25 @@ class CardSort(ModuleType):
         c["allow_new_categories"] = bool(raw.get("allow_new_categories", not bool(c["categories"])))
         c["instructions"] = str(raw.get("instructions", "Sort the cards into categories."))
         
-        c["pre"] = Q.normalize(raw.get("pre", []), scope.down("pre"))
-        c["post"] = Q.normalize(raw.get("post", []), scope.down("post"))
-        c["final"] = Q.normalize(raw.get("final", []), scope.down("final"))
+        c["pre"] = Q.normalize(raw.get("pre", []), scope, "pre")
+        c["post"] = Q.normalize(raw.get("post", []), scope, "post")
+        c["final"] = Q.normalize(raw.get("final", []), scope, "final")
+
+        all_q = c["pre"] + c["post"] + c["final"]
+        q_ids = [q["id"] for q in all_q]
+        if len(q_ids) != len(set(q_ids)):
+            scope.add("all question ids must be unique across the module")
+
         return c
 
     def check_refs(self, scope):
         c = self.m.conf
-        Q.check_refs(c["pre"], scope.down("pre"), self.m.project)
-        Q.check_refs(c["post"], scope.down("post"), self.m.project)
-        Q.check_refs(c["final"], scope.down("final"), self.m.project)
+        all_qs = c.get("pre", []) + c.get("post", []) + c.get("final", [])
+        Q.check_refs(all_qs, scope, self.m.project, self.m.id, self.question_ids())
 
     def question_ids(self):
         c = self.m.conf
-        return Q.gather_ids(c["pre"]) | Q.gather_ids(c["post"]) | Q.gather_ids(c["final"])
+        return {q["id"] for q in c.get("pre", []) + c.get("post", []) + c.get("final", [])}
 
     def steps(self, state):
         c = self.m.conf
@@ -67,36 +76,40 @@ class CardSort(ModuleType):
         return res
 
     def step_label(self, step, t):
-        if step == "sort": return t("card_sort.sort", "Card Sorting")
+        if step == "sort": return t("card_sort.sort")
         if step in ("pre", "post"): return t(f"module.{step}_survey")
         return t("module.final_questions")
 
     def handle(self, ctx, step):
         c = self.m.conf
         if step in ("pre", "post", "final"):
-            if request.method == "POST":
-                errs = Q.validate_answers(c[step], request.form, ctx.conn, ctx.session["id"])
-                if not errs:
-                    storage.save_page(ctx.conn, ctx.session["id"], step, request.form)
-                    return ADVANCE
-                ctx.set_errors(errs)
-            
-            return ctx.render("modules/survey_page.html",
-                              page={"title": c.get("title", self.m.id), "questions": c[step]},
-                              answers=request.form if request.method == "POST" else storage.page_answers(ctx.conn, ctx.session["id"], step))
+            return self._handle_survey(ctx, step, c.get(step, []))
 
         if step == "sort":
             if request.method == "POST":
                 # Expecting JSON: { card_id: category_name, ... }
-                data = request.json
+                data = request.get_json(silent=True) or request.form.to_dict() or {}
                 if not isinstance(data, dict):
                     abort(400)
                 storage.save_page(ctx.conn, ctx.session["id"], step, data)
-                return jsonify({"ok": True})
+                ctx.conn.commit()
+                return ADVANCE
                 
             return ctx.render("modules/card_sort.html", conf=c)
             
         abort(404)
+
+    def _handle_survey(self, ctx, page_id, questions):
+        answers, errors = storage.page_answers(ctx.conn, ctx.session["id"], page_id), {}
+        prior = storage.module_answers(ctx.conn, ctx.session["id"])
+        if request.method == "POST":
+            answers, errors = Q.parse(questions, request.form, prior, ctx.lookup)
+            if not errors:
+                storage.save_page(ctx.conn, ctx.session["id"], page_id, answers)
+                ctx.conn.commit()
+                return ADVANCE
+        return ctx.render("modules/survey_page.html", page={"title": "", "intro": "", "questions": questions}, 
+                          page_no=1, page_count=1, answers=answers, errors=errors, prior=prior, last=True)
 
     def report(self, ctx):
         c = self.m.conf

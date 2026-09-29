@@ -48,6 +48,9 @@ class Problems(list):
     def at(self, where, msg):
         self.append(f"{where}: {msg}")
 
+    def add(self, msg):
+        self.append(msg)
+
 
 @dataclass
 class Module:
@@ -255,6 +258,11 @@ class Scope:
 
     def add(self, msg):
         self.problems.at(self.where, msg)
+
+    append = add
+
+    def down(self, sub):
+        return Scope(self.problems, f"{self.where}.{sub}" if self.where else str(sub))
 
     def ref(self, project, module_id, ref, what):
         check_ref(project, module_id, ref, self.problems, f"{self.where} {what}")

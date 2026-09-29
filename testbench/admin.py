@@ -116,7 +116,7 @@ def overview():
     error = None
     if request.method == "POST":
         if is_rate_limited(request.remote_addr, "superadmin"):
-            error = "Too many failed attempts. Try again later."
+            error = t("admin.rate_limited")
         elif passcodes.superadmin_ok(request.form.get("passcode")):
             grant("*")
             return redirect(url_for("admin.overview"))
@@ -461,7 +461,7 @@ def dashboard(slug):
         if request.method == "POST":
             given = request.form.get("passcode")
             if is_rate_limited(request.remote_addr, f"admin:{slug}"):
-                error = "Too many failed attempts. Try again later."
+                error = t("admin.rate_limited")
             elif passcodes.check(project, "admin", given):
                 grant(slug)
                 return redirect(url_for("admin.dashboard", slug=slug))
@@ -504,13 +504,13 @@ def set_status(slug):
             registry().refresh(force=True)
         except Exception as e:
             import logging
-            logging.getLogger(__name__).warning(f"Could not update status in project.yaml: {e}")
-    project.status = new_status
     with storage.connect(slug) as conn:
         storage.audit(conn, "set_status", request.remote_addr, {"status": new_status})
     if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
         return jsonify({"ok": True, "status": new_status})
-    next_url = request.form.get("next") or request.referrer or url_for("admin.dashboard", slug=slug, notice=f"Status set to {new_status}.")
+    msg = f"Status set to {new_status}."
+    flash(msg, "success")
+    next_url = request.form.get("next") or request.referrer or url_for("admin.dashboard", slug=slug, notice=msg)
     return redirect(next_url)
 
 

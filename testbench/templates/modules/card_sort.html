@@ -1,22 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
-    <div class="prose">
-        <h1>{{ conf.title }}</h1>
-        <p>{{ conf.instructions }}</p>
+    <div>
+        <h1 class="text-2xl font-bold text-ink">{{ conf.title }}</h1>
+        <p class="text-ink-muted text-sm mt-1">{{ conf.instructions }}</p>
     </div>
 
-    <div class="flex gap-6 items-start h-[70vh]">
+    <div class="flex flex-col md:flex-row gap-6 items-start h-[70vh]">
         <!-- Unsorted Cards Pool -->
-        <div class="w-1/3 flex flex-col h-full bg-gray-50 border border-gray-200 rounded-lg shadow-inner p-4 overflow-y-auto"
+        <div class="w-full md:w-1/3 flex flex-col h-full bg-surface-subtle border border-line rounded-xl shadow-inner p-4 overflow-y-auto"
              id="card-pool"
              aria-label="Unsorted Cards Pool"
              ondrop="drop(event)" ondragover="allowDrop(event)">
-            <h3 class="font-semibold text-gray-700 mb-4 sticky top-0 bg-gray-50 pb-2">Unsorted Cards</h3>
+            <h3 class="font-semibold text-ink mb-3 sticky top-0 bg-surface-subtle pb-2 border-b border-line flex items-center justify-between">
+                <span>Unsorted Cards</span>
+            </h3>
             
-            <div id="cards-container" class="space-y-2">
+            <div id="cards-container" class="space-y-2.5">
                 {% for card in conf.cards %}
-                <div class="p-3 bg-card border border-gray-300 rounded shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-400 select-none"
+                <div class="p-3 bg-card border border-line rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-brand/60 hover:shadow transition-all select-none text-ink text-sm font-medium"
                      draggable="true" tabindex="0" role="button" aria-grabbed="false"
                      ondragstart="drag(event)" 
                      id="card-{{ card.id }}" 
@@ -28,19 +30,19 @@
         </div>
 
         <!-- Categories Area -->
-        <div class="w-2/3 flex flex-col h-full">
+        <div class="w-full md:w-2/3 flex flex-col h-full">
             {% if conf.allow_new_categories %}
             <div class="mb-4 flex items-center gap-2">
-                <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="border border-gray-300 rounded px-3 py-1.5 focus:ring focus:ring-blue-200 flex-1">
-                <button type="button" aria-label="Add Category" onclick="addCategory()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded">Add</button>
+                <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="border border-line bg-card text-ink rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand/40 focus:border-brand flex-1 outline-none">
+                <button type="button" aria-label="Add Category" onclick="addCategory()" class="btn btn-secondary px-4 py-2 text-sm font-semibold flex items-center gap-1.5"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add</button>
             </div>
             {% endif %}
             
             <div id="categories-container" class="flex-1 overflow-x-auto flex gap-4 pb-4">
                 {% for cat in conf.categories %}
-                <div class="min-w-[250px] max-w-[250px] flex flex-col bg-gray-100 rounded-lg border border-gray-300 p-3 h-full">
-                    <h3 class="font-semibold text-gray-800 mb-2 truncate" title="{{ cat }}">{{ cat }}</h3>
-                    <div class="flex-1 overflow-y-auto space-y-2 category-dropzone" 
+                <div class="min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-xl border border-line p-3 h-full">
+                    <h3 class="font-semibold text-ink mb-2 truncate" title="{{ cat }}">{{ cat }}</h3>
+                    <div class="flex-1 overflow-y-auto space-y-2.5 category-dropzone p-1 rounded-lg min-h-[120px]" 
                          data-category="{{ cat }}"
                          ondrop="drop(event)" ondragover="allowDrop(event)">
                         <!-- Cards dropped here -->
@@ -51,7 +53,7 @@
         </div>
     </div>
 
-    <div class="flex justify-end pt-4 border-t border-gray-200">
+    <div class="flex justify-end pt-4 border-t border-line">
         <button id="btn-done" type="button" class="btn btn-primary px-8" onclick="submitSort()">Complete Sort</button>
     </div>
 </div>
@@ -76,9 +78,13 @@ function drop(ev) {
     var el = document.getElementById(data);
     if (!el) return;
     
-    var dropzone = ev.target.closest('.category-dropzone') || ev.target.closest('#card-pool');
+    var dropzone = ev.target.closest('.category-dropzone') || ev.target.closest('#cards-container') || ev.target.closest('#card-pool');
     if (dropzone) {
-        dropzone.appendChild(el);
+        if (dropzone.id === 'card-pool') {
+            document.getElementById('cards-container').appendChild(el);
+        } else {
+            dropzone.appendChild(el);
+        }
     }
 }
 
@@ -96,10 +102,10 @@ function addCategory() {
     
     const container = document.getElementById('categories-container');
     const col = document.createElement('div');
-    col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-gray-100 rounded-lg border border-gray-300 p-3 h-full';
+    col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-xl border border-line p-3 h-full';
     col.innerHTML = `
-        <h3 class="font-semibold text-gray-800 mb-2 truncate" title="${name}">${name}</h3>
-        <div class="flex-1 overflow-y-auto space-y-2 category-dropzone" data-category="${name}" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+        <h3 class="font-semibold text-ink mb-2 truncate" title="${name}">${name}</h3>
+        <div class="flex-1 overflow-y-auto space-y-2.5 category-dropzone p-1 rounded-lg min-h-[120px]" data-category="${name}" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
     `;
     container.appendChild(col);
     input.value = '';
@@ -139,7 +145,7 @@ function submitSort() {
         body: JSON.stringify(result)
     }).then(r => {
         if (r.ok) {
-            window.location.reload();
+            window.location.href = r.url || window.location.href;
         } else {
             alert("Error saving.");
             btn.disabled = false;

@@ -20,3 +20,20 @@ def test_flatten_tree():
     val = tt.validate({"tree": raw, "tasks": [{"id": "tsk", "prompt": "P", "accept": ["t1"]}]}, scope)
     assert len(scope) == 1
     assert "not a leaf node" in scope[0]
+
+    # test missing tree
+    scope_no_tree = Problems()
+    tt.validate({"tasks": []}, scope_no_tree)
+    assert any("needs a `tree:` list" in s for s in scope_no_tree)
+
+    # test duplicate node ids
+    scope_dup = Problems()
+    tt.validate({"tree": [{"id": "dup", "label": "A"}, {"id": "dup", "label": "B"}], "tasks": [{"id": "t", "prompt": "P", "accept": ["dup"]}]}, scope_dup)
+    assert any("tree node ids must be unique" in s for s in scope_dup)
+
+    # test invalid task ID and empty accept
+    scope_bad_task = Problems()
+    tt.validate({"tree": [{"id": "leaf", "label": "L"}], "tasks": [{"id": "BAD ID!", "prompt": ""}]}, scope_bad_task)
+    assert any("needs a valid `id:`" in s for s in scope_bad_task)
+    assert any("needs a `prompt:`" in s for s in scope_bad_task)
+    assert any("needs an `accept:` list" in s for s in scope_bad_task)
