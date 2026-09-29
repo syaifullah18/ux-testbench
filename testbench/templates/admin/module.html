@@ -11,6 +11,76 @@
 {% block main_class %}wrap main{% endblock %}
 
 {% block content %}
+<style>
+.target-editor {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.target-img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  display: block;
+  cursor: crosshair;
+}
+.target-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--brand);
+  background: rgba(124, 58, 237, 0.16);
+  cursor: move;
+  touch-action: none;
+  z-index: 10;
+}
+.target-box:hover, .target-box.is-active {
+  border-color: var(--brand);
+  background: rgba(124, 58, 237, 0.22);
+}
+.target-box .handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid var(--brand);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  z-index: 12;
+}
+.target-box .handle:hover {
+  background: var(--brand);
+  border-color: #ffffff;
+  transform: scale(1.2);
+}
+.target-box .handle-nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.target-box .handle-ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.target-box .handle-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.target-box .handle-se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.target-box .handle-n  { left: 50%; top: -5px; margin-left: -5px; cursor: ns-resize; }
+.target-box .handle-s  { left: 50%; bottom: -5px; margin-left: -5px; cursor: ns-resize; }
+.target-box .handle-w  { left: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+.target-box .handle-e  { right: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+.target-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+</style>
 <nav class="crumbs mb-4" aria-label="Breadcrumb">
   <a href="{{ url_for('studio.home', slug=project.slug) }}" id="crumb-build">Build</a>
   <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
@@ -170,7 +240,7 @@
     return '<input id="' + id + '" class="input' + ((extra && extra.mono) ? ' font-mono' : '') + '" data-b="' + path + '" value="' + esc(val) + '"' + ((extra && extra.ph) ? ' placeholder="' + esc(extra.ph) + '"' : '') + dis + ' autocomplete="off"><p class="err is-hidden" data-err-for="' + id + '"></p>';
   }
   function area(id, path, val, rows, extra) {
-    return '<textarea id="' + id + '" class="input' + ((extra && extra.mono) ? ' mono-area' : '') + '" rows="' + rows + '" data-b="' + path + '"' + dis + ' spellcheck="false">' + esc(val) + '</textarea><p class="err is-hidden" data-err-for="' + id + '"></p>';
+    return '<textarea id="' + id + '" class="input' + ((extra && extra.mono) ? ' mono-area' : '') + '" rows="' + rows + '" data-b="' + path + '"' + dis + ' spellcheck="false"' + ((extra && extra.style) ? ' style="' + extra.style + '"' : '') + '>' + esc(val) + '</textarea><p class="err is-hidden" data-err-for="' + id + '"></p>';
   }
   function panel(id, title, sub, action, body) {
     return '<section class="panel" id="' + id + '" aria-labelledby="' + id + '-h"><header class="panel-h"><div><h2 id="' + id + '-h">' + title + '</h2>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (action || '') + '</header>' + body + '</section>';
@@ -453,13 +523,40 @@
       var k = 'ct-' + i;
       var opts = '<option value="">Choose an image</option>' + FILES.map(function (f) { return '<option value="' + f + '"' + (t.image === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
       function num(f, label) { return '<div><label class="label" for="f-ct-' + i + '-' + f + '">' + label + '</label><input id="f-ct-' + i + '-' + f + '" class="input" type="number" min="0" data-b="tasks.' + i + '.' + f + '" data-num value="' + esc(t[f]) + '"' + dis + '></div>'; }
+      var hasImg = t.image && FILES.indexOf(t.image) !== -1;
+      var imgSrc = t.image ? (t.image.startsWith('prototypes/') ? '{{ url_for("studio.files_raw", slug=project.slug, rel="") }}' + esc(t.image) : esc(t.image)) : '';
+      var previewHtml = '<div class="field"><p class="label">Preview</p>' +
+        (hasImg
+          ? '<div class="target-editor" data-ti="' + i + '">' +
+            '<img class="target-img" src="' + imgSrc + '" alt="Prototype screenshot" draggable="false" onerror="var p=this.closest(\'.field\');if(p){var ed=p.querySelector(\'.target-editor\');if(ed)ed.style.display=\'none\';var ph=p.querySelector(\'.target-placeholder\');if(ph)ph.style.display=\'flex\';var hp=p.querySelector(\'.help\');if(hp)hp.style.display=\'none\';}">' +
+            '<div class="target-box" data-ti="' + i + '">' +
+            '<div class="handle handle-nw" data-handle="nw"></div>' +
+            '<div class="handle handle-ne" data-handle="ne"></div>' +
+            '<div class="handle handle-sw" data-handle="sw"></div>' +
+            '<div class="handle handle-se" data-handle="se"></div>' +
+            '<div class="handle handle-n" data-handle="n"></div>' +
+            '<div class="handle handle-s" data-handle="s"></div>' +
+            '<div class="handle handle-w" data-handle="w"></div>' +
+            '<div class="handle handle-e" data-handle="e"></div>' +
+            '<span class="target-badge"></span>' +
+            '</div></div>' +
+            '<div class="target-placeholder" style="display:none;border:2px dashed var(--line-strong);border-radius:8px;padding:32px 16px;text-align:center;background:var(--paper);color:var(--muted);flex-direction:column;align-items:center;justify-content:center;gap:8px;">' +
+            '<i class="fa-regular fa-image" style="font-size:28px;color:var(--muted);opacity:0.7"></i>' +
+            '<span style="font-size:14px;font-weight:500">Select an image first</span>' +
+            '</div>' +
+            '<p class="help">Drag the box to move it, drag handles to resize, or click and drag on the image to draw a target area.</p>'
+          : '<div class="target-placeholder" style="border:2px dashed var(--line-strong);border-radius:8px;padding:32px 16px;text-align:center;background:var(--paper);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">' +
+            '<i class="fa-regular fa-image" style="font-size:28px;color:var(--muted);opacity:0.7"></i>' +
+            '<span style="font-size:14px;font-weight:500">Select an image first</span>' +
+            '</div>'
+        ) + '</div>';
+
       return '<details class="acc" data-k="' + k + '"' + (openKeys[k] ? ' open' : '') + '><summary><span class="num t-meta">' + (i + 1) + '</span><span class="min-w-0"><span class="row-title block" data-sum-ct="' + i + '">' + esc(t.prompt || 'Untitled task') + '</span><span class="t-meta block">' + esc(t.image || 'No image chosen') + '</span></span><span></span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary><div class="acc-b">' +
-        field('What the participant is asked to do', area('f-ct-' + i + '-prompt', 'tasks.' + i + '.prompt', t.prompt, 2)) +
-        '<div class="field"><label class="label" for="f-ct-' + i + '-image">Image</label><select id="f-ct-' + i + '-image" class="input" data-b="tasks.' + i + '.image" data-rerender' + dis + '>' + opts + '</select><p class="err is-hidden" data-err-for="f-ct-' + i + '-image"></p><p class="help">Images come from Prototypes. Upload a screenshot or an SVG there first.</p></div>' +
+        field('What the participant is asked to do', area('f-ct-' + i + '-prompt', 'tasks.' + i + '.prompt', t.prompt, 2, { style: 'min-height:56px;resize:vertical' })) +
+        '<div class="field" style="margin-top:16px"><label class="label" for="f-ct-' + i + '-image">Image</label><select id="f-ct-' + i + '-image" class="input" data-b="tasks.' + i + '.image" data-rerender' + dis + '>' + opts + '</select><p class="err is-hidden" data-err-for="f-ct-' + i + '-image"></p><p class="help">Images come from Prototypes. Upload a screenshot or an SVG there first.</p></div>' +
         field('Target name', inp('f-ct-' + i + '-label', 'tasks.' + i + '.label', t.label), 'Used in the report, for example “Contact support link”.') +
         '<div class="field"><p class="label">Target area, in pixels</p><div class="grid gap-4 sm:grid-cols-4">' + num('x', 'Left') + num('y', 'Top') + num('w', 'Width') + num('h', 'Height') + '</div><p class="err is-hidden" data-err-for="f-ct-' + i + '-w"></p></div>' +
-        (t.image ? '<div class="field"><p class="label">Preview</p><div style="position:relative;display:inline-block;max-width:100%"><img src="' + esc(t.image.startsWith('prototypes/') ? '{{ url_for("studio.files_raw", slug=project.slug, rel="") }}' + esc(t.image) : esc(t.image)) + '" style="max-width:100%;height:auto;border:1px solid var(--line-strong);border-radius:8px" alt="Prototype screenshot">' +
-        '<div style="position:absolute;left:' + esc(t.x) + 'px;top:' + esc(t.y) + 'px;width:' + esc(t.w) + 'px;height:' + esc(t.h) + 'px;border:3px dashed var(--brand);background:rgba(0,0,0,.08);pointer-events:none"></div></div><p class="help">A click inside the dashed box counts as a success.</p></div>' : '') +
+        previewHtml +
         (canEdit ? '<div class="flex flex-wrap gap-2" style="margin-top:24px">' + (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-up" data-i="' + i + '">Move up</button>' : '') + (i < S.tasks.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-down" data-i="' + i + '">Move down</button>' : '') + '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-del" data-i="' + i + '">Delete task</button></div>' : '') + '</div></details>';
     }).join('');
     return intro + panel('sec-tasks', 'Tasks', 'Each task shows one image and records where people click first.', canEdit ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-add">Add task</button>' : '', '<div class="rows">' + (rows || '<p class="panel-b t-meta">No tasks yet.</p>') + '</div>');
@@ -796,6 +893,7 @@
     document.querySelectorAll('[data-hint]').forEach(function (el) { refreshHint(Number(el.dataset.hint)); });
     showTab(tab);
     refreshAll();
+    initTargetEditors();
     if (focusId && $(focusId)) {
       $(focusId).focus();
       try { if (sel != null) $(focusId).setSelectionRange(sel, sel); } catch (e) {}
@@ -830,8 +928,196 @@
     if (TYPE === 'card_sort') refreshCounts();
   }
 
-  /* Host Events */
+  /* First click interactive target editor */
+  function updateTargetBox(container, i) {
+    if (!container) return;
+    var img = container.querySelector('img.target-img');
+    var box = container.querySelector('.target-box');
+    if (!img || !box) return;
+    var t = S.tasks[i];
+    if (!t) return;
+    var x = Number(t.x) || 0, y = Number(t.y) || 0, w = Number(t.w) || 0, h = Number(t.h) || 0;
+    var natW = img.naturalWidth, natH = img.naturalHeight;
+    var badge = box.querySelector('.target-badge');
+    if (badge) badge.textContent = (w ? w : 0) + ' × ' + (h ? h : 0) + ' px';
+
+    if (natW && natH) {
+      box.style.left = ((x / natW) * 100) + '%';
+      box.style.top = ((y / natH) * 100) + '%';
+      box.style.width = ((w / natW) * 100) + '%';
+      box.style.height = ((h / natH) * 100) + '%';
+      box.style.display = (w > 0 && h > 0) ? 'block' : 'none';
+    } else {
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+      box.style.width = w + 'px';
+      box.style.height = h + 'px';
+      box.style.display = (w > 0 && h > 0) ? 'block' : 'none';
+    }
+  }
+
+  function initTargetEditors() {
+    if (TYPE !== 'first_click') return;
+    document.querySelectorAll('.target-editor').forEach(function (editor) {
+      var i = Number(editor.dataset.ti);
+      var img = editor.querySelector('img.target-img');
+      if (img) {
+        if (img.complete && img.naturalWidth) {
+          updateTargetBox(editor, i);
+        } else {
+          img.addEventListener('load', function () { updateTargetBox(editor, i); });
+        }
+      }
+    });
+  }
+
+  var activeDrag = null;
   var host = $('ed');
+
+  if (host) host.addEventListener('pointerdown', function (e) {
+    if (!canEdit || TYPE !== 'first_click') return;
+    var handle = e.target.closest('.handle');
+    var box = e.target.closest('.target-box');
+    var editor = e.target.closest('.target-editor');
+    if (!editor) return;
+
+    var i = Number(editor.dataset.ti);
+    var t = S.tasks[i];
+    var img = editor.querySelector('img.target-img');
+    if (!t || !img) return;
+
+    var natW = img.naturalWidth || 1;
+    var natH = img.naturalHeight || 1;
+    var rect = img.getBoundingClientRect();
+    var scaleX = natW / (rect.width || 1);
+    var scaleY = natH / (rect.height || 1);
+
+    e.preventDefault();
+
+    if (handle) {
+      activeDrag = {
+        mode: 'resize',
+        handle: handle.dataset.handle,
+        editor: editor,
+        img: img,
+        i: i,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startX: Number(t.x) || 0,
+        startY: Number(t.y) || 0,
+        startW: Number(t.w) || 0,
+        startH: Number(t.h) || 0,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    } else if (box) {
+      activeDrag = {
+        mode: 'move',
+        editor: editor,
+        img: img,
+        i: i,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startX: Number(t.x) || 0,
+        startY: Number(t.y) || 0,
+        startW: Number(t.w) || 0,
+        startH: Number(t.h) || 0,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    } else if (e.target === img || editor.contains(e.target)) {
+      var originX = Math.round(Math.max(0, Math.min(natW, (e.clientX - rect.left) * scaleX)));
+      var originY = Math.round(Math.max(0, Math.min(natH, (e.clientY - rect.top) * scaleY)));
+      t.x = originX;
+      t.y = originY;
+      t.w = 1;
+      t.h = 1;
+      updateTargetBox(editor, i);
+      activeDrag = {
+        mode: 'draw',
+        editor: editor,
+        img: img,
+        i: i,
+        originX: originX,
+        originY: originY,
+        rect: rect,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    }
+  });
+
+  window.addEventListener('pointermove', function (e) {
+    if (!activeDrag) return;
+    var d = activeDrag;
+    var t = S.tasks[d.i];
+    var dx = (e.clientX - d.startClientX) * d.scaleX;
+    var dy = (e.clientY - d.startClientY) * d.scaleY;
+
+    if (d.mode === 'move') {
+      var nx = Math.round(Math.max(0, Math.min(d.natW - d.startW, d.startX + dx)));
+      var ny = Math.round(Math.max(0, Math.min(d.natH - d.startH, d.startY + dy)));
+      t.x = nx;
+      t.y = ny;
+    } else if (d.mode === 'resize') {
+      var h = d.handle;
+      var curX = d.startX, curY = d.startY, curW = d.startW, curH = d.startH;
+      if (h.indexOf('e') >= 0) {
+        curW = Math.max(5, Math.min(d.natW - curX, d.startW + dx));
+      }
+      if (h.indexOf('s') >= 0) {
+        curH = Math.max(5, Math.min(d.natH - curY, d.startH + dy));
+      }
+      if (h.indexOf('w') >= 0) {
+        var proposedX = Math.max(0, Math.min(d.startX + d.startW - 5, d.startX + dx));
+        curW = (d.startX + d.startW) - proposedX;
+        curX = proposedX;
+      }
+      if (h.indexOf('n') >= 0) {
+        var proposedY = Math.max(0, Math.min(d.startY + d.startH - 5, d.startY + dy));
+        curH = (d.startY + d.startH) - proposedY;
+        curY = proposedY;
+      }
+      t.x = Math.round(curX);
+      t.y = Math.round(curY);
+      t.w = Math.round(curW);
+      t.h = Math.round(curH);
+    } else if (d.mode === 'draw') {
+      var curNatX = Math.round(Math.max(0, Math.min(d.natW, (e.clientX - d.rect.left) * d.scaleX)));
+      var curNatY = Math.round(Math.max(0, Math.min(d.natH, (e.clientY - d.rect.top) * d.scaleY)));
+      t.x = Math.min(d.originX, curNatX);
+      t.y = Math.min(d.originY, curNatY);
+      t.w = Math.max(5, Math.abs(curNatX - d.originX));
+      t.h = Math.max(5, Math.abs(curNatY - d.originY));
+    }
+
+    var inpX = $('f-ct-' + d.i + '-x'); if (inpX) inpX.value = t.x;
+    var inpY = $('f-ct-' + d.i + '-y'); if (inpY) inpY.value = t.y;
+    var inpW = $('f-ct-' + d.i + '-w'); if (inpW) inpW.value = t.w;
+    var inpH = $('f-ct-' + d.i + '-h'); if (inpH) inpH.value = t.h;
+
+    updateTargetBox(d.editor, d.i);
+    touch();
+  });
+
+  window.addEventListener('pointerup', function () {
+    if (activeDrag) {
+      activeDrag = null;
+      S.yaml = null;
+      touch();
+    }
+  });
+
+  window.addEventListener('resize', initTargetEditors);
+
+  /* Host Events */
+  if (!host) host = $('ed');
   host.addEventListener('input', function (e) {
     var t = e.target;
     if (t.dataset.accept != null) {
@@ -859,6 +1145,12 @@
     var q = b.match(/^(post|final)\.(\d+)\.label$/);
     if (q) { var s2 = document.querySelector('[data-sum-ql="' + q[1] + '.' + q[2] + '"]'); if (s2) s2.textContent = v || 'Untitled question'; }
     if (b === 'ease' || b === 'preference' || /\.required$/.test(b)) { touch(); return; }
+    var ctMatch = b.match(/^tasks\.(\d+)\.(x|y|w|h)$/);
+    if (ctMatch) {
+      var ti = Number(ctMatch[1]);
+      var editor = document.querySelector('.target-editor[data-ti="' + ti + '"]');
+      if (editor) updateTargetBox(editor, ti);
+    }
     S.yaml = null; touch();
   });
 
@@ -875,7 +1167,14 @@
   });
 
   function openKeysNow() { var k = {}; document.querySelectorAll('details.acc[open]').forEach(function (d) { k[d.dataset.k] = true; }); return k; }
-  host.addEventListener('toggle', function (e) { var d = e.target; if (d.dataset && d.dataset.k) openKeys[d.dataset.k] = d.open; }, true);
+  host.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (d.dataset && d.dataset.k) openKeys[d.dataset.k] = d.open;
+    if (d.open && TYPE === 'first_click') {
+      var ed = d.querySelector('.target-editor');
+      if (ed) updateTargetBox(ed, Number(ed.dataset.ti));
+    }
+  }, true);
 
   function uniqueSid() { var n = 1, id; do { id = 'question_' + n++; } while (allQs().some(function (o) { return o.q.id === id; })); return id; }
   function move(arr, i, j) { if (j < 0 || j >= arr.length) return; var x = arr.splice(i, 1)[0]; arr.splice(j, 0, x); }
