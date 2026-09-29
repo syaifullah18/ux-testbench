@@ -1364,6 +1364,7 @@ def export_zip(slug):
     return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{slug}.zip")
 
 
+@bp.post("/app/p/<slug>/studio/delete")
 @bp.post("/<slug>/admin/studio/delete")
 def delete_project(slug):
     project = get_project(slug)
