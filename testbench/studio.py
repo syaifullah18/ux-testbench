@@ -33,8 +33,8 @@ bp = Blueprint("studio", __name__)
 
 SCAFFOLD = Path(__file__).parent / "scaffold"
 PROTOTYPE_EXT = {".html", ".htm", ".css", ".js", ".mjs", ".json", ".map", ".txt", ".csv", ".xml",
-                 ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico",
-                 ".woff", ".woff2", ".ttf", ".otf", ".mp4", ".webm", ".mp3", ".pdf"}
+                 ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff",
+                 ".woff", ".woff2", ".ttf", ".otf", ".mp4", ".webm", ".mov", ".ogg", ".mp3", ".wav", ".m4a", ".pdf"}
 PROJECT_EXT = PROTOTYPE_EXT | {".yaml", ".yml", ".md"}
 ZIP_MAX_FILES = 2000
 ZIP_MAX_BYTES = 200 * 1024 * 1024

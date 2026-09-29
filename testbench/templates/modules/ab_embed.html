@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ filename }}</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100%;
+            background-color: transparent;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .embed-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 100%;
+            margin: auto;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .embed-item {
+            max-width: 100%;
+            margin: auto;
+            display: block;
+        }
+        img.embed-item {
+            height: auto;
+            object-fit: contain;
+        }
+        embed.embed-item,
+        object.embed-item,
+        iframe.embed-item {
+            width: 100%;
+            max-width: 100%;
+            height: calc(100vh - 2rem);
+            min-height: 80vh;
+            border: 0;
+        }
+        video.embed-item {
+            max-width: 100%;
+            height: auto;
+        }
+        audio.embed-item {
+            max-width: 100%;
+            width: 32rem;
+        }
+        .doc-fallback {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+            font-size: 0.875rem;
+        }
+        .doc-fallback a {
+            color: #6366f1;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="embed-wrapper">
+        {% if file_type == 'image' %}
+        <img src="{{ file_url }}" alt="{{ filename }}" class="embed-item">
+        {% elif file_type == 'pdf' %}
+        <embed src="{{ file_url }}" type="application/pdf" class="embed-item">
+        {% elif file_type == 'video' %}
+        <video src="{{ file_url }}" controls autoplay playsinline class="embed-item"></video>
+        {% elif file_type == 'audio' %}
+        <audio src="{{ file_url }}" controls class="embed-item"></audio>
+        {% else %}
+        <object data="{{ file_url }}" class="embed-item">
+            <iframe src="{{ file_url }}" class="embed-item">
+                <div class="doc-fallback">
+                    <p>Unable to preview document inline.</p>
+                    <p><a href="{{ file_url }}" target="_blank" download>Open or download {{ filename }}</a></p>
+                </div>
+            </iframe>
+        </object>
+        {% endif %}
+    </div>
+    <script>
+        try {
+            if (window.parent && window.parent.document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    </script>
+</body>
+</html>

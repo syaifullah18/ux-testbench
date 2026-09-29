@@ -98,7 +98,8 @@ def paired_survey_check(pairs, base, k, by_variant, survey_questions, min_gain):
         ok = False
     return sb, sk, gain, lo, hi, verdict, ok
 
-from flask import abort, jsonify, request, send_from_directory, session
+import urllib.parse
+from flask import abort, jsonify, render_template, request, send_from_directory, session
 
 from .. import questions as Q
 from .. import storage
@@ -366,7 +367,29 @@ class ABTest(ModuleType):
         so relative links in a prototype folder keep working."""
         path = self.m.conf["variants"][variant]["path"]
         if not asset:
-            return send_from_directory(path.parent, path.name, mimetype="text/html", max_age=0)
+            if request.args.get("raw"):
+                return send_from_directory(path.parent, path.name, max_age=0)
+            if path.suffix.lower() in {".html", ".htm"}:
+                return send_from_directory(path.parent, path.name, mimetype="text/html", max_age=0)
+            
+            ext = path.suffix.lower()
+            if ext in {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff"}:
+                file_type = "image"
+            elif ext in {".pdf"}:
+                file_type = "pdf"
+            elif ext in {".mp4", ".webm", ".mov", ".ogg"}:
+                file_type = "video"
+            elif ext in {".mp3", ".wav", ".m4a"}:
+                file_type = "audio"
+            else:
+                file_type = "document"
+
+            return render_template(
+                "modules/ab_embed.html",
+                filename=path.name,
+                file_url=urllib.parse.quote(path.name),
+                file_type=file_type,
+            )
         from pathlib import Path
         from ..studio import PROTOTYPE_EXT
         if Path(asset).suffix.lower() not in PROTOTYPE_EXT:

@@ -128,3 +128,71 @@ def test_full_participant_and_admin_flow(projects_dir, make_app):
     assert admin.post("/example/admin/reset", data={"passcode": "bad"}).location.endswith("reset=failed")
     admin.post("/example/admin/p/2/delete")
     assert admin.get("/example/admin/participants").get_data(as_text=True).count("/delete\"") == 1
+
+
+def test_ab_embed_non_html_file(projects_dir, make_app):
+    from .conftest import write_project, extract_json
+    pdir = write_project(
+        projects_dir,
+        "ab-media",
+        {"name": "AB Media", "locale": "en", "status": "live", "identity": "anonymous", "access": "open"},
+        {
+            "ab": {
+                "type": "ab_test",
+                "title": "AB Media Study",
+                "variants": {
+                    "A": {"label": "Image Variant", "file": "prototypes/screen.png"},
+                    "B": {"label": "Doc Variant", "file": "prototypes/manual.pdf"},
+                },
+                "tasks": [{"id": "t1", "title": "Check screen", "prompt": "What do you see?"}],
+            }
+        },
+    )
+    png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    pdf_bytes = b"%PDF-1.4 sample pdf content"
+    (pdir / "prototypes").mkdir(parents=True, exist_ok=True)
+    (pdir / "prototypes" / "screen.png").write_bytes(png_bytes)
+    (pdir / "prototypes" / "manual.pdf").write_bytes(pdf_bytes)
+
+    app = make_app(projects_dir)
+    c = app.test_client()
+
+    r1 = c.post("/ab-media/", data={"action": "start", "consent": "1"})
+    assert r1.status_code == 302
+    r2 = c.get("/ab-media/m/ab/")
+    assert r2.status_code == 302
+    r3 = c.post("/ab-media/m/ab/s/intro")
+    assert r3.status_code == 302
+    r4 = c.post("/ab-media/m/ab/s/brief1")
+    assert r4.status_code == 302
+    tasks_resp = c.get("/ab-media/m/ab/s/tasks1")
+    assert tasks_resp.status_code == 200
+    tasks_html = tasks_resp.get_data(as_text=True)
+    cfg = extract_json(tasks_html, "TASKS")
+
+    frame_resp = c.get(cfg["frameUrl"])
+    assert frame_resp.status_code == 200
+    assert "text/html" in frame_resp.headers["Content-Type"]
+    html = frame_resp.get_data(as_text=True)
+
+    assert "embed-wrapper" in html
+    assert "embed-item" in html
+    assert "max-width: 100%" in html
+
+    if "screen.png" in html:
+        assert '<img src="screen.png"' in html
+        img_resp = c.get(cfg["frameUrl"] + "screen.png")
+        assert img_resp.status_code == 200
+        assert "image/png" in img_resp.headers["Content-Type"]
+        assert img_resp.data == png_bytes
+    else:
+        assert '<embed src="manual.pdf"' in html
+        pdf_resp = c.get(cfg["frameUrl"] + "manual.pdf")
+        assert pdf_resp.status_code == 200
+        assert "application/pdf" in pdf_resp.headers["Content-Type"]
+        assert pdf_resp.data == pdf_bytes
+
+    raw_resp = c.get(cfg["frameUrl"] + "?raw=1")
+    assert raw_resp.status_code == 200
+    assert "text/html" not in raw_resp.headers["Content-Type"]
+
