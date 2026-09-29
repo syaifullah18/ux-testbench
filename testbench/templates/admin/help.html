@@ -6,7 +6,6 @@
 {% block extra_head %}
 <style>
   section[id] { scroll-margin-top: 24px; }
-  .prose-help p + p { margin-top: 12px; }
 </style>
 {% endblock %}
 
@@ -15,7 +14,7 @@
 {% block content %}
 <div class="mb-6">
   <h1 class="t-page">Help &amp; Reference</h1>
-  <p class="mt-1 text-muted">Comprehensive guide to study lifecycles, research modules, statistical rules, and study configuration.</p>
+  <p class="mt-1 text-muted">Guide to study lifecycles, research modules, statistical rules, and study configuration.</p>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -33,24 +32,22 @@
     </nav>
   </aside>
 
-  <div class="stack min-w-0 prose-help">
+  <div class="stack min-w-0">
 
-    <!-- 1. Draft, live and closed (Status table) -->
+    <!-- 1. Draft, live and closed (2-column Table with UI component badge as 1st column) -->
     <section class="panel" id="status" aria-labelledby="s-h">
       <header class="panel-h">
         <div>
           <h2 id="s-h">Draft, live and closed</h2>
-          <p>What each study status means for participants, data integrity, and researcher workflows.</p>
+          <p>What each status means for participants, data integrity, and researcher workflows.</p>
         </div>
       </header>
       <div class="overflow-x-auto">
-        <table class="tbl w-full min-w-[720px]">
+        <table class="tbl w-full">
           <thead>
             <tr>
-              <th scope="col" style="width:16%">Status</th>
-              <th scope="col" style="width:28%">What participants see</th>
-              <th scope="col" style="width:30%">What you can change</th>
-              <th scope="col" style="width:26%">When to use</th>
+              <th scope="col" style="width: 22%">Status</th>
+              <th scope="col">What it means &amp; rules</th>
             </tr>
           </thead>
           <tbody>
@@ -59,15 +56,7 @@
                 <span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>
               </td>
               <td>
-                <p class="t-strong">“This study is being prepared”</p>
-                <p class="t-meta text-xs mt-1">Participants who open the link cannot begin or submit responses. No session records are created.</p>
-              </td>
-              <td>
-                <p class="t-strong text-sm">Full editing allowed</p>
-                <p class="t-meta text-xs mt-1">Add, edit, or remove questions, prototypes, modules, and branding without restriction. Use <strong>Preview</strong> to pilot test yourself.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Study design, writing tasks, configuring answer keys, uploading prototype HTML files, and team dry runs.</p>
+                Participants see “This study is being prepared” and cannot start. You can edit questions, prototypes, modules, and settings without restriction. Use <strong>Preview</strong> to test the flow yourself.
               </td>
             </tr>
             <tr>
@@ -75,15 +64,7 @@
                 <span class="st st-live"><i class="fa-solid fa-circle text-[8px]" aria-hidden="true"></i>Live</span>
               </td>
               <td>
-                <p class="t-strong">Active study entrance</p>
-                <p class="t-meta text-xs mt-1">Participants enter via the study URL (and shared passcode if required), answer questions, and submit timing and click data.</p>
-              </td>
-              <td>
-                <p class="t-strong text-sm text-warn">Caution on editing</p>
-                <p class="t-meta text-xs mt-1">Changing questions or variant files while live can invalidate comparisons. The editor shows a confirmation warning if you modify live studies.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Fielding the study to participants, distributing the participant link or QR code, and collecting data.</p>
+                Participants can enter at the study link (and passcode if required). Changing questions now can make answers hard to compare, so the editor warns you. Use when actively fielding your study.
               </td>
             </tr>
             <tr>
@@ -91,15 +72,7 @@
                 <span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>
               </td>
               <td>
-                <p class="t-strong">“Study completed”</p>
-                <p class="t-meta text-xs mt-1">Nobody new can enter and active participants cannot resume. The study entrance is sealed.</p>
-              </td>
-              <td>
-                <p class="t-strong text-sm">Read-only data &amp; export</p>
-                <p class="t-meta text-xs mt-1">All reports, session charts, and CSV exports remain open. You can reopen the study anytime by setting status back to Live.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">When participant recruitment targets are met or your research study concludes.</p>
+                Nobody new can enter and people inside cannot resume. All responses, reports, and CSV exports stay intact. You can reopen the study anytime by setting the status back to Live.
               </td>
             </tr>
             <tr>
@@ -107,306 +80,149 @@
                 <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Offline</span>
               </td>
               <td>
-                <p class="t-strong">“This study is not available”</p>
-                <p class="t-meta text-xs mt-1">Neutral holding message shown if a platform operator places the study on administrative hold.</p>
-              </td>
-              <td>
-                <p class="t-strong text-sm">Preserved in place</p>
-                <p class="t-meta text-xs mt-1">Responses and configurations are kept intact. The operator or superadmin can restore the study once reviewed.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Investigating reports, auditing safety, or repairing broken external resources.</p>
+                Administrative hold. Participants see “This study is not available”. Data and configuration are preserved while platform operators review reported concerns.
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="panel-f">You can switch status at any time using the status badge dropdown in the top header or on the <strong>Launch</strong> page.</p>
+      <p class="panel-f">You can switch status at any time using the status badge dropdown in the header or on the <strong>Launch</strong> page.</p>
     </section>
 
-    <!-- 2. Choosing a module (Module table) -->
+    <!-- 2. Choosing a module (Row list) -->
     <section class="panel" id="modules" aria-labelledby="m-h">
       <header class="panel-h">
         <div>
           <h2 id="m-h">Choosing a module</h2>
-          <p>Pick the right research method for your questions.</p>
+          <p>Pick by the research question you need answered.</p>
         </div>
       </header>
-      <div class="overflow-x-auto">
-        <table class="tbl w-full min-w-[720px]">
-          <thead>
-            <tr>
-              <th scope="col" style="width:16%">Module</th>
-              <th scope="col" style="width:30%">Question answered</th>
-              <th scope="col" style="width:28%">Input needed</th>
-              <th scope="col" style="width:26%">Deliverables &amp; output</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <p class="t-strong">A/B test</p>
-                <span class="st st-info text-xs mt-1">ab</span>
-              </td>
-              <td>
-                <p class="t-strong">Which of two designs is easier to use?</p>
-                <p class="t-meta text-xs mt-1">Compares task performance across two interactive HTML prototypes (Variant A and Variant B).</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Two prototype HTML files (e.g. in <code>prototypes/</code>) and 1 to 5 task prompts with optional automated URL/click answer keys.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Speed, success rate, perceived ease ratings, sign test p-values, order effect checks, and a plain automated verdict.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <p class="t-strong">Survey</p>
-                <span class="st st-info text-xs mt-1">survey</span>
-              </td>
-              <td>
-                <p class="t-strong">Who are your participants, and what is hard for them?</p>
-                <p class="t-meta text-xs mt-1">Screening, satisfaction metrics, demographic capture, or contextual post-task questions.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Questions formatted as single select, multi select, open text, rating scales, or matrix grids.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Frequency distributions, response percentages, free-text answer logs, and conditional routing tags.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <p class="t-strong">First click</p>
-                <span class="st st-info text-xs mt-1">first_click</span>
-              </td>
-              <td>
-                <p class="t-strong">Where do people click first to accomplish a task?</p>
-                <p class="t-meta text-xs mt-1">Evaluates initial mental models, visual hierarchy, and affordance on static interfaces.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">An uploaded page image/mockup and one or more target bounding boxes (expected click regions).</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Interactive click coordinate heatmaps, percentage of clicks inside the expected area, and median time to first click.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <p class="t-strong">Card sort</p>
-                <span class="st st-info text-xs mt-1">card_sort</span>
-              </td>
-              <td>
-                <p class="t-strong">How do people categorize and conceptualize your content?</p>
-                <p class="t-meta text-xs mt-1">Informs information architecture, site navigation, and product taxonomy.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">15 to 40 content cards. Choose <em>closed</em> (fixed categories), <em>open</em> (participant-named), or <em>hybrid</em>.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Co-occurrence matrix, category agreement ratios (&ge;70% clear home, &lt;50% uncertain), and popular card groupings.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <p class="t-strong">Tree test</p>
-                <span class="st st-info text-xs mt-1">tree_test</span>
-              </td>
-              <td>
-                <p class="t-strong">Where would people navigate in a text-only hierarchy?</p>
-                <p class="t-meta text-xs mt-1">Tests menu and taxonomy findability isolated from visual design, styling, and banners.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">A nested menu tree (sections, categories, pages) and tasks pointing to one or more correct destination nodes.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Overall task success rate, directness percentage (navigating without backtracking), and weakest task identification.</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Which of two designs is easier to use?</p>
+            <p class="t-meta">Use an A/B test. Each person does the same tasks across two interactive prototypes. You get task speed, completion rate, perceived ease ratings, sign test p-values, order effect checks, and a plain automated verdict.</p>
+          </div>
+          <div class="row-state"><span class="st st-info">A/B test</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Who are your participants, and what is hard for them?</p>
+            <p class="t-meta">Use a survey. Great for screener criteria, user demographics, rating scales, or post-task open feedback. Place it first so subsequent modules can branch or filter based on responses.</p>
+          </div>
+          <div class="row-state"><span class="st st-info">Survey</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Where do people click first on a screen?</p>
+            <p class="t-meta">Use a first click test on a static page mockup or screenshot. You get interactive click heatmaps, percentage of clicks inside the target area, and median time to first click.</p>
+          </div>
+          <div class="row-state"><span class="st st-info">First click</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">How do people categorize and conceptualize your content?</p>
+            <p class="t-meta">Use a card sort with 15 to 40 cards. Closed if you already have fixed categories, open if participants create their own, or hybrid for both. You get co-occurrence matrices, category agreement ratios, and popular groupings.</p>
+          </div>
+          <div class="row-state"><span class="st st-info">Card sort</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Where would people navigate in a text-only hierarchy?</p>
+            <p class="t-meta">Use a tree test on your menu structure without visual design. You get overall task success rates, directness percentage (navigating without backtracking), and weakest task identification.</p>
+          </div>
+          <div class="row-state"><span class="st st-info">Tree test</span></div>
+        </li>
+      </ul>
       <p class="panel-f">Modules can be reordered by dragging them on the <strong>Build</strong> page.</p>
     </section>
 
-    <!-- 3. Launch readiness checklist -->
+    <!-- 3. Launch checklist (Row list) -->
     <section class="panel" id="readiness" aria-labelledby="ck-h">
       <header class="panel-h">
         <div>
-          <h2 id="ck-h">Launch readiness checklist</h2>
-          <p>Every check on the Launch page validates specific study criteria before fielding.</p>
+          <h2 id="ck-h">Launch checklist</h2>
+          <p>Every check on the Launch page validates specific criteria before fielding.</p>
         </div>
       </header>
-      <div class="overflow-x-auto">
-        <table class="tbl w-full min-w-[720px]">
-          <thead>
-            <tr>
-              <th scope="col" style="width:20%">Check State</th>
-              <th scope="col" style="width:28%">Criteria</th>
-              <th scope="col" style="width:24%">Impact on Going Live</th>
-              <th scope="col" style="width:28%">How to resolve</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>
-              </td>
-              <td>
-                <p class="t-strong">Condition passed</p>
-                <p class="t-meta text-xs mt-1">The check confirms that configuration files are valid and all required assets exist.</p>
-              </td>
-              <td>
-                <span class="text-xs font-semibold text-good">Permitted</span>
-              </td>
-              <td>
-                <p class="text-xs text-muted">No action needed. Contributes positively to the readiness score.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span>
-              </td>
-              <td>
-                <p class="t-strong">Recommended practice missing</p>
-                <p class="t-meta text-xs mt-1">E.g., missing consent statement for timing tracking, manual grading needed on A/B tasks, or single-member team.</p>
-              </td>
-              <td>
-                <span class="text-xs font-semibold text-warn">Permitted (Advisory)</span>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Click the action button (e.g. <em>Write consent</em>, <em>Open task</em>) to review and add recommended details.</p>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>
-              </td>
-              <td>
-                <p class="t-strong">Critical requirement unfulfilled</p>
-                <p class="t-meta text-xs mt-1">E.g., study access set to "passcode" but no passcode is configured, missing prototype HTML file, or YAML syntax error.</p>
-              </td>
-              <td>
-                <span class="text-xs font-semibold text-bad">Blocked</span>
-                <p class="t-meta text-xs mt-0.5">Switching to Live is prevented until resolved.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Click the primary action button on the checklist row to set the missing passcode or repair the broken config.</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="panel-f">All checklist items are evaluated dynamically whenever you make changes in the Studio or on the Launch page.</p>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Done</p>
+            <p class="t-meta">All required configuration files, assets, and validation criteria are verified. Contributes to launch readiness score.</p>
+          </div>
+          <div class="row-state"><span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Warning</p>
+            <p class="t-meta">A recommended practice is missing (e.g. consent statement for timing tracking, manual grading needed on A/B tasks, or single-member team). Advisory only — does not prevent launching.</p>
+          </div>
+          <div class="row-state"><span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span></div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Blocks launch</p>
+            <p class="t-meta">A critical requirement is unfulfilled (e.g. passcode access enabled without setting one, missing prototype file, or YAML syntax error). Must be resolved before switching status to Live.</p>
+          </div>
+          <div class="row-state"><span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span></div>
+        </li>
+      </ul>
+      <p class="panel-f">Checklist items are evaluated dynamically whenever you make changes in the Studio or on the Launch page.</p>
     </section>
 
-    <!-- 4. Reading results -->
+    <!-- 4. Reading results (2-column Table) -->
     <section class="panel" id="reading" aria-labelledby="r-h">
       <header class="panel-h">
         <div>
           <h2 id="r-h">Reading results</h2>
-          <p>Every verdict and summary sentence is generated by fixed deterministic rules, never invented by a language model.</p>
+          <p>Every sentence in a report is produced by a fixed rule, not written by a model. The same numbers always give the same sentence.</p>
         </div>
       </header>
       <div class="overflow-x-auto">
-        <table class="tbl w-full min-w-[720px]">
+        <table class="tbl w-full">
           <thead>
             <tr>
-              <th scope="col" style="width:24%">Term / Metric</th>
-              <th scope="col" style="width:36%">Statistical &amp; Algorithmic Rule</th>
-              <th scope="col" style="width:40%">What it means in reports</th>
+              <th scope="col" style="width: 28%">Term</th>
+              <th scope="col">What it means</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="t-strong">Indicative</td>
-              <td>
-                <p class="text-sm">Sample size threshold</p>
-                <p class="t-meta text-xs mt-1">Flags reports until at least 8 participants (or custom <code>min_participants</code> in A/B rules) have completed the module.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Data collected so far is preliminary. No design or variant is declared a definitive winner until the threshold is crossed.</p>
-              </td>
+              <td>A report is marked Indicative until enough people have finished. The number is set in the module’s decision rule for A/B tests, and is 8 for the other types. Below it, no report says a design won.</td>
             </tr>
             <tr>
               <td class="t-strong">Intervals</td>
-              <td>
-                <p class="text-sm">Standard error bounds</p>
-                <p class="t-meta text-xs mt-1">Calculates the 95% confidence interval range around observed metric differences.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">If the confidence interval spans across zero (e.g. -4s to +6s), the difference could be due to random variation, and the report notes this.</p>
-              </td>
+              <td>A range next to a number shows how far it could be from the truth. If the 95% confidence interval range crosses zero, the difference may be chance, and the report says so.</td>
             </tr>
             <tr>
               <td class="t-strong">A/B verdict</td>
-              <td>
-                <p class="text-sm">Tri-metric synthesis</p>
-                <p class="t-meta text-xs mt-1">Evaluates three independent performance dimensions: task completion speed, success rate, and perceived ease score.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Summarizes into clean verdicts (e.g. <em>Variant A is faster and easier</em>, or <em>No clear difference</em>). Never claims more than the least certain check supports.</p>
-              </td>
+              <td>Each check (speed, success, ease) reads for, against or unsure, then the overall line follows the strongest pattern: all three for, a mix of for and against, all against, or not enough evidence on any check. It is never stronger than the least certain check.</td>
             </tr>
             <tr>
               <td class="t-strong">Order effect</td>
-              <td>
-                <p class="text-sm">Counterbalance comparison</p>
-                <p class="t-meta text-xs mt-1">Tests whether participants who saw Variant A first performed differently from those who saw Variant B first.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Reported as an empirical observation (e.g. <em>Variant A was faster in both presentation orders</em>) without speculative bias claims.</p>
-              </td>
+              <td>Only stated as a fact, for example “Search and filters is faster in both orders.” It never claims that order did or did not drive the result — that is not something the numbers alone can show.</td>
             </tr>
             <tr>
               <td class="t-strong">Drop-off</td>
-              <td>
-                <p class="text-sm">Abandonment heuristic</p>
-                <p class="t-meta text-xs mt-1">Triggers when &ge;2 participants and &ge;20% of entrants abandon at the same step.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Highlights potential roadblocks or cognitive fatigue where participants gave up before finishing.</p>
-              </td>
+              <td>A module is flagged when at least 2 people and at least 20% stopped at the same point. One person leaving is not flagged.</td>
             </tr>
             <tr>
               <td class="t-strong">Card sort agreement</td>
-              <td>
-                <p class="text-sm">Consensus threshold</p>
-                <p class="t-meta text-xs mt-1">Measures percentage of participants assigning a card to the dominant category.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">&ge;70% denotes a <em>clear home</em>; 50%&ndash;69% indicates <em>moderate consensus</em>; &lt;50% denotes <em>no clear home</em>, suggesting ambiguity or missing categories.</p>
-              </td>
+              <td>A card has a clear home when at least 70% of people used the same category. Between 50% and 69% indicates moderate consensus; under 50% is “no clear home”.</td>
             </tr>
             <tr>
               <td class="t-strong">First click</td>
-              <td>
-                <p class="text-sm">Target hit rate &amp; latency</p>
-                <p class="t-meta text-xs mt-1">Records coordinate of initial click on the mockup and calculates median millisecond duration.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">First-click success strongly correlates with final task completion in live systems.</p>
-              </td>
+              <td>The share of people who clicked inside the target area, and the median time to their first click. First-click success strongly correlates with final task completion.</td>
             </tr>
             <tr>
-              <td class="t-strong">Tree test directness</td>
-              <td>
-                <p class="text-sm">Path efficiency ratio</p>
-                <p class="t-meta text-xs mt-1">Tracks whether the user visited only parent/ancestor nodes of the target without navigating backward.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">High directness indicates intuitive nomenclature; low directness highlights confusing branch labels.</p>
-              </td>
+              <td class="t-strong">Tree test</td>
+              <td>Success across all tasks, success without backtracking (directness ratio), and the single weakest task by name and share.</td>
             </tr>
             <tr>
               <td class="t-strong">Sign test</td>
-              <td>
-                <p class="text-sm">Binomial two-sided test</p>
-                <p class="t-meta text-xs mt-1">Evaluates paired participant directions (which variant was faster or easier for each individual).</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Provides a non-parametric p-value assessing whether one variant reliably outperforms the other across individuals.</p>
-              </td>
+              <td>Where a check is about direction (for example, which variant was faster for each person), a p-value from the exact two-sided test is shown alongside it.</td>
             </tr>
           </tbody>
         </table>
@@ -414,7 +230,7 @@
       <p class="panel-f">Reports can be viewed online or downloaded as raw CSV datasets from the <strong>Results</strong> page.</p>
     </section>
 
-    <!-- 5. Editing as YAML -->
+    <!-- 5. Editing as YAML (Panel text) -->
     <section class="panel" id="yaml" aria-labelledby="y-h">
       <header class="panel-h">
         <div>
@@ -424,16 +240,16 @@
       </header>
       <div class="panel-b">
         <p>Every study is backed by plain text YAML files stored directly on disk:</p>
-        <ul class="list-disc pl-6 space-y-1 text-sm text-ink-muted">
-          <li><code>project.yaml</code>: Defines study title, status, brand colors, participant identification mode, and consent statements.</li>
-          <li><code>modules/&lt;module_id&gt;.yaml</code>: Configures individual module parameters, question sets, prototypes, and decision rules.</li>
-          <li><code>prototypes/</code>: Contains standalone HTML, CSS, and JS assets used by A/B testing and interactive modules.</li>
+        <ul class="list-disc pl-6 my-3 space-y-1">
+          <li><code>project.yaml</code> defines study title, status, brand colors, participant identification mode, and consent statements.</li>
+          <li><code>modules/&lt;module_id&gt;.yaml</code> configures individual module parameters, question sets, prototypes, and decision rules.</li>
+          <li><code>prototypes/</code> contains standalone HTML, CSS, and JS assets used by A/B testing and interactive modules.</li>
         </ul>
-        <p class="mt-4">Every module editor in the Studio has an <strong>Advanced</strong> tab with the exact YAML file. You can edit via the form UI or directly in YAML. Every save validates the entire study schema; if a syntax error or broken reference exists, no changes are committed to disk and line-numbered errors are reported immediately.</p>
+        <p>Every module editor in the Studio has an <strong>Advanced</strong> tab with the exact YAML file. You can edit via the form UI or directly in YAML. Every save validates the entire study schema; if a syntax error or broken reference exists, no changes are committed to disk and line-numbered errors are reported immediately.</p>
       </div>
     </section>
 
-    <!-- 6. Access, Identity and Privacy -->
+    <!-- 6. Access, identity and privacy (Row list) -->
     <section class="panel" id="privacy" aria-labelledby="pr-h">
       <header class="panel-h">
         <div>
@@ -441,49 +257,26 @@
           <p>How authentication, passcodes, and participant privacy are safeguarded.</p>
         </div>
       </header>
-      <div class="overflow-x-auto">
-        <table class="tbl w-full min-w-[720px]">
-          <thead>
-            <tr>
-              <th scope="col" style="width:24%">Identity Mode</th>
-              <th scope="col" style="width:38%">How participants sign in</th>
-              <th scope="col" style="width:38%">Privacy &amp; Data Security</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="t-strong">Anonymous</td>
-              <td>
-                <p class="text-sm">Automatic resume code</p>
-                <p class="t-meta text-xs mt-1">Participants receive a randomized alphanumeric code (e.g. <code>WXYZ-4567</code>) to resume their session if disconnected.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted"><strong>Zero PII collected.</strong> No names, email addresses, or IP addresses are permanently associated with responses.</p>
-              </td>
-            </tr>
-            <tr>
-              <td class="t-strong">Passcodes</td>
-              <td>
-                <p class="text-sm">Shared study gatekeeper</p>
-                <p class="t-meta text-xs mt-1">Configured on the Launch page. Participants enter the shared secret to access the study.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Stored using salted cryptographic hashes (PBKDF2/SHA256). Passcodes can be updated or revoked anytime without exposing the raw secret.</p>
-              </td>
-            </tr>
-            <tr>
-              <td class="t-strong">Participant code / Email</td>
-              <td>
-                <p class="text-sm">Pre-assigned identifiers</p>
-                <p class="t-meta text-xs mt-1">Useful when linking to external panel providers, user pools, or internal corporate email domains.</p>
-              </td>
-              <td>
-                <p class="text-xs text-muted">Validated against regex patterns or domain whitelists. Responses remain strictly isolated within each study's private database.</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Anonymous sessions</p>
+            <p class="t-meta">Participants receive a randomized resume code (e.g. <code>WXYZ-4567</code>) to resume their session if disconnected. Zero personally identifiable information (PII) is captured or stored.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Passcodes</p>
+            <p class="t-meta">Shared study gatekeeper configured on the Launch page. Stored using salted cryptographic hashes (PBKDF2/SHA256) so the raw secret is never stored in plaintext.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Participant codes &amp; emails</p>
+            <p class="t-meta">Pre-assigned identifiers validated against allowed patterns or domain whitelists. Responses remain strictly isolated within each study's private SQLite database.</p>
+          </div>
+        </li>
+      </ul>
       <p class="panel-f">All participant sessions and module responses are stored locally in isolated SQLite databases per study.</p>
     </section>
 
