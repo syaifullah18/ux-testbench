@@ -242,7 +242,7 @@ def build_study_dashboard_data(ctx, project):
                 "title": "A/B prototypes exist",
                 "meta": f"Missing file(s): {', '.join(missing_protos)}",
                 "status": "fail",
-                "action_url": url_for("studio.home", slug=project.slug),
+                "action_url": url_for("studio.prototypes", slug=project.slug),
                 "action_text": "Upload files"
             })
         else:
@@ -275,7 +275,7 @@ def build_study_dashboard_data(ctx, project):
                 "title": "A/B tasks have answer keys",
                 "meta": f"Task {t_num} has no answer key. You will grade it by hand.",
                 "status": "warn",
-                "action_url": url_for("studio.edit", slug=project.slug) + f"?file=modules/{m_id}.yaml",
+                "action_url": url_for("studio.module_edit", slug=project.slug, mid=m_id),
                 "action_text": "Open task"
             })
         else:
@@ -316,7 +316,7 @@ def build_study_dashboard_data(ctx, project):
                 "title": "Participant passcode is set",
                 "meta": "Access needs a passcode and none is set, so nobody could enter.",
                 "status": "fail",
-                "action_url": url_for("studio.home", slug=project.slug) + "#passcodes",
+                "action_url": url_for("admin.launch", slug=project.slug) + "#passcodes",
                 "action_text": "Set passcode"
             })
 
@@ -335,7 +335,7 @@ def build_study_dashboard_data(ctx, project):
             "title": "Consent is written",
             "meta": "The study records responses and timing, and no consent text is set.",
             "status": "warn",
-            "action_url": url_for("studio.home", slug=project.slug) + "#settings",
+            "action_url": url_for("admin.study_settings", slug=project.slug) + "#sec-study",
             "action_text": "Write consent"
         })
 

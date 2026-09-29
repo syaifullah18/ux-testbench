@@ -52,7 +52,7 @@
           {% elif status == 'live' %}
           <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Read results</a>
           {% else %}
-          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Export results</a>
+          <a class="btn btn-primary" href="{{ url_for('admin.export_view', slug=project.slug) }}">Export results</a>
           {% endif %}
         </div>
       </div>
@@ -272,22 +272,6 @@
     </div>
   </section>
 
-  <!-- Danger Zone: Reset Study -->
-  <details class="panel border-bad/30" {% if reset_failed %}open{% endif %}>
-    <summary class="panel-h font-semibold text-bad cursor-pointer">{{ t('admin.reset_title') }}</summary>
-    <div class="panel-b">
-      <p class="text-muted">{{ t('admin.reset_desc') }}</p>
-      <form method="post" action="{{ url_for('admin.reset', slug=project.slug) }}" class="mt-4 flex flex-wrap gap-4 items-end" onsubmit="return confirm({{ t('admin.reset_confirm')|tojson }})">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
-        <div>
-          <label for="rp" class="block text-sm font-medium mb-1">{{ t('admin.reset_passcode') }}</label>
-          <input id="rp" type="password" name="passcode" class="input w-64" placeholder="Admin passcode">
-        </div>
-        <button class="btn bg-bad text-white hover:bg-bad/90 font-semibold">{{ t('admin.reset_button') }}</button>
-        {% if reset_failed %}<p class="w-full text-sm font-semibold text-bad mt-2">{{ t('admin.reset_failed') }}</p>{% endif %}
-      </form>
-    </div>
-  </details>
 
 <script>
   (function () {

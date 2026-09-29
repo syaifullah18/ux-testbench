@@ -31,6 +31,7 @@ def create_app(overrides=None):
         MAX_CONTENT_LENGTH=int(os.environ.get("MAX_UPLOAD_MB", 50)) * 1024 * 1024,
         TESTBENCH_MODE=os.environ.get("TESTBENCH_MODE", "internal"),
         LOCAL_ASSETS=os.environ.get("LOCAL_ASSETS") == "1",
+        TEMPLATES_AUTO_RELOAD=True,
     )
     app.config.update(overrides or {})
     if app.config["TESTBENCH_MODE"] == "public" and not app.config.get("TESTING"):
