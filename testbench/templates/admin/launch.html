@@ -75,7 +75,7 @@
               <span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Info</span>
             {% endif %}
           </div>
-          <div class="row-act">
+          <div class="row-act {{ '' if item.action_url and can_edit else 'hidden' }}">
             {% if item.action_url and can_edit %}
               <a class="btn {{ 'btn-primary' if item.status == 'fail' else 'btn-secondary' }} btn-sm" href="{{ item.action_url }}">{{ item.action_text or 'Fix' }}</a>
             {% endif %}
@@ -152,7 +152,7 @@
 
           {% if can_edit and participant_passcode_source != 'env' %}
           <form id="pc-form" class="mt-6 flex flex-wrap items-start gap-4" novalidate>
-            <div style="flex:1;min-width:240px;max-width:360px">
+            <div style="flex:1;">
               <label class="label block text-sm font-semibold mb-1" for="pc-in">New passcode</label>
               <input id="pc-in" class="input w-full border border-line rounded-lg px-3 py-2 text-sm" type="password" autocomplete="new-password" placeholder="At least 6 characters">
               <p class="err text-bad text-xs mt-1 is-hidden" id="pc-err"></p>
@@ -184,7 +184,7 @@
 
           {% if can_edit and admin_passcode_source != 'env' %}
           <form id="ad-form" class="mt-6 flex flex-wrap items-start gap-4" novalidate>
-            <div style="flex:1;min-width:240px;max-width:360px">
+            <div style="flex:1;">
               <label class="label block text-sm font-semibold mb-1" for="ad-in">New admin passcode</label>
               <input id="ad-in" class="input w-full border border-line rounded-lg px-3 py-2 text-sm" type="password" autocomplete="new-password" placeholder="At least 6 characters">
               <p class="err text-bad text-xs mt-1 is-hidden" id="ad-err"></p>
@@ -302,7 +302,7 @@
       <div class="panel-b border-t border-line bg-surface-subtle rounded-b-[7px]">
         <label class="label block text-sm font-semibold mb-1" for="adm">Admin link <span class="font-normal text-muted">(only you use this)</span></label>
         <div class="flex flex-wrap gap-2">
-          <input id="adm" class="input font-mono flex-1 max-w-[520px] border border-line rounded-lg px-3 py-2 text-sm" value="{{ admin_url }}" readonly>
+          <input id="adm" class="input font-mono flex-1 border border-line rounded-lg px-3 py-2 text-sm" value="{{ admin_url }}" readonly>
           <button type="button" class="btn btn-secondary" id="copy-adm">Copy</button>
         </div>
         <p class="help text-xs text-muted mt-1">Do not send this link to participants. It opens the study's settings and results.</p>

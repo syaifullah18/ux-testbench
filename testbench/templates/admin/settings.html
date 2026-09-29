@@ -201,7 +201,7 @@
       // Look
       h += panel('sec-look', 'Look', 'The colors participants and your team see.',
         '<div class="panel-b"><div class="grid gap-6 sm:grid-cols-2">' +
-        '<div><label class="label" for="f-primary">Primary color</label><div class="flex flex-wrap items-center gap-4"><input type="color" id="pk-primary" value="' + esc(S.primary.toLowerCase()) + '" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick the primary color"' + dis + '>' + inp('f-primary', 'primary', S.primary, { mono: true, style: 'width:140px' }) + '</div><p id="contrast" class="help" role="status"></p></div>' +
+        '<div><label class="label" for="f-primary">Primary color</label><div class="flex flex-wrap items-center gap-4"><input type="color" id="pk-primary" value="' + esc(S.primary.toLowerCase()) + '" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick the primary color"' + dis + '>' + inp('f-primary', 'primary', S.primary, { mono: true, style: 'width:140px' }) + '</div><p id="contrast" class="help flex" role="status"></p></div>' +
         '<div><label class="label" for="f-nav">Navigation color</label><div class="flex flex-wrap items-center gap-4"><input type="color" id="pk-nav" value="' + esc(S.nav.toLowerCase()) + '" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick the navigation color"' + dis + '>' + inp('f-nav', 'nav', S.nav, { mono: true, style: 'width:140px' }) + '</div><p class="help">The top bar participants see.</p></div>' +
         '</div></div>');
 
@@ -338,8 +338,8 @@
       }
       var c = contrastRatio(S.primary, '#FFFFFF');
       cEl.innerHTML = c >= 4.5
-        ? '<i class="fa-solid fa-circle-check mr-2 text-ok" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1. Good for links and buttons.'
-        : '<i class="fa-solid fa-triangle-exclamation mr-2 text-warn" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1, below 4.5. Button text switches to dark so it stays readable.';
+        ? '<i class="fa-solid fa-circle-check mr-2 mt-1 text-ok" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1.<br>Good for links and buttons.'
+        : '<i class="fa-solid fa-triangle-exclamation mr-2 mt-1 text-warn" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1, below 4.5.<br>Button text switches to dark so it stays readable.';
       document.documentElement.style.setProperty('--brand', S.primary);
     }
 
