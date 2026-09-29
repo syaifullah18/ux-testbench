@@ -100,3 +100,65 @@ def test_card_sort_load_project_integration():
         assert project.modules["sorting"].type == "card_sort"
         assert project.modules["sorting"].impl.question_ids() == {"exp", "difficulty"}
 
+
+def test_card_sort_report_and_export(tmp_path):
+    from testbench import create_app
+    from testbench.context import Ctx
+    from testbench import storage
+
+    app = create_app()
+    with app.test_request_context():
+        with tempfile.TemporaryDirectory() as tmp:
+            pdir = Path(tmp) / "card-study"
+            pdir.mkdir()
+            (pdir / "modules").mkdir()
+            
+            project_yaml = {"name": "Card Sort Study", "locale": "en", "modules": ["sort1"]}
+            (pdir / "project.yaml").write_text(yaml.dump(project_yaml), encoding="utf-8")
+            
+            sorting_yaml = {
+                "type": "card_sort",
+                "title": "Topic Sort",
+                "cards": [
+                    {"id": "c1", "label": "Card 1"},
+                    {"id": "c2", "label": "Card 2"},
+                ],
+                "categories": ["Cat A", "Cat B"],
+                "allow_new_categories": True,
+            }
+            (pdir / "modules" / "sort1.yaml").write_text(yaml.dump(sorting_yaml), encoding="utf-8")
+            
+            problems = Problems()
+            project = load_project(pdir, MODULE_TYPES, problems)
+            assert not problems
+
+            mod = project.modules["sort1"]
+            mctx = Ctx(project, module=mod, admin=True)
+
+            # Insert sample participant and session
+            mctx.conn.execute("INSERT OR REPLACE INTO participants (id, identity, created_at, last_seen_at) VALUES (999, 'P99', '2026-01-01', '2026-01-01')")
+            mctx.conn.execute("INSERT OR REPLACE INTO sessions (id, participant_id, module_id, step, state, started_at, finished_at) VALUES (999, 999, 'sort1', 'done', '{}', '2026-01-01T10:00:00', '2026-01-01T10:05:00')")
+            storage.save_page(mctx.conn, 999, "sort", {"c1": "Cat A", "c2": "New Group"})
+            mctx.conn.commit()
+
+            # Test report rendering (ensures no SQL 'no such column: identity' error!)
+            html = mod.impl.report(mctx)
+            assert "Where each card went" in str(html)
+            assert "Card 1" in str(html)
+            assert "Cat A" in str(html)
+            assert "New Group" in str(html)
+
+            # Test export
+            header, rows = mod.impl.export(mctx)
+            assert "participant" in header
+            assert "card_c1" in header
+            assert any(r[0] == "P99" for r in rows)
+            p99_row = next(r for r in rows if r[0] == "P99")
+            assert p99_row[2] == "Cat A"
+
+            # Test detail
+            sess_row = mctx.conn.execute("SELECT * FROM sessions WHERE id = 999").fetchone()
+            detail_html = mod.impl.detail(mctx, sess_row)
+            assert "Cat A" in str(detail_html)
+            assert "Card 1" in str(detail_html)
+

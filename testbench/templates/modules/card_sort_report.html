@@ -1,42 +1,78 @@
-<div class="space-y-6">
-    <div class="bg-card rounded shadow p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Card Matrix</h3>
-        <p class="text-sm text-gray-500 mb-4">Shows how many times each card was placed into each category.</p>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-50 text-gray-700">
-                    <tr>
-                        <th class="px-4 py-3 font-medium">Card</th>
-                        <!-- Find all unique categories from the matrix -->
-                        {% set all_cats = [] %}
-                        {% for c in cards %}
-                            {% for cat in matrix[c.id].keys() %}
-                                {% if cat not in all_cats %}
-                                    {% set _ = all_cats.append(cat) %}
-                                {% endif %}
-                            {% endfor %}
-                        {% endfor %}
-                        
-                        {% for cat in all_cats|sort %}
-                        <th class="px-4 py-3 font-medium">{{ cat }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for c in cards %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 font-medium text-gray-900">{{ c.label }}</td>
-                        {% for cat in all_cats|sort %}
-                            {% set count = matrix[c.id].get(cat, 0) %}
-                            <td class="px-4 py-3 {% if count > 0 %}font-bold text-blue-600{% else %}text-gray-400{% endif %}">
-                                {{ count }}
-                            </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="stack">
+  <section class="panel">
+    <div class="panel-b">
+      <p class="t-panel">{{ headline }}</p>
     </div>
+  </section>
+
+  <section class="panel" aria-labelledby="cs-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="cs-h">Where each card went</h2>
+        <p>Highest cell highlighted. Agreement is the share who used the most common category. Cards are sorted by agreement.</p>
+      </div>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="tbl" style="min-width:780px">
+        <thead>
+          <tr>
+            <th scope="col">Card</th>
+            {% for cat in all_categories %}
+              <th scope="col" class="text-right">{{ cat }}</th>
+            {% endfor %}
+            <th scope="col" class="text-right">Agreement</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cs in card_stats %}
+          <tr>
+            <td class="t-strong">{{ cs.label }}</td>
+            {% for cat in all_categories %}
+              {% set count = cs.counts.get(cat, 0) %}
+              {% set share = (count / n * 100)|round|int if n else 0 %}
+              <td class="num text-right" style="position:relative">
+                <span class="inline-block min-w-[72px] px-2 py-1 rounded text-xs {% if cat == cs.top_cat and count > 0 %}font-bold ring-2 ring-brand bg-brand/10 text-brand{% elif count > 0 %}font-medium text-ink bg-surface-subtle{% else %}text-muted{% endif %}">
+                  {{ count }} <span class="text-muted">({{ share }}%)</span>
+                </span>
+              </td>
+            {% endfor %}
+            <td class="text-right">
+              {% if cs.agree < 0.5 %}
+                <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>No clear home</span>
+              {% else %}
+                <span class="num t-strong {% if cs.agree >= 0.7 %}text-emerald-600{% endif %}">{{ cs.agree_pct }}%</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not card_stats %}
+          <tr>
+            <td colspan="{{ all_categories|length + 2 }}" class="p-8 text-center text-muted">No cards defined.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if created_list %}
+  <section class="panel" aria-labelledby="cc-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="cc-h">Categories people created</h2>
+        <p>Names as typed. Similar names are not merged.</p>
+      </div>
+    </header>
+    <ul class="rows">
+      {% for name, count in created_list %}
+      <li class="row">
+        <div class="row-main">
+          <p class="row-title">{{ name }}</p>
+        </div>
+        <span class="num t-strong">{{ count }} {{ 'person' if count == 1 else 'people' }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
 </div>

@@ -114,25 +114,86 @@ class CardSort(ModuleType):
     def report(self, ctx):
         c = self.m.conf
         sessions = self._finished_runs(ctx.conn)
+        n = len(sessions)
         
-        # Aggregate logic
-        # For each card, count how many times it was put in each category
-        # cards[card_id][category_name] = count
+        predefined_cats = list(c.get("categories", []))
+        all_cats_set = set(predefined_cats)
+        created_counts = {}
+        
         matrix = {card["id"]: {} for card in c["cards"]}
         
         for s in sessions:
             sort_data = storage.page_answers(ctx.conn, s["id"], "sort")
+            seen_created_in_session = set()
             for card_id, cat_name in sort_data.items():
-                if card_id in matrix and cat_name:
+                if not cat_name:
+                    continue
+                all_cats_set.add(cat_name)
+                if cat_name not in predefined_cats:
+                    seen_created_in_session.add(cat_name)
+                if card_id in matrix:
                     matrix[card_id][cat_name] = matrix[card_id].get(cat_name, 0) + 1
-                    
-        return ctx.render_fragment("modules/card_sort_report.html", 
-                                   sessions=sessions, 
-                                   cards=c["cards"],
-                                   matrix=matrix)
+            for cat_name in seen_created_in_session:
+                created_counts[cat_name] = created_counts.get(cat_name, 0) + 1
+
+        extra_cats = sorted(all_cats_set - set(predefined_cats))
+        all_categories = predefined_cats + extra_cats
+
+        card_stats = []
+        clear_home_count = 0
+        for card in c["cards"]:
+            counts = matrix.get(card["id"], {})
+            top_cat = None
+            max_c = 0
+            for cat, count in counts.items():
+                if count > max_c:
+                    max_c = count
+                    top_cat = cat
+            agree = (max_c / n) if n > 0 else 0
+            if agree >= 0.7:
+                clear_home_count += 1
+            card_stats.append({
+                "id": card["id"],
+                "label": card["label"],
+                "counts": counts,
+                "top_cat": top_cat,
+                "max_count": max_c,
+                "agree": agree,
+                "agree_pct": round(agree * 100),
+            })
+
+        card_stats.sort(key=lambda x: x["agree"], reverse=True)
+        created_list = sorted(created_counts.items(), key=lambda x: (-x[1], x[0]))
+
+        if n == 0:
+            headline = "No responses yet."
+        elif clear_home_count == len(card_stats):
+            headline = f"All {len(card_stats)} cards have a clear home (at least 70% agreement)."
+        elif clear_home_count == 0:
+            headline = f"None of the {len(card_stats)} cards reached 70% agreement on a single category."
+        else:
+            headline = f"{clear_home_count} of {len(card_stats)} cards have a clear home (at least 70% agreement)."
+
+        return ctx.render_fragment(
+            "modules/card_sort_report.html",
+            sessions=sessions,
+            n=n,
+            cards=c["cards"],
+            card_stats=card_stats,
+            all_categories=all_categories,
+            created_list=created_list,
+            headline=headline,
+            matrix=matrix,
+        )
 
     def _finished_runs(self, conn):
-        sessions = conn.execute("SELECT id, identity, finished_at FROM sessions WHERE module_id = ? AND finished_at IS NOT NULL ORDER BY finished_at", (self.m.id,)).fetchall()
+        sessions = conn.execute(
+            "SELECT s.id, p.identity, s.finished_at FROM sessions s "
+            "JOIN participants p ON p.id = s.participant_id "
+            "WHERE s.module_id = ? AND s.finished_at IS NOT NULL "
+            "ORDER BY s.finished_at",
+            (self.m.id,)
+        ).fetchall()
         return sessions
 
     def detail(self, ctx, session):
