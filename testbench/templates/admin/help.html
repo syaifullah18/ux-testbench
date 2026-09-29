@@ -6,6 +6,7 @@
 {% block extra_head %}
 <style>
   section[id] { scroll-margin-top: 24px; }
+  .tbl td { font-size: 16px; line-height: 1.5; }
 </style>
 {% endblock %}
 
@@ -14,7 +15,7 @@
 {% block content %}
 <div class="mb-6">
   <h1 class="t-page">Help &amp; Reference</h1>
-  <p class="mt-1 text-muted">Guide to study lifecycles, research modules, statistical rules, and study configuration.</p>
+  <p class="mt-1 text-muted">Comprehensive guide to study lifecycles, research modules, statistical rules, and study configuration.</p>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -24,7 +25,6 @@
       <a href="#modules"><span>Choosing a module</span></a>
       <a href="#readiness"><span>Launch checklist</span></a>
       <a href="#reading"><span>Reading results</span></a>
-      <a href="#yaml"><span>Editing as YAML</span></a>
       <a href="#privacy"><span>Access &amp; privacy</span></a>
       {% if is_public %}
       <a href="#report"><span>Report a study</span></a>
@@ -89,7 +89,7 @@
       <p class="panel-f">You can switch status at any time using the status badge dropdown in the header or on the <strong>Launch</strong> page.</p>
     </section>
 
-    <!-- 2. Choosing a module (Row list) -->
+    <!-- 3. Choosing a module (2-column Table with UI component badge as 1st column) -->
     <section class="panel" id="modules" aria-labelledby="m-h">
       <header class="panel-h">
         <div>
@@ -97,81 +97,109 @@
           <p>Pick by the research question you need answered.</p>
         </div>
       </header>
-      <ul class="rows">
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Which of two designs is easier to use?</p>
-            <p class="t-meta">Use an A/B test. Each person does the same tasks across two interactive prototypes. You get task speed, completion rate, perceived ease ratings, sign test p-values, order effect checks, and a plain automated verdict.</p>
-          </div>
-          <div class="row-state"><span class="st st-info">A/B test</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Who are your participants, and what is hard for them?</p>
-            <p class="t-meta">Use a survey. Great for screener criteria, user demographics, rating scales, or post-task open feedback. Place it first so subsequent modules can branch or filter based on responses.</p>
-          </div>
-          <div class="row-state"><span class="st st-info">Survey</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Where do people click first on a screen?</p>
-            <p class="t-meta">Use a first click test on a static page mockup or screenshot. You get interactive click heatmaps, percentage of clicks inside the target area, and median time to first click.</p>
-          </div>
-          <div class="row-state"><span class="st st-info">First click</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">How do people categorize and conceptualize your content?</p>
-            <p class="t-meta">Use a card sort with 15 to 40 cards. Closed if you already have fixed categories, open if participants create their own, or hybrid for both. You get co-occurrence matrices, category agreement ratios, and popular groupings.</p>
-          </div>
-          <div class="row-state"><span class="st st-info">Card sort</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Where would people navigate in a text-only hierarchy?</p>
-            <p class="t-meta">Use a tree test on your menu structure without visual design. You get overall task success rates, directness percentage (navigating without backtracking), and weakest task identification.</p>
-          </div>
-          <div class="row-state"><span class="st st-info">Tree test</span></div>
-        </li>
-      </ul>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Module</th>
+              <th scope="col">Question answered &amp; outputs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-info">A/B test</span>
+              </td>
+              <td>
+                <strong>Which of two designs is easier to use?</strong> Each person performs the same tasks across two interactive prototypes. You get task completion speed, success rate, perceived ease ratings, sign test p-values, order effect checks, and a plain automated verdict.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Survey</span>
+              </td>
+              <td>
+                <strong>Who are your participants, and what is hard for them?</strong> Collect screener criteria, demographics, satisfaction rating scales, or open post-task reflections. Place it first so subsequent modules can branch or filter based on responses.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">First click</span>
+              </td>
+              <td>
+                <strong>Where do people click first on a screen?</strong> Evaluates initial mental models and visual affordance on a static mockup or screenshot. Delivers interactive click heatmaps, percentage of clicks inside expected areas, and median time to first click.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Card sort</span>
+              </td>
+              <td>
+                <strong>How do people categorize and conceptualize your content?</strong> Uses 15 to 40 cards. Choose closed (fixed categories), open (participant-named categories), or hybrid for both. Delivers co-occurrence matrices, category agreement ratios, and popular groupings.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Tree test</span>
+              </td>
+              <td>
+                <strong>Where would people navigate in a text-only hierarchy?</strong> Tests menu and information architecture isolated from visual design. Delivers overall task success rates, directness percentage (navigating without backtracking), and weakest task identification.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p class="panel-f">Modules can be reordered by dragging them on the <strong>Build</strong> page.</p>
     </section>
 
-    <!-- 3. Launch checklist (Row list) -->
+    <!-- 4. Launch checklist (2-column Table with UI component badge as 1st column) -->
     <section class="panel" id="readiness" aria-labelledby="ck-h">
       <header class="panel-h">
         <div>
           <h2 id="ck-h">Launch checklist</h2>
-          <p>Every check on the Launch page validates specific criteria before fielding.</p>
+          <p>Every check on the Launch page validates specific study criteria before fielding.</p>
         </div>
       </header>
-      <ul class="rows">
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Done</p>
-            <p class="t-meta">All required configuration files, assets, and validation criteria are verified. Contributes to launch readiness score.</p>
-          </div>
-          <div class="row-state"><span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Warning</p>
-            <p class="t-meta">A recommended practice is missing (e.g. consent statement for timing tracking, manual grading needed on A/B tasks, or single-member team). Advisory only — does not prevent launching.</p>
-          </div>
-          <div class="row-state"><span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span></div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Blocks launch</p>
-            <p class="t-meta">A critical requirement is unfulfilled (e.g. passcode access enabled without setting one, missing prototype file, or YAML syntax error). Must be resolved before switching status to Live.</p>
-          </div>
-          <div class="row-state"><span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span></div>
-        </li>
-      </ul>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Check State</th>
+              <th scope="col">What it means &amp; impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>
+              </td>
+              <td>
+                All required configuration files, assets, and validation criteria are verified. Contributes to your launch readiness score and permits fielding.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span>
+              </td>
+              <td>
+                A recommended practice is missing (e.g. consent statement for timing tracking, manual grading needed on A/B tasks, or single-member team). Advisory only — does not prevent launching.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>
+              </td>
+              <td>
+                A critical requirement is unfulfilled (e.g. passcode access enabled without setting one, missing prototype file, or YAML syntax error). Must be resolved before switching status to Live.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p class="panel-f">Checklist items are evaluated dynamically whenever you make changes in the Studio or on the Launch page.</p>
     </section>
 
-    <!-- 4. Reading results (2-column Table) -->
+    <!-- 5. Reading results (2-column Table) -->
     <section class="panel" id="reading" aria-labelledby="r-h">
       <header class="panel-h">
         <div>
@@ -183,7 +211,7 @@
         <table class="tbl w-full">
           <thead>
             <tr>
-              <th scope="col" style="width: 28%">Term</th>
+              <th scope="col" style="width: 22%">Term</th>
               <th scope="col">What it means</th>
             </tr>
           </thead>
@@ -230,26 +258,7 @@
       <p class="panel-f">Reports can be viewed online or downloaded as raw CSV datasets from the <strong>Results</strong> page.</p>
     </section>
 
-    <!-- 5. Editing as YAML (Panel text) -->
-    <section class="panel" id="yaml" aria-labelledby="y-h">
-      <header class="panel-h">
-        <div>
-          <h2 id="y-h">Editing as YAML</h2>
-          <p>For researchers and engineers who prefer version control and text files.</p>
-        </div>
-      </header>
-      <div class="panel-b">
-        <p>Every study is backed by plain text YAML files stored directly on disk:</p>
-        <ul class="list-disc pl-6 my-3 space-y-1">
-          <li><code>project.yaml</code> defines study title, status, brand colors, participant identification mode, and consent statements.</li>
-          <li><code>modules/&lt;module_id&gt;.yaml</code> configures individual module parameters, question sets, prototypes, and decision rules.</li>
-          <li><code>prototypes/</code> contains standalone HTML, CSS, and JS assets used by A/B testing and interactive modules.</li>
-        </ul>
-        <p>Every module editor in the Studio has an <strong>Advanced</strong> tab with the exact YAML file. You can edit via the form UI or directly in YAML. Every save validates the entire study schema; if a syntax error or broken reference exists, no changes are committed to disk and line-numbered errors are reported immediately.</p>
-      </div>
-    </section>
-
-    <!-- 6. Access, identity and privacy (Row list) -->
+    <!-- 6. Access, identity and privacy (2-column Table with UI component badge as 1st column) -->
     <section class="panel" id="privacy" aria-labelledby="pr-h">
       <header class="panel-h">
         <div>
@@ -257,26 +266,42 @@
           <p>How authentication, passcodes, and participant privacy are safeguarded.</p>
         </div>
       </header>
-      <ul class="rows">
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Anonymous sessions</p>
-            <p class="t-meta">Participants receive a randomized resume code (e.g. <code>WXYZ-4567</code>) to resume their session if disconnected. Zero personally identifiable information (PII) is captured or stored.</p>
-          </div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Passcodes</p>
-            <p class="t-meta">Shared study gatekeeper configured on the Launch page. Stored using salted cryptographic hashes (PBKDF2/SHA256) so the raw secret is never stored in plaintext.</p>
-          </div>
-        </li>
-        <li class="row">
-          <div class="row-main">
-            <p class="row-title">Participant codes &amp; emails</p>
-            <p class="t-meta">Pre-assigned identifiers validated against allowed patterns or domain whitelists. Responses remain strictly isolated within each study's private SQLite database.</p>
-          </div>
-        </li>
-      </ul>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Identity Mode</th>
+              <th scope="col">Privacy &amp; security rules</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-draft">Anonymous</span>
+              </td>
+              <td>
+                Participants receive a randomized resume code (e.g. <code>WXYZ-4567</code>). <strong>Zero personally identifiable information (PII)</strong> is collected, requested, or stored.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Passcode</span>
+              </td>
+              <td>
+                Shared study gatekeeper configured on the Launch page. Stored using salted cryptographic hashes (PBKDF2/SHA256) so the raw secret is never stored in plaintext and can be rotated anytime.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Participant ID</span>
+              </td>
+              <td>
+                Pre-assigned identifiers or email domains validated against allowed whitelist patterns. Responses remain strictly isolated within each study's private SQLite database.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p class="panel-f">All participant sessions and module responses are stored locally in isolated SQLite databases per study.</p>
     </section>
 

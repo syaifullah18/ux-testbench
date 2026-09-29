@@ -20,7 +20,7 @@ def test_help_page_render(projects_dir, make_app):
     assert "Choosing a module" in html
     assert "Draft, live and closed" in html
     assert "Reading results" in html
-    assert "Editing as YAML" in html
+    assert "Launch checklist" in html
     assert "Indicative" in html
     assert "Intervals" in html
     assert "A/B verdict" in html
