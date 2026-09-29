@@ -851,7 +851,10 @@
       fetch(SAVE_URL, {
         method: 'POST',
         body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': CSRF_TOKEN
+        }
       }).then(function (res) {
         return res.json();
       }).then(function (data) {
@@ -894,7 +897,10 @@
       fetch(SAVE_URL, {
         method: 'POST',
         body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': CSRF_TOKEN
+        }
       }).then(function (res) {
         return res.json();
       }).then(function (data) {
