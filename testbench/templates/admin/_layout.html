@@ -83,23 +83,38 @@
 {% block header %}{% endblock %}
 
 <main id="main" class="{% block main_class %}wrap main stack{% endblock %}">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="space-y-3">
-    {% for category, message in messages %}
-    <div class="flex items-start gap-3 rounded-lg border p-4 text-sm {% if category == 'error' %}border-[#F3D9A4] bg-bad-soft text-bad font-semibold{% else %}border-[#B7DFC3] bg-ok-soft text-ok font-semibold{% endif %}" role="status">
-      <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %} mt-0.5" aria-hidden="true"></i>
-      <p class="flex-1">{{ message }}</p>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% endwith %}
-
   {% block content %}{% endblock %}
 </main>
 
-<div id="toast" role="status" aria-live="polite" class="is-hidden fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-lg"></div>
+<div id="toast-wrap" class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none w-max max-w-[90vw]">
+  {% set flash_msgs = get_flashed_messages(with_categories=true) %}
+  {% set all_notices = [] %}
+  {% set seen_msgs = [] %}
+  {% for cat, m in flash_msgs %}
+    {% if m not in seen_msgs %}
+      {% set _ = all_notices.append({'cat': cat, 'msg': m}) %}
+      {% set _ = seen_msgs.append(m) %}
+    {% endif %}
+  {% endfor %}
+  {% set q_notice = notice or request.args.get('notice') %}
+  {% if q_notice and q_notice not in seen_msgs %}
+    {% set _ = all_notices.append({'cat': 'success', 'msg': q_notice}) %}
+    {% set _ = seen_msgs.append(q_notice) %}
+  {% endif %}
+  {% set q_err = error or request.args.get('error') %}
+  {% if q_err and q_err not in seen_msgs %}
+    {% set _ = all_notices.append({'cat': 'error', 'msg': q_err}) %}
+    {% set _ = seen_msgs.append(q_err) %}
+  {% endif %}
+
+  {% for item in all_notices %}
+  <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-ink{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
+    <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
+    <span>{{ item.msg }}</span>
+  </div>
+  {% endfor %}
+  <div id="toast" role="status" aria-live="polite" class="is-hidden pointer-events-auto flex items-center gap-2.5 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
 <script src="{{ url_for('static', filename='admin/admin.js') }}"></script>

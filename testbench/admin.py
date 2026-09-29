@@ -5,7 +5,7 @@ import io
 import os
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, current_app, jsonify, redirect, render_template, request, session as cookie, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
 
 from . import passcodes, storage
 from .context import Ctx, is_admin, is_super
@@ -1005,10 +1005,14 @@ def delete_participant(slug, pid):
     ctx, early = admin_ctx(slug)
     if early:
         return early
+    row = ctx.conn.execute("SELECT identity FROM participants WHERE id = ?", (pid,)).fetchone()
+    identity = row["identity"] if row else f"#{pid}"
     ctx.conn.execute("DELETE FROM participants WHERE id = ?", (pid,))
     storage.audit(ctx.conn, "delete_participant", request.remote_addr, {"participant_id": pid})
     ctx.conn.commit()
-    return redirect(url_for("admin.participants", slug=slug))
+    msg = f"Participant {identity} has been deleted."
+    flash(msg, "success")
+    return redirect(url_for("admin.participants", slug=slug, notice=msg))
 
 
 @bp.post("/app/p/<slug>/reset")
@@ -1020,14 +1024,20 @@ def reset(slug):
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
         from . import auth, users
         if not users.can(auth.current_user(), slug, "reset"):
+            err = "You do not have permission to delete responses."
+            flash(err, "error")
             return redirect(url_for("admin.dashboard", slug=slug, reset="failed"))
     else:
         given = request.form.get("passcode")
         if not (passcodes.check(ctx.project, "admin", given) or passcodes.superadmin_ok(given)):
+            err = "Incorrect admin passcode. Responses were not deleted."
+            flash(err, "error")
             return redirect(url_for("admin.dashboard", slug=slug, reset="failed"))
     storage.reset(slug)
     storage.audit(ctx.conn, "reset_project", request.remote_addr, {})
-    return redirect(url_for("admin.dashboard", slug=slug))
+    msg = f"All participant responses for “{ctx.project.name}” have been deleted."
+    flash(msg, "success")
+    return redirect(url_for("admin.dashboard", slug=slug, notice=msg))
 
 
 @bp.route("/app/p/<slug>/data")

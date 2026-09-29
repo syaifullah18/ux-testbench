@@ -14,16 +14,7 @@
         </p>
     </div>
 
-    <!-- Error/Notice alerts -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="p-4 mb-5 rounded-xl text-sm {% if category == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+
 
     <form method="post" enctype="multipart/form-data" class="bg-card border border-line rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

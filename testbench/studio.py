@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from flask import (Blueprint, abort, current_app, jsonify, redirect, render_template, request, send_file,
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, send_file,
                    send_from_directory, session as cookie, url_for)
 
 from . import limits, passcodes, storage
@@ -88,7 +88,8 @@ def trial(project_dir, slug, writes=None, deletes=()):
         for rel in deletes:
             (dst / rel).unlink(missing_ok=True)
         load_project(dst, MODULE_TYPES, problems)
-        return [p.replace(str(Path(tmp)) + "/", "") for p in problems]
+        tmp_str = str(Path(tmp))
+        return [p.replace(tmp_str + "/", "").replace(tmp_str + "\\", "") for p in problems]
 
 
 def backup(project_dir, rel):
@@ -293,6 +294,7 @@ def new_project():
     duplicate_from = request.args.get("from") or request.form.get("from")
 
     if err:
+        flash(err, "error")
         return redirect(url_for("admin.overview", error=err))
     with tempfile.TemporaryDirectory() as tmp:
         dst = Path(tmp) / slug
@@ -303,10 +305,15 @@ def new_project():
             upload=upload, duplicate_from=duplicate_from
         )
         if scaffold_errs:
-            return redirect(url_for("admin.overview", error="; ".join(scaffold_errs[:3])))
+            err_msg = "; ".join(scaffold_errs[:3])
+            flash(err_msg, "error")
+            return redirect(url_for("admin.overview", error=err_msg))
         problems = install(dst, slug)
     if problems:
-        return redirect(url_for("admin.overview", error="; ".join(problems[:3])))
+        err_msg = "; ".join(problems[:3])
+        flash(err_msg, "error")
+        return redirect(url_for("admin.overview", error=err_msg))
+    flash(translator(locale)("studio.created"), "success")
     return redirect(url_for("studio.home", slug=slug, created=1))
 
 
@@ -318,11 +325,14 @@ def import_project():
     upload = request.files.get("archive")
     slug = request.form.get("slug", "").strip().lower()
     if not upload or not upload.filename:
-        return redirect(url_for("admin.overview", error=t("studio.no_file")))
+        err = t("studio.no_file")
+        flash(err, "error")
+        return redirect(url_for("admin.overview", error=err))
     if not slug:
         slug = re.sub(r"[^a-z0-9-]+", "-", Path(upload.filename).stem.lower()).strip("-")
     err = validate_new_slug(slug, t)
     if err:
+        flash(err, "error")
         return redirect(url_for("admin.overview", error=err))
     with tempfile.TemporaryDirectory() as tmp:
         dst = Path(tmp) / slug
@@ -330,12 +340,18 @@ def import_project():
         try:
             names = extract_zip(upload.stream, dst, PROJECT_EXT, strip_single_root=True)
         except ValueError as exc:
+            flash(str(exc), "error")
             return redirect(url_for("admin.overview", error=str(exc)))
         if "project.yaml" not in names:
-            return redirect(url_for("admin.overview", error=t("studio.no_project_yaml")))
+            err = t("studio.no_project_yaml")
+            flash(err, "error")
+            return redirect(url_for("admin.overview", error=err))
         problems = install(dst, slug)
     if problems:
-        return redirect(url_for("admin.overview", error="; ".join(problems[:3])))
+        err_msg = "; ".join(problems[:3])
+        flash(err_msg, "error")
+        return redirect(url_for("admin.overview", error=err_msg))
+    flash(t("studio.created"), "success")
     return redirect(url_for("studio.home", slug=slug, created=1))
 
 
@@ -1198,11 +1214,15 @@ def module_duplicate(slug, mid):
     writes = {"project.yaml": dump_yaml(data), f"modules/{new_id}.yaml": content}
     problems = trial(project.dir, slug, writes=writes)
     if problems:
-        return redirect(url_for("studio.home", slug=slug, error="; ".join(problems[:3])))
+        err = "; ".join(problems[:3])
+        flash(err, "error")
+        return redirect(url_for("studio.home", slug=slug, error=err))
     for rel, text in writes.items():
         write_text(project.dir, rel, text)
     reload()
-    return redirect(url_for("studio.home", slug=slug, notice=f"Duplicated {orig_title} as {new_title}."))
+    msg = f"Duplicated {orig_title} as {new_title}."
+    flash(msg, "success")
+    return redirect(url_for("studio.home", slug=slug, notice=msg))
 
 
 @bp.post("/app/p/<slug>/studio/modules/<mid>/move")
@@ -1232,10 +1252,14 @@ def module_move(slug, mid):
     writes = {"project.yaml": dump_yaml(data)}
     problems = trial(project.dir, slug, writes=writes)
     if problems:
-        return redirect(url_for("studio.home", slug=slug, error="; ".join(problems[:3])))
+        err = "; ".join(problems[:3])
+        flash(err, "error")
+        return redirect(url_for("studio.home", slug=slug, error=err))
     write_text(project.dir, "project.yaml", dump_yaml(data))
     reload()
-    return redirect(url_for("studio.home", slug=slug, notice="Order saved."))
+    msg = "Module order saved."
+    flash(msg, "success")
+    return redirect(url_for("studio.home", slug=slug, notice=msg))
 
 
 @bp.post("/app/p/<slug>/studio/modules/<mid>/delete")
@@ -1246,16 +1270,21 @@ def module_delete(slug, mid):
     if not ID_RE.match(mid):
         abort(400)
     data = read_project_yaml(project.dir)
-    data["modules"] = [m for m in data.get("modules") or [] if str(m) != mid]
+    current_mods = [m for m in data.get("modules") or [] if str(m) != mid]
+    data["modules"] = current_mods
     rel = f"modules/{mid}.yaml"
     problems = trial(project.dir, slug, writes={"project.yaml": dump_yaml(data)}, deletes=[rel])
     if problems:
-        return redirect(url_for("studio.home", slug=slug, error="; ".join(problems[:3])))
+        err = "; ".join(problems[:3])
+        flash(err, "error")
+        return redirect(url_for("studio.home", slug=slug, error=err))
     write_text(project.dir, "project.yaml", dump_yaml(data))
     backup(project.dir, rel)
     (project.dir / rel).unlink(missing_ok=True)
     reload()
-    return redirect(url_for("studio.home", slug=slug, notice=t("studio.module_deleted", id=mid)))
+    msg = t("studio.module_deleted", id=mid)
+    flash(msg, "success")
+    return redirect(url_for("studio.home", slug=slug, notice=msg))
 
 
 @bp.post("/app/p/<slug>/studio/files/upload")
@@ -1274,12 +1303,14 @@ def files_upload(slug):
         f.stream.seek(0)
         over = limits.check_upload(project.dir, size)
         if over:
+            flash(over, "error")
             return redirect(url_for("studio.prototypes", slug=slug, error=over))
         if f.filename.lower().endswith(".zip") and request.form.get("extract", "1") == "1":
             base.mkdir(parents=True, exist_ok=True)
             try:
                 written += extract_zip(f.stream, base, PROTOTYPE_EXT)
             except ValueError as exc:
+                flash(str(exc), "error")
                 return redirect(url_for("studio.prototypes", slug=slug, error=str(exc)))
             continue
         parts = safe_parts(f.filename)  # folder uploads send "dir/sub/file.css"
@@ -1293,6 +1324,7 @@ def files_upload(slug):
     msg = t("studio.uploaded", n=len(written)) + (" " + t("studio.skipped", files=", ".join(skipped[:5])) if skipped else "")
     with storage.connect(slug) as conn:
         storage.audit(conn, "upload_files", request.remote_addr, {"written": written})
+    flash(msg, "success")
     return redirect(url_for("studio.prototypes", slug=slug, notice=msg))
 
 
@@ -1308,13 +1340,17 @@ def files_delete(slug):
     # Refuse when a module still points at the file, so a delete can't break a live study.
     problems = trial(project.dir, slug, deletes=[rel])
     if problems:
-        return redirect(url_for("studio.prototypes", slug=slug, error=t("studio.file_in_use", file=rel)))
+        err = t("studio.file_in_use", file=rel)
+        flash(err, "error")
+        return redirect(url_for("studio.prototypes", slug=slug, error=err))
     target = inside(project.dir, rel)
     if target.is_file():
         target.unlink()
         with storage.connect(slug) as conn:
             storage.audit(conn, "delete_file", request.remote_addr, {"file": rel})
-    return redirect(url_for("studio.prototypes", slug=slug, notice=t("studio.file_deleted", file=rel)))
+    msg = t("studio.file_deleted", file=rel)
+    flash(msg, "success")
+    return redirect(url_for("studio.prototypes", slug=slug, notice=msg))
 
 
 @bp.route("/app/p/<slug>/studio/files/raw/<path:rel>")
@@ -1371,10 +1407,13 @@ def delete_project(slug):
     if not is_super() or not project.editable:
         abort(403)
     if request.form.get("confirm") != slug:
-        return redirect(url_for("studio.home", slug=slug, error=translator(project.locale)("studio.confirm_mismatch")))
+        err = translator(project.locale)("studio.confirm_mismatch")
+        flash(err, "error")
+        return redirect(url_for("studio.home", slug=slug, error=err))
     target = inside(registry().studio, slug)
     if target.parent != registry().studio.resolve():
         abort(400)
+    name = project.name
     shutil.rmtree(target)
     if request.form.get("with_data"):
         storage.close_all()
@@ -1382,4 +1421,6 @@ def delete_project(slug):
         storage_path.unlink(missing_ok=True)
         passcodes.clear(slug)
     reload()
-    return redirect(url_for("admin.overview", notice=f"Deleted {slug}"))
+    msg = f"Study “{name}” has been deleted."
+    flash(msg, "success")
+    return redirect(url_for("admin.overview", notice=msg))

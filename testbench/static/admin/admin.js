@@ -18,14 +18,61 @@
 
   // Toast
   var toastTimer;
-  UTB.toast = function (msg) {
+  UTB.toast = function (msg, category) {
     var t = document.getElementById('toast');
     if (!t) return;
-    t.textContent = msg;
+    var isErr = category === 'error';
+    t.className = 'pointer-events-auto flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer ' + (isErr ? 'bg-[#B42318]' : 'bg-ink');
+    var iconClass = isErr ? 'fa-solid fa-circle-exclamation text-amber-300' : 'fa-solid fa-circle-check text-emerald-400';
+    t.innerHTML = '<i class="' + iconClass + '" aria-hidden="true"></i><span>' + msg + '</span>';
+    t.style.opacity = '1';
+    t.style.transform = 'translateY(0)';
     t.classList.remove('is-hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.add('is-hidden'); }, 3200);
+    toastTimer = setTimeout(function () {
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(8px)';
+      setTimeout(function () {
+        t.classList.add('is-hidden');
+        t.style.opacity = '';
+        t.style.transform = '';
+      }, 350);
+    }, 3500);
   };
+
+  // Auto-dismiss server flash toasts & click-to-dismiss
+  function initToastDismiss() {
+    var items = document.querySelectorAll('#toast-wrap .toast-item');
+    if (items.length) {
+      setTimeout(function () {
+        items.forEach(function (el) {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(8px)';
+          setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }, 350);
+        });
+      }, 4000);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', initToastDismiss);
+
+  document.addEventListener('click', function (e) {
+    var item = e.target.closest('#toast-wrap .toast-item, #toast-wrap #toast');
+    if (item && !item.classList.contains('is-hidden')) {
+      item.style.opacity = '0';
+      item.style.transform = 'translateY(8px)';
+      setTimeout(function () {
+        if (item.id === 'toast') {
+          item.classList.add('is-hidden');
+          item.style.opacity = '';
+          item.style.transform = '';
+        } else if (item.parentNode) {
+          item.parentNode.removeChild(item);
+        }
+      }, 300);
+    }
+  });
 
   // Clipboard copy
   document.addEventListener('click', function (e) {

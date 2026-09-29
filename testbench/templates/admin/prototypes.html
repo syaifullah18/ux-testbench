@@ -37,16 +37,6 @@
     </div>
     {% endif %}
 
-    {% if notice %}
-    <div class="panel border-l-4 border-l-emerald-600 bg-emerald-50/50 p-4 text-sm text-emerald-900 flex items-center justify-between">
-      <span>{{ notice }}</span>
-    </div>
-    {% endif %}
-    {% if error %}
-    <div class="panel border-l-4 border-l-bad bg-bad/10 p-4 text-sm text-bad flex items-center justify-between" role="alert">
-      <span>{{ error }}</span>
-    </div>
-    {% endif %}
 
     <!-- Upload prototypes panel -->
     {% if project.editable %}
