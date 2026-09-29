@@ -273,9 +273,11 @@
   }
 
   /* Content tab - A/B Test */
+  var ENTRY_EXTS = /\.(html?|png|jpe?g|gif|webp|svg|avif|ico|bmp|tiff?|pdf|mp4|webm|mov|ogg|mp3|wav|m4a|txt|md)$/i;
   function variantRows() {
+    var entryFiles = FILES.filter(function (f) { return ENTRY_EXTS.test(f); });
     return S.variants.map(function (v, i) {
-      var opts = FILES.map(function (f) { return '<option value="' + f + '"' + (v.file === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
+      var opts = entryFiles.map(function (f) { return '<option value="' + f + '"' + (v.file === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
       return '<div class="var-grid rows-item" data-vi="' + i + '">' +
         '<span class="font-mono t-strong" style="padding-top:8px">' + esc(v.key) + '</span>' +
         '<div><label class="sr-only-x" for="f-var-' + i + '-label">Label for variant ' + esc(v.key) + '</label>' + inp('f-var-' + i + '-label', 'variants.' + i + '.label', v.label) + '</div>' +
@@ -829,6 +831,7 @@
       S.tasks.forEach(function (t, i) {
         if (!t.prompt.trim()) add('f-ct-' + i + '-prompt', 'Task ' + (i + 1) + ' needs a prompt.');
         if (!t.image) add('f-ct-' + i + '-image', 'Task ' + (i + 1) + ' needs an image.');
+        else if (!IMAGE_EXTS.test(t.image)) add('f-ct-' + i + '-image', 'Task ' + (i + 1) + ' image must be an image file (.png, .jpg, .svg, .webp).');
         if (!(Number(t.w) > 0 && Number(t.h) > 0)) add('f-ct-' + i + '-w', 'The target area needs a width and height above 0.');
       });
     }
@@ -843,6 +846,7 @@
       S.variants.forEach(function (v, i) {
         if (!v.label.trim()) add('f-var-' + i + '-label', 'Variant ' + v.key + ' needs a label.');
         if (!v.file) add('f-var-' + i + '-file', 'Variant ' + v.key + ' needs an entry file.');
+        else if (!ENTRY_EXTS.test(v.file)) add('f-var-' + i + '-file', 'Variant ' + v.key + ' entry file must be a page, document, or media file.');
       });
       S.tasks.forEach(function (t, i) { if (!t.prompt.trim()) add('f-task-' + i + '-prompt', 'Task ' + (i + 1) + ' needs a prompt.'); });
       var seen = {};

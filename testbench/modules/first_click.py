@@ -1,9 +1,12 @@
 import re
+from pathlib import Path
 from flask import abort, request, send_from_directory
 
 from .. import questions as Q
 from .. import storage
 from .base import ADVANCE, ModuleType
+
+ALLOWED_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico", ".bmp", ".tif", ".tiff"}
 
 
 class FirstClick(ModuleType):
@@ -24,9 +27,12 @@ class FirstClick(ModuleType):
                 scope.add(f"tasks[{i}] needs a valid `id:` (alphanumeric/dash/underscore)")
             if not t.get("prompt"):
                 scope.add(f"tasks[{i}] needs a `prompt:`")
-            if not t.get("image"):
+            img = str(t.get("image") or "")
+            if not img:
                 scope.add(f"tasks[{i}] needs an `image:` (URL or relative path)")
-            out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "image": str(t.get("image") or "")})
+            elif "://" not in img and Path(img.split("?")[0]).suffix.lower() not in ALLOWED_IMAGE_EXT:
+                scope.add(f"tasks[{i}].image must be an image file (.png, .jpg, .svg, .webp, etc.)")
+            out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "image": img})
 
         out["post"] = Q.normalize(raw.get("post", []), scope, "post")
         out["final"] = Q.normalize(raw.get("final", []), scope, "final")
@@ -108,7 +114,7 @@ class FirstClick(ModuleType):
         }
         if clean_path not in allowed_images:
             abort(404)
-        if Path(clean_path).suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico", ".bmp"}:
+        if Path(clean_path).suffix.lower() not in ALLOWED_IMAGE_EXT:
             abort(404)
         if (ctx.project.dir / clean_path).is_file():
             return send_from_directory(ctx.project.dir, clean_path, max_age=0)

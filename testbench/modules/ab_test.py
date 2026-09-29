@@ -151,6 +151,16 @@ def success_rate(grades):
     return (sum(1 for g in graded if g in ("success", "assisted")) / len(graded)) if graded else None
 
 
+ENTRY_EXT = {
+    ".html", ".htm",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff",
+    ".pdf",
+    ".mp4", ".webm", ".mov", ".ogg",
+    ".mp3", ".wav", ".m4a",
+    ".txt", ".md"
+}
+
+
 class ABTest(ModuleType):
     type_name = "ab_test"
 
@@ -175,6 +185,8 @@ class ABTest(ModuleType):
                 scope.add(f"variants.{key}.file must stay inside the project folder")
             elif path.parent == project_dir:
                 scope.add(f"variants.{key}.file must not sit at the project root")
+            elif path.suffix.lower() not in ENTRY_EXT:
+                scope.add(f"variants.{key}.file must be a page, document, or media file")
             variants[key] = {"label": str(v.get("label") or key), "path": path}
         keys = list(variants)
         baseline = str(raw.get("baseline") or (keys[0] if keys else ""))
