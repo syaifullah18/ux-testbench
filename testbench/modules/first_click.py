@@ -93,9 +93,24 @@ class FirstClick(ModuleType):
                           page_no=1, page_count=1, answers=answers, errors=errors, prior=prior, last=True)
 
     def action(self, ctx, path):
-        # Allow serving assets if image path doesn't start with http
-        if ".." not in path:
-            return send_from_directory(ctx.project.dir, path, max_age=0)
+        # Only serve image assets configured in this module's tasks
+        from pathlib import Path
+        clean_path = Path(path).as_posix().lstrip("/")
+        if ".." in path or clean_path.startswith("../"):
+            abort(404)
+        allowed_images = {
+            Path(t["image"]).as_posix().lstrip("/")
+            for t in self.m.conf.get("tasks", [])
+            if t.get("image") and "://" not in t["image"]
+        }
+        if clean_path not in allowed_images:
+            abort(404)
+        if Path(clean_path).suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico", ".bmp"}:
+            abort(404)
+        if (ctx.project.dir / clean_path).is_file():
+            return send_from_directory(ctx.project.dir, clean_path, max_age=0)
+        if (ctx.project.dir / "prototypes" / clean_path).is_file():
+            return send_from_directory(ctx.project.dir / "prototypes", clean_path, max_age=0)
         abort(404)
 
     admin_action = action

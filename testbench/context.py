@@ -136,8 +136,6 @@ def set_participant(slug, pid):
 def is_admin(slug):
     import os
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
-        if slug == "example":
-            return True
         from . import auth, users
         user = auth.current_user()
         return users.can(user, slug, "view")

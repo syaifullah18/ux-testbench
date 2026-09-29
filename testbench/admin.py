@@ -8,7 +8,7 @@ from pathlib import Path
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
 
 from . import passcodes, storage
-from .context import Ctx, is_admin, is_super
+from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import translator
 from .web import get_project, registry
 from .rate_limit import is_rate_limited, record_failed_login
@@ -225,17 +225,32 @@ def build_study_dashboard_data(ctx, project):
     })
 
     # 3. A/B prototypes
-    ab_mods = [m for m in project.modules.values() if m.type == "ab"]
+    ab_mods = [m for m in project.modules.values() if m.type in ("ab", "ab_test")]
     if ab_mods:
         missing_protos = []
         for m in ab_mods:
-            va = (m.conf.get("variant_a", {}).get("file") if m.conf else None) or "variant-a.html"
-            vb = (m.conf.get("variant_b", {}).get("file") if m.conf else None) or "variant-b.html"
-            proto_dir = project.dir / "prototypes"
-            if not (proto_dir / va).is_file():
-                missing_protos.append(va)
-            if not (proto_dir / vb).is_file():
-                missing_protos.append(vb)
+            variants = (m.conf.get("variants") or {}) if m.conf else {}
+            if not variants:
+                va = (m.conf.get("variant_a", {}).get("file") if m.conf else None) or "variant-a.html"
+                vb = (m.conf.get("variant_b", {}).get("file") if m.conf else None) or "variant-b.html"
+                variants = {"A": {"file": va}, "B": {"file": vb}}
+            for v_key, v_info in variants.items():
+                if isinstance(v_info, dict):
+                    if "path" in v_info and v_info["path"]:
+                        p = Path(v_info["path"])
+                        if not p.is_file():
+                            missing_protos.append(str(v_info.get("file") or p.name))
+                    elif v_info.get("file"):
+                        v_file = str(v_info["file"])
+                        p1 = project.dir / v_file
+                        p2 = project.dir / "prototypes" / v_file
+                        if not p1.is_file() and not p2.is_file():
+                            missing_protos.append(v_file)
+                elif isinstance(v_info, str):
+                    p1 = project.dir / v_info
+                    p2 = project.dir / "prototypes" / v_info
+                    if not p1.is_file() and not p2.is_file():
+                        missing_protos.append(v_info)
         if missing_protos:
             checklist.append({
                 "id": "ab_proto",
@@ -266,7 +281,8 @@ def build_study_dashboard_data(ctx, project):
         for m in ab_mods:
             tasks = (m.conf.get("tasks", []) if m.conf else [])
             for i, tsk in enumerate(tasks, 1):
-                if not tsk.get("answer_key") and not tsk.get("key"):
+                has_key = bool(tsk.get("accept") or tsk.get("answer_key") or tsk.get("key"))
+                if not has_key:
                     ungraded_tasks.append((m.id, i))
         if ungraded_tasks:
             m_id, t_num = ungraded_tasks[0]
@@ -488,7 +504,7 @@ def dashboard(slug):
 @bp.route("/<slug>/admin/status", methods=["POST"])
 def set_status(slug):
     project = get_project(slug)
-    if not is_admin(slug):
+    if not can_edit(slug):
         abort(403)
     new_status = request.form.get("status", "").strip().lower()
     if new_status not in ("draft", "live", "closed"):
@@ -877,7 +893,7 @@ def participants(slug):
         "none": sum(1 for p in people if p["state"] == "none"),
     }
 
-    can_edit = is_super() or (ctx.project.editable if hasattr(ctx.project, "editable") else True)
+    can_edit_flag = can_edit(slug)
 
     return ctx.render(
         "admin/participants.html",
@@ -888,7 +904,7 @@ def participants(slug):
         counts=counts,
         modules_list=modules_list,
         n_participants=n_participants,
-        can_edit=can_edit,
+        can_edit=can_edit_flag,
         active_page="participants"
     )
 
@@ -905,6 +921,8 @@ def participant(slug, pid):
     ctx.participant = person
     sessions = {s["module_id"]: s for s in ctx.conn.execute("SELECT * FROM sessions WHERE participant_id = ?", (pid,))}
     if request.method == "POST":
+        if not can_edit(slug):
+            abort(403)
         for mid, s in sessions.items():
             module = ctx.project.module(mid)
             if module:
@@ -913,7 +931,7 @@ def participant(slug, pid):
         return redirect(url_for("admin.participant", slug=slug, pid=pid, saved=1))
 
     n_participants, modules_list = get_results_nav_context(ctx)
-    can_edit = is_super() or (ctx.project.editable if hasattr(ctx.project, "editable") else True)
+    can_edit_flag = can_edit(slug)
 
     blocks = []
     done_count = 0
@@ -944,7 +962,7 @@ def participant(slug, pid):
             stopped_parts.append(f"{m.title} at {step}")
             html_content = ""
 
-        is_open = (b_state == "done" and raw_type == "ab") or (b_state == "done" and len(blocks) == 0)
+        is_open = (b_state == "done" and raw_type in ("ab", "ab_test")) or (b_state == "done" and len(blocks) == 0)
 
         blocks.append({
             "m": m,
@@ -993,7 +1011,7 @@ def participant(slug, pid):
         started_modules_str=started_modules_str,
         modules_list=modules_list,
         n_participants=n_participants,
-        can_edit=can_edit,
+        can_edit=can_edit_flag,
         saved=request.args.get("saved"),
         active_page="participants"
     )
@@ -1005,6 +1023,8 @@ def delete_participant(slug, pid):
     ctx, early = admin_ctx(slug)
     if early:
         return early
+    if not can_edit(slug):
+        abort(403)
     row = ctx.conn.execute("SELECT identity FROM participants WHERE id = ?", (pid,)).fetchone()
     identity = row["identity"] if row else f"#{pid}"
     ctx.conn.execute("DELETE FROM participants WHERE id = ?", (pid,))
@@ -1148,10 +1168,9 @@ def launch_passcode(slug):
             return jsonify({"ok": False, "error": "Unauthorized"}), 401
         return early
     project = ctx.project
-    can_edit = is_super() or getattr(project, "editable", True)
-    if not can_edit:
+    if not can_edit(slug):
         if request.is_json:
-            return jsonify({"ok": False, "error": "Read-only study."}), 403
+            return jsonify({"ok": False, "error": "Forbidden"}), 403
         abort(403)
 
     if request.is_json:

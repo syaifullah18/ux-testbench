@@ -210,10 +210,7 @@ def build_project_scaffold(dst, slug, name, source, locale, mode, access, brand=
         src_slug = duplicate_from or "example"
         src = registry().get(src_slug)
         if src is None:
-            if registry().projects:
-                src = next(iter(registry().projects.values()))
-            else:
-                return [f"Source project '{src_slug}' not found"]
+            return [f"Source project '{src_slug}' not found"]
         shutil.copytree(src.dir, dst, ignore=shutil.ignore_patterns(".history"), dirs_exist_ok=True)
         data = read_project_yaml(dst)
         data["name"] = name or f"{data.get('name', src_slug)} (copy)"
@@ -291,7 +288,16 @@ def new_project():
     pattern = request.form.get("pattern", "^P\\d{2}$")
     domains = request.form.get("domains", "")
     upload = request.files.get("archive")
-    duplicate_from = request.args.get("from") or request.form.get("from")
+    duplicate_from = (request.args.get("from") or request.form.get("from") or "").strip() or None
+    if duplicate_from and duplicate_from != "example":
+        if registry().get(duplicate_from) is None:
+            err = f"Source project '{duplicate_from}' not found."
+            flash(err, "error")
+            return redirect(url_for("admin.overview", error=err))
+        if not is_super() and not is_admin(duplicate_from):
+            err = f"You do not have permission to copy project '{duplicate_from}'."
+            flash(err, "error")
+            return redirect(url_for("admin.overview", error=err))
 
     if err:
         flash(err, "error")
@@ -1391,6 +1397,8 @@ def files_raw(slug, rel):
 @bp.post("/app/p/<slug>/studio/passcodes")
 @bp.post("/<slug>/admin/studio/passcodes")
 def set_passcodes(slug):
+    if not can_edit(slug):
+        abort(403)
     project = studio_project(slug, write=False)  # read-only projects can still get passcodes
     t = translator(project.locale)
     changed = []

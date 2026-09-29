@@ -52,6 +52,7 @@ def make_app(tmp_path, monkeypatch):
         for k in list(os.environ):
             if k.endswith("_PASSCODE"):
                 monkeypatch.delenv(k, raising=False)
+        monkeypatch.delenv("TESTBENCH_MODE", raising=False)
         for k, v in env.items():
             monkeypatch.setenv(k, v)
         app = create_app({"TESTING": True, "SECRET_KEY": "test", "DATA_DIR": str(tmp_path / "data"),

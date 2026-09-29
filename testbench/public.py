@@ -176,6 +176,14 @@ def new_project():
 
     from .i18n import available
     if request.method == "GET":
+        duplicate_from = (request.args.get("from") or "").strip() or None
+        if duplicate_from and duplicate_from != "example":
+            if registry().get(duplicate_from) is None:
+                flash(f"Project '{duplicate_from}' not found.", "error")
+                return redirect(url_for("public.dashboard"))
+            if not users.can(user, duplicate_from, "view"):
+                flash(f"You do not have permission to copy project '{duplicate_from}'.", "error")
+                return redirect(url_for("public.dashboard"))
         taken = [p.slug for p in registry().projects.values()]
         return render_template("admin/new_study.html", user=user, locales=available(), taken_slugs=taken, t=translator("en"))
 
@@ -189,7 +197,15 @@ def new_project():
     pattern = request.form.get("pattern", "^P\\d{2}$")
     domains = request.form.get("domains", "")
     upload = request.files.get("archive")
-    duplicate_from = request.args.get("from") or request.form.get("from")
+    duplicate_from = (request.args.get("from") or request.form.get("from") or "").strip() or None
+
+    if duplicate_from and duplicate_from != "example":
+        if registry().get(duplicate_from) is None:
+            flash(f"Source project '{duplicate_from}' not found.", "error")
+            return redirect(url_for("public.new_project"))
+        if not users.can(user, duplicate_from, "view"):
+            flash(f"You do not have permission to copy project '{duplicate_from}'.", "error")
+            return redirect(url_for("public.new_project"))
 
     if not SLUG_RE.match(slug) or slug in RESERVED_SLUGS:
         flash("Slug must be 1-40 lowercase letters, digits and hyphens, and not reserved.", "error")

@@ -30,6 +30,8 @@ def create_app(overrides=None):
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE") == "1",
         MAX_CONTENT_LENGTH=int(os.environ.get("MAX_UPLOAD_MB", 50)) * 1024 * 1024,
         TESTBENCH_MODE=os.environ.get("TESTBENCH_MODE", "internal"),
+        APP_DOMAIN=os.environ.get("APP_DOMAIN", ""),
+        SERVER_NAME=os.environ.get("SERVER_NAME"),
         LOCAL_ASSETS=os.environ.get("LOCAL_ASSETS") == "1",
         TEMPLATES_AUTO_RELOAD=True,
     )
