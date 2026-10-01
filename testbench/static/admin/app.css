@@ -324,3 +324,15 @@ html[data-status="draft"] .if-closed, html[data-status="live"] .if-closed { disp
 html[data-data="empty"] .when-sample { display: none !important; }
 html[data-data="sample"] .when-empty { display: none !important; }
 .acc-plain > summary { grid-template-columns: minmax(0, 1fr) 20px; }
+
+/* Click heatmap panel (templates/modules/_heatmap.html, static/heatmap.js) */
+.hm-devices { padding-bottom: 0; }
+.hm-body { overflow-x: auto; background: var(--paper); }
+.hm-stage { position: relative; display: block; width: fit-content; max-width: 100%; margin: 0 auto; border: 1px solid var(--line); background: #fff; }
+.hm-stage img { display: block; max-width: 100%; height: auto; }
+.hm-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hm-foot > * + * { margin-top: 8px; }
+.hm-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hm-ramp { width: 160px; height: 12px; border: 1px solid var(--line); border-radius: 2px; }
+.hm-dim { opacity: .45; }
+.seg button:disabled { opacity: .4; cursor: not-allowed; }

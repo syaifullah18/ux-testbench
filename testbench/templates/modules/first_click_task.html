@@ -1,20 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
+{% set multi = task.clicks == 'all' %}
 <div class="max-w-4xl mx-auto p-4 flex flex-col h-[90vh]">
     <div class="mb-4 bg-card p-4 shadow rounded-lg sticky top-4 z-10 text-center">
-        <h2 class="text-xl font-bold text-gray-900">{{ task.prompt }}</h2>
-        <p class="text-sm text-gray-500 mt-1">Click anywhere on the image below to complete this task.</p>
+        <h2 class="text-xl font-bold text-ink">{{ task.prompt }}</h2>
+        <p class="text-sm text-ink-subtle mt-1">{{ t('first_click.hint_all') if multi else t('first_click.hint_first') }}</p>
+        {% if multi %}
+        <div class="mt-3 flex items-center justify-center gap-3">
+            <span class="text-sm text-ink-muted" id="click-count" aria-live="polite"></span>
+            <button type="button" id="btn-undo" class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 border border-line bg-card text-ink hover:bg-surface-subtle focus:outline-none focus:ring-4 focus:ring-brand/30 disabled:opacity-40" disabled>{{ t('first_click.undo') }}</button>
+            <button type="button" id="btn-continue" class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand/30 disabled:opacity-40" disabled><i class="fa-solid fa-arrow-right"></i>{{ t('common.next') }}</button>
+        </div>
+        {% endif %}
     </div>
-    
-    <div class="flex-grow relative overflow-auto border border-gray-300 rounded shadow-inner bg-gray-50" id="image-container">
-        <!-- We use an img tag with crosshair cursor -->
-        <img src="{{ url_for('web.module_action', slug=ctx.project.slug, mid=ctx.module.id, path=task.image) if '://' not in task.image else task.image }}" 
-             id="task-image"
-             alt="Task image" 
-             class="cursor-crosshair max-w-none block"
-             draggable="false">
+
+    <div class="flex-grow overflow-auto border border-line rounded shadow-inner bg-surface-subtle" id="image-container">
+        <div class="relative inline-block" id="image-stage">
+            <img src="{{ url_for('web.module_action', slug=ctx.project.slug, mid=ctx.module.id, path=task.image) if '://' not in task.image else task.image }}"
+                 id="task-image"
+                 alt="{{ t('first_click.image_alt') }}"
+                 class="cursor-crosshair max-w-none block"
+                 draggable="false">
+        </div>
     </div>
-    
+
     <form method="POST" id="click-form" class="hidden">
         <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
         <input type="hidden" name="x" id="inp-x">
@@ -22,69 +31,85 @@
         <input type="hidden" name="w" id="inp-w">
         <input type="hidden" name="h" id="inp-h">
         <input type="hidden" name="time_ms" id="inp-time">
+        <input type="hidden" name="clicks" id="inp-clicks">
+        <input type="hidden" name="viewport_w" id="inp-vw">
+        <input type="hidden" name="viewport_h" id="inp-vh">
     </form>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+    const MULTI = {{ 'true' if multi else 'false' }};
+    const MAX = {{ clicks_max }};
+    const COUNT = {{ t('first_click.count')|tojson }};
     const img = document.getElementById("task-image");
+    const stage = document.getElementById("image-stage");
     const form = document.getElementById("click-form");
-    const startTime = performance.now();
-    
-    img.addEventListener("click", (e) => {
-        // Prevent double clicks
-        if (form.submitted) return;
-        form.submitted = true;
-        
-        // Calculate relative coordinates
-        const rect = img.getBoundingClientRect();
-        
-        // The intrinsic dimensions
-        const naturalW = img.naturalWidth;
-        const naturalH = img.naturalHeight;
-        
-        // Rendered dimensions
-        const renderW = img.width;
-        const renderH = img.height;
-        
-        // Scaling factors
-        const scaleX = naturalW / renderW;
-        const scaleY = naturalH / renderH;
-        
-        // Click position on the rendered image
-        const xRender = e.clientX - rect.left;
-        const yRender = e.clientY - rect.top;
-        
-        // Map to natural image dimensions
-        const x = Math.round(xRender * scaleX);
-        const y = Math.round(yRender * scaleY);
-        const timeMs = Math.round(performance.now() - startTime);
-        
-        document.getElementById("inp-x").value = x;
-        document.getElementById("inp-y").value = y;
-        document.getElementById("inp-w").value = naturalW;
-        document.getElementById("inp-h").value = naturalH;
-        document.getElementById("inp-time").value = timeMs;
-        
-        // Show a visual indicator where clicked
+    const set = (id, v) => { document.getElementById(id).value = v; };
+    // Time counts from when the image is on screen, not from when the page began loading.
+    let started = img.complete ? performance.now() : null;
+    img.addEventListener("load", () => { started = performance.now(); });
+    const clicks = [];
+
+    function marker(x, y, n) {
+        // Placed in percent of the image, so it stays on its spot if the window is resized.
         const dot = document.createElement("div");
-        dot.style.position = "absolute";
-        dot.style.left = e.clientX + "px";
-        dot.style.top = e.clientY + "px";
-        dot.style.width = "16px";
-        dot.style.height = "16px";
-        dot.style.marginLeft = "-8px";
-        dot.style.marginTop = "-8px";
-        dot.style.backgroundColor = "rgba(239, 68, 68, 0.8)"; // Red
-        dot.style.border = "2px solid white";
-        dot.style.borderRadius = "50%";
-        dot.style.boxShadow = "0 0 4px rgba(0,0,0,0.5)";
-        dot.style.zIndex = "50";
-        document.body.appendChild(dot);
-        
-        // Brief delay for visual feedback
-        setTimeout(() => form.submit(), 300);
+        dot.className = "absolute size-4 -ml-2 -mt-2 rounded-full border-2 border-white pointer-events-none";
+        dot.style.cssText += `left:${x / img.naturalWidth * 100}%;top:${y / img.naturalHeight * 100}%;` +
+            "background:rgba(201,79,31,.85);box-shadow:0 0 4px rgba(0,0,0,.5)";
+        if (n) dot.dataset.n = n;
+        stage.appendChild(dot);
+        return dot;
+    }
+
+    function send() {
+        set("inp-w", img.naturalWidth);
+        set("inp-h", img.naturalHeight);
+        set("inp-vw", window.innerWidth);
+        set("inp-vh", window.innerHeight);
+        if (clicks.length) {
+            set("inp-x", clicks[0].x);
+            set("inp-y", clicks[0].y);
+            set("inp-time", clicks[0].t_ms);
+        }
+        set("inp-clicks", JSON.stringify(clicks.map(({ x, y, t_ms }) => ({ x, y, t_ms }))));
+        form.submit();
+    }
+
+    function refresh() {
+        document.getElementById("click-count").textContent = COUNT.replace("{n}", clicks.length);
+        document.getElementById("btn-continue").disabled = !clicks.length;
+        document.getElementById("btn-undo").disabled = !clicks.length;
+    }
+
+    img.addEventListener("click", (e) => {
+        if (form.submitted || !img.naturalWidth || started === null) return;
+        if (MULTI && clicks.length >= MAX) return;
+        // Natural image pixels, whatever size the image is drawn at.
+        const rect = img.getBoundingClientRect();
+        const x = Math.round((e.clientX - rect.left) * img.naturalWidth / rect.width);
+        const y = Math.round((e.clientY - rect.top) * img.naturalHeight / rect.height);
+        const click = { x, y, t_ms: Math.round(performance.now() - started) };
+        click.el = marker(x, y);
+        clicks.push(click);
+        if (MULTI) { refresh(); return; }
+        form.submitted = true;
+        setTimeout(send, 300);   // long enough to see the marker land
     });
+
+    if (MULTI) {
+        refresh();
+        document.getElementById("btn-undo").addEventListener("click", () => {
+            const last = clicks.pop();
+            if (last) last.el.remove();
+            refresh();
+        });
+        document.getElementById("btn-continue").addEventListener("click", () => {
+            if (!clicks.length || form.submitted) return;
+            form.submitted = true;
+            send();
+        });
+    }
 });
 </script>
 {% endblock %}

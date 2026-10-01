@@ -1,0 +1,65 @@
+{#- One click-density panel. Expects `p` = {"id", "data": heatmap.panel(...), "title"} and
+    `image_src`. heatmap.js draws it; everything a reader needs in words is rendered here, so the
+    colours are never the only place a number lives. -#}
+{% set buckets = p.data %}
+{% set first_dev = (buckets|list|first) if buckets else none %}
+<section class="panel hm" data-heatmap aria-labelledby="hm-{{ p.id }}">
+  <header class="panel-h">
+    <div class="flex-1">
+      <h2 id="hm-{{ p.id }}">{{ p.title }}</h2>
+      {% for dev, b in buckets.items() %}
+        <p data-bucket="{{ dev }}" {% if dev != first_dev %}hidden{% endif %}>{{ t('heatmap.counts', participants=b.n_participants, clicks=b.n_clicks) }}</p>
+      {% endfor %}
+      {% if p.mean_first_ms is defined and p.mean_first_ms is not none %}
+        <p>{{ t('heatmap.mean_first', s=p.mean_first_ms|secs) }}</p>
+      {% endif %}
+    </div>
+    {% if buckets %}
+    <div class="seg" role="group" aria-label="{{ t('heatmap.mode_label') }}">
+      <button type="button" data-mode="heat">{{ t('heatmap.mode_heat') }}</button>
+      <button type="button" data-mode="dots">{{ t('heatmap.mode_dots') }}</button>
+      <button type="button" data-mode="image">{{ t('heatmap.mode_image') }}</button>
+    </div>
+    {% endif %}
+  </header>
+
+  {% if not buckets %}
+  <div class="panel-b"><p class="t-meta">{{ t('heatmap.no_clicks') }}</p></div>
+  {% else %}
+  {% if buckets|length > 1 %}
+  <div class="panel-b hm-devices">
+    <div class="seg" role="group" aria-label="{{ t('heatmap.device_label') }}">
+      {% for dev in buckets %}
+        <button type="button" data-device="{{ dev }}">{{ t('heatmap.mobile', max=mobile_max) if dev == 'mobile' else t('heatmap.desktop') }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="panel-b hm-body">
+    <div class="hm-stage">
+      <img src="{{ image_src }}" alt="{{ t('heatmap.image_alt', title=p.title) }}">
+      <canvas aria-hidden="true"></canvas>
+    </div>
+  </div>
+  {% for dev, b in buckets.items() %}
+  <div class="panel-f hm-foot" data-bucket="{{ dev }}" {% if dev != first_dev %}hidden{% endif %}>
+    {% if b.grid %}
+      <p class="hm-legend" data-legend-for="heat">
+        <span class="num">0</span>
+        <canvas class="hm-ramp" width="160" height="12" aria-hidden="true"></canvas>
+        <span class="num">{{ t('heatmap.legend_high', v='%.2g'|format(b.grid.clip)) }}</span>
+        <span>{{ t('heatmap.legend', px=b.grid.cell_px|round|int) }}</span>
+      </p>
+      {% if b.grid.clipped %}
+      <p data-legend-for="heat">{{ t('heatmap.clipped', v='%.2g'|format(b.grid.clip), peak='%.2g'|format(b.grid.peak)) }}</p>
+      {% endif %}
+    {% else %}
+      <p>{{ t('heatmap.min_n', min=min_n) }}</p>
+    {% endif %}
+    {% if b.dots is none %}<p>{{ t('heatmap.no_dots') }}</p>{% endif %}
+    {% if b.excluded %}<p>{{ t('heatmap.excluded', n=b.excluded) }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <script type="application/json" data-heatmap-data>{{ buckets|tojson }}</script>
+  {% endif %}
+</section>
