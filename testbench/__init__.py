@@ -149,6 +149,12 @@ def create_app(overrides=None):
     app.register_blueprint(admin.bp)   # before web, so /admin/ is never taken as a project slug
     app.register_blueprint(studio.bp)
     app.register_blueprint(web.bp)
+    if app.config["TESTBENCH_MODE"] == "public":
+        # Every admin page answers at both /app/p/<slug>/… and /<slug>/admin/…, and url_for builds
+        # the first rule registered, which is the /<slug>/admin/ one. A public instance links to its
+        # own /app/p/ URLs, so those go first. Werkzeug's later re-sort is stable and keeps this.
+        for rules in app.url_map._rules_by_endpoint.values():
+            rules.sort(key=lambda r: not r.rule.startswith("/app/"))
     return app
 
 

@@ -305,7 +305,7 @@
         slugIn.value = '';
         ok.disabled = true;
         document.getElementById('del-data').checked = false;
-        deleteForm.action = '/' + encodeURIComponent(target) + '/admin/studio/delete';
+        deleteForm.action = {{ url_for('studio.delete_project', slug='__SLUG__')|tojson }}.replace('__SLUG__', encodeURIComponent(target));
         dlg.showModal();
         slugIn.focus();
       });
