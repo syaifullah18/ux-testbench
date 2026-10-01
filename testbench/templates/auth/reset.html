@@ -10,15 +10,15 @@
         <div>
             <label class="block text-sm font-medium text-ink-muted mb-1" for="rp-pw">New password</label>
             <input id="rp-pw" name="password" type="password" required minlength="10"
-                   class="w-full border {{ 'border-red-400' if errors.password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                   class="w-full border {{ 'border-bad' if errors.password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
             <p class="text-ink-subtle text-[12px] mt-1">At least 10 characters.</p>
-            {% if errors.password %}<p class="text-red-600 text-[13px] mt-1">{{ errors.password }}</p>{% endif %}
+            {% if errors.password %}<p class="text-bad text-[13px] mt-1">{{ errors.password }}</p>{% endif %}
         </div>
         <div>
             <label class="block text-sm font-medium text-ink-muted mb-1" for="rp-pw2">Confirm new password</label>
             <input id="rp-pw2" name="confirm" type="password" required
-                   class="w-full border {{ 'border-red-400' if errors.confirm else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-            {% if errors.confirm %}<p class="text-red-600 text-[13px] mt-1">{{ errors.confirm }}</p>{% endif %}
+                   class="w-full border {{ 'border-bad' if errors.confirm else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+            {% if errors.confirm %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm }}</p>{% endif %}
         </div>
         <button type="submit" class="w-full bg-brand-600 text-white font-semibold min-h-11 py-2.5 rounded-lg hover:bg-brand-700 transition-colors mt-2">
             Reset password

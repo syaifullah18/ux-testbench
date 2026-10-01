@@ -14,14 +14,14 @@
 
 <div class="space-y-4">
 {% for r in reports %}
-<div class="bg-card border rounded-2xl p-5 shadow-sm {% if r.status == 'open' %}border-amber-300{% else %}border-line/90{% endif %}">
+<div class="bg-card border rounded-2xl p-5 shadow-sm {% if r.status == 'open' %}border-warn-line{% else %}border-line/90{% endif %}">
     <div class="flex flex-wrap items-center gap-2 mb-2">
         <span class="text-xs font-bold text-ink-subtle">#{{ r.id }}</span>
         <span class="text-[11px] font-bold px-2 py-0.5 rounded-full
-            {% if r.status == 'open' %}bg-amber-100 text-amber-700
-            {% elif r.status == 'actioned' %}bg-red-100 text-red-700
+            {% if r.status == 'open' %}bg-warn-soft text-warn-ink
+            {% elif r.status == 'actioned' %}bg-bad-soft text-bad-ink
             {% elif r.status == 'dismissed' %}bg-line text-ink-muted
-            {% else %}bg-blue-100 text-blue-700{% endif %}">{{ r.status }}</span>
+            {% else %}bg-info-soft text-info-ink{% endif %}">{{ r.status }}</span>
         {% if r.project_slug %}<code class="text-[11px] bg-surface-subtle px-1.5 py-0.5 rounded">{{ r.project_slug }}</code>{% endif %}
         <span class="text-xs text-ink-subtle">{{ r.at[:16].replace('T', ' ') }} UTC</span>
     </div>
@@ -42,7 +42,7 @@
 </div>
 {% else %}
 <div class="text-center py-16 bg-surface-subtle border border-dashed border-line rounded-3xl">
-    <div class="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-xl">
+    <div class="size-12 rounded-2xl bg-ok-soft text-ok flex items-center justify-center mx-auto mb-3 text-xl">
         <i class="fa-solid fa-check"></i>
     </div>
     <p class="text-ink-muted text-sm">Nothing to review{% if status %} with status "{{ status }}"{% endif %}.</p>

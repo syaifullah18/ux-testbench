@@ -5,11 +5,11 @@
 {% block main %}
 {# The task panel sits above the prototype frame and the frame fills the rest, so on a phone
    the prototype renders at the phone's own width and its mobile layout is what gets tested. #}
-<section class="flex-none bg-amber-50 border-b border-amber-300 px-4 sm:px-6 py-2.5">
+<section class="flex-none bg-warn-soft border-b border-warn-line px-4 sm:px-6 py-2.5">
     <div class="flex items-center justify-between gap-3">
-        <p class="text-[12px] font-semibold uppercase tracking-wide text-amber-900">{{ t('ab.view_n', n=n) }} · <span id="t-count"></span></p>
+        <p class="text-[12px] font-semibold uppercase tracking-wide text-warn-ink">{{ t('ab.view_n', n=n) }} · <span id="t-count"></span></p>
         <div class="flex gap-2 flex-none">
-            <button id="btn-toggle" type="button" class="hidden text-[13px] min-h-10 inline-flex items-center px-3 rounded-lg border border-amber-500 text-amber-900 bg-card sm:!hidden" aria-expanded="true" aria-controls="t-prompt"></button>
+            <button id="btn-toggle" type="button" class="hidden text-[13px] min-h-10 inline-flex items-center px-3 rounded-lg border border-warn text-warn-ink bg-card sm:!hidden" aria-expanded="true" aria-controls="t-prompt"></button>
             <button id="btn-answer" type="button" class="hidden inline-flex items-center gap-2 text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand/30 font-semibold rounded-lg text-[14px] min-h-10 px-4"><i class="fa-solid fa-pen"></i><span></span></button>
         </div>
     </div>
@@ -28,13 +28,13 @@
     </div>
 </div>
 
-<dialog id="dlg" class="rounded-xl p-0 w-[min(32rem,calc(100vw-2rem))] backdrop:bg-slate-900/50">
+<dialog id="dlg" class="bg-card text-ink rounded-xl p-0 w-[min(32rem,calc(100vw-2rem))] backdrop:bg-slate-900/50">
     <form id="f-answer" class="p-6 space-y-4" novalidate>
         <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
         <h2 id="d-title" class="text-lg font-bold text-ink"></h2>
         <p id="d-prompt" class="text-[14px] text-ink-muted"></p>
         <div id="d-fields" class="space-y-4"></div>
-        <p id="d-error" class="hidden text-[13px] text-red-700" role="alert"></p>
+        <p id="d-error" class="hidden text-[13px] text-bad-ink" role="alert"></p>
         <div class="flex flex-wrap gap-2 pt-2">
             <button type="submit" id="btn-submit" class="inline-flex items-center gap-2 text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand/30 font-semibold rounded-lg text-[14px] px-4 py-2.5"></button>
             <button type="button" id="btn-giveup" class="text-[14px] px-4 py-2.5 rounded-lg border border-line hover:bg-surface-subtle"></button>
@@ -45,7 +45,7 @@
         <h2 id="e-title" class="text-lg font-bold text-ink mb-1"></h2>
         <p id="e-scale" class="text-[14px] text-ink-muted mb-4"></p>
         <div class="grid grid-cols-7 gap-1.5" id="ease-buttons"></div>
-        <p id="ease-error" class="hidden mt-3 text-[13px] text-red-700" role="alert"></p>
+        <p id="ease-error" class="hidden mt-3 text-[13px] text-bad-ink" role="alert"></p>
     </div>
 </dialog>
 {% endblock %}

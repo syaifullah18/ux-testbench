@@ -138,24 +138,24 @@
             const wrap = document.createElement('div');
             if (f.kind === 'choice') {
                 const p = document.createElement('p'), list = document.createElement('div');
-                p.className = 'text-[14px] font-semibold text-slate-900 mb-2';
+                p.className = 'text-[14px] font-semibold text-ink mb-2';
                 p.textContent = f.label;
                 list.className = 'space-y-2';
                 f.options.forEach((opt) => {
                     const l = document.createElement('label'), r = document.createElement('input');
-                    l.className = 'flex items-center gap-2.5 px-3.5 py-2.5 border border-slate-300 rounded-lg cursor-pointer text-[14px] has-[:checked]:border-brand has-[:checked]:bg-brand/10';
-                    Object.assign(r, { type: 'radio', name: f.id, value: opt, className: 'w-4 h-4 text-brand border-slate-400 focus:ring-0' });
+                    l.className = 'flex items-center gap-2.5 px-3.5 py-2.5 border border-line rounded-lg cursor-pointer text-[14px] has-[:checked]:border-brand has-[:checked]:bg-brand/10';
+                    Object.assign(r, { type: 'radio', name: f.id, value: opt, className: 'w-4 h-4 text-brand border-ink-subtle focus:ring-0' });
                     l.append(r, document.createTextNode(opt));
                     list.appendChild(l);
                 });
                 wrap.append(p, list);
             } else {
                 const l = document.createElement('label'), i = document.createElement('input');
-                l.className = 'block mb-1.5 text-[14px] font-semibold text-slate-900';
+                l.className = 'block mb-1.5 text-[14px] font-semibold text-ink';
                 l.textContent = f.label;
                 l.htmlFor = 'f-' + f.id;
                 Object.assign(i, { type: 'text', id: 'f-' + f.id, name: f.id, placeholder: f.placeholder || '', autocomplete: 'off',
-                    className: 'bg-white border border-slate-400 rounded-lg block w-full px-3.5 py-2.5 text-[15px] focus:ring-brand focus:border-brand' });
+                    className: 'bg-card text-ink border border-ink-subtle rounded-lg block w-full px-3.5 py-2.5 text-[15px] focus:ring-brand focus:border-brand' });
                 wrap.append(l, i);
             }
             box.appendChild(wrap);
@@ -215,7 +215,7 @@
             const b = document.createElement('button');
             b.type = 'button';
             b.textContent = i;
-            b.className = 'h-11 rounded-lg border border-slate-300 font-bold text-slate-900 hover:border-brand hover:bg-brand/10 focus:ring-4 focus:ring-brand/30';
+            b.className = 'h-11 rounded-lg border border-line font-bold text-ink hover:border-brand hover:bg-brand/10 focus:ring-4 focus:ring-brand/30';
             b.addEventListener('click', () => submit(i));
             box.appendChild(b);
         }
