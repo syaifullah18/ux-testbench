@@ -1,0 +1,277 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Prototypes and files · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}build{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'build' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  {% set active_build_subnav = 'prototypes' %}
+  {% include "admin/_build_nav.html" %}
+
+  <div class="stack min-w-0">
+    <!-- Read-only notice -->
+    {% if not project.editable %}
+    <div id="ro" class="panel">
+      <div class="panel-b flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="t-strong">This study is read-only</p>
+          <p class="t-meta">You can look at the files and preview them. Duplicate the study to change them.</p>
+        </div>
+        {% if is_super %}
+        <form method="post" action="{{ url_for('studio.new_project') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+          <input type="hidden" name="source" value="duplicate">
+          <input type="hidden" name="from" value="{{ project.slug }}">
+          <input type="hidden" name="slug" value="{{ project.slug }}-copy">
+          <button type="submit" class="btn btn-primary">Duplicate to edit</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+
+    <!-- Upload prototypes panel -->
+    {% if project.editable %}
+    <section class="panel" id="upload-panel" aria-labelledby="up-h" data-can="edit">
+      <header class="panel-h">
+        <div>
+          <h2 id="up-h">Upload prototypes</h2>
+          <p>Static web pages with their styles, scripts and images. A zip is unpacked for you.</p>
+        </div>
+      </header>
+      <form method="post" action="{{ url_for('studio.files_upload', slug=project.slug) }}" enctype="multipart/form-data" id="up-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+        <div class="panel-b">
+          <div class="dropzone" id="drop">
+            <p class="t-strong">Drop files or a zip here</p>
+            <p class="t-meta mt-1">or</p>
+            <div class="mt-3 flex flex-wrap justify-center gap-2">
+              <button type="button" class="btn btn-secondary" id="pick-files">Choose files</button>
+              <button type="button" class="btn btn-secondary" id="pick-folder">Choose a folder</button>
+            </div>
+            <input type="file" id="in-files" name="files" multiple class="is-hidden" accept=".zip,.html,.htm,.css,.js,.json,.map,.txt,.csv,.xml,.png,.jpg,.jpeg,.gif,.svg,.webp,.avif,.ico,.bmp,.tif,.tiff,.woff,.woff2,.ttf,.otf,.mp4,.webm,.mov,.ogg,.mp3,.wav,.m4a,.pdf">
+            <input type="file" id="in-folder" name="files" webkitdirectory class="is-hidden">
+          </div>
+
+          <div class="field grid gap-6 sm:grid-cols-2" style="margin-top:24px">
+            <div>
+              <label class="label" for="target">Put them in</label>
+              <div class="flex">
+                <span class="grid flex-none place-items-center rounded-l-md border border-r-0 border-line-strong bg-paper px-3 font-mono text-sm text-muted">prototypes/</span>
+                <input id="target" name="folder" class="input rounded-l-none font-mono" placeholder="checkout" spellcheck="false" autocomplete="off">
+              </div>
+              <p class="help">Leave empty to put files at the top. Files with the same path are replaced.</p>
+            </div>
+            <div>
+              <span class="label">Zip files</span>
+              <label class="flex items-center gap-4" style="cursor:pointer">
+                <span class="switch">
+                  <input type="checkbox" id="extract" name="extract" value="1" checked>
+                  <span class="track"></span>
+                </span>
+                <span>Unpack zips after upload</span>
+              </label>
+            </div>
+          </div>
+          <p class="help">Accepted: web pages, styles, scripts, images, fonts, video and PDF. Up to 10 MB per file.</p>
+        </div>
+      </form>
+      <div id="result" class="is-hidden" aria-live="polite">
+        <div class="group-h" id="result-h"></div>
+        <ul class="rows" id="result-list"></ul>
+      </div>
+      <p class="panel-f">
+        <i class="fa-solid fa-circle-info mr-2" aria-hidden="true"></i>In internal mode, prototypes run with the app's permissions. Only upload pages you trust.
+      </p>
+    </section>
+    {% endif %}
+
+    <!-- Files panel -->
+    <section class="panel" aria-labelledby="fl-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="fl-h">Files</h2>
+          <p id="fl-sum">{{ files|length }} {{ 'file' if files|length == 1 else 'files' }}, {{ total_size_formatted }}</p>
+        </div>
+        <div class="w-64">
+          <div class="meter" role="img" aria-label="Storage used">
+            <span id="meter" style="width:{{ quota_pct }}%"></span>
+          </div>
+          <p class="t-meta mt-1" id="meter-t">{{ total_size_formatted }} of 100 MB used, up to 10 MB per file</p>
+        </div>
+      </header>
+
+      <div class="file-grid file-head {% if files|length == 0 %}is-hidden{% endif %}" aria-hidden="true">
+        <span></span><span>File</span><span class="file-hide">Size</span><span class="file-hide">Used by</span><span></span>
+      </div>
+
+      <ul class="rows" id="files">
+        {% for f in files %}
+        <li class="file-grid">
+          <i class="fa-solid {{ f.icon_class }} text-muted" aria-hidden="true"></i>
+          <div class="min-w-0">
+            <p class="row-title font-mono" style="font-size:14px;font-weight:500;overflow-wrap:anywhere">{{ f.rel }}</p>
+            {% if f.locked %}
+            <p class="t-meta">Can’t delete while it is in use.</p>
+            {% endif %}
+          </div>
+          <span class="num file-hide">{{ f.size_formatted }}</span>
+          <div class="file-hide">
+            {% if f.use %}
+            <a class="link" href="{{ url_for('studio.module_edit', slug=project.slug, mid=f.use.id) }}">{{ f.use.title }}</a>
+            <span class="t-meta block">{{ f.use.note }}</span>
+            {% elif f.loaded_by %}
+            <span>Loaded by {{ f.loaded_by }} prototype pages</span>
+            {% else %}
+            <span class="text-muted">Not used</span>
+            {% endif %}
+          </div>
+          <div class="flex justify-end gap-2">
+            {% if f.is_previewable %}
+            <button type="button" class="btn btn-secondary btn-sm" data-prev="{{ f.src }}" data-path="{{ f.rel }}">Preview</button>
+            {% endif %}
+            {% if project.editable %}
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" data-del="{{ f.rel }}" aria-label="Delete {{ f.rel }}" {% if f.locked %}disabled title="In use"{% endif %}>
+              <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+            </button>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div id="none" class="{% if files|length > 0 %}is-hidden{% endif %} panel-b">
+        <p class="t-strong">No files yet</p>
+        <p class="t-meta mt-1">Upload a zip of your prototype to get started.</p>
+      </div>
+    </section>
+
+    <!-- Preview panel -->
+    <section class="panel" aria-labelledby="pv-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="pv-h">Preview</h2>
+          <p id="pv-file">Choose a page from the list.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Preview width">
+          <button type="button" data-w="375" aria-pressed="true">Phone</button>
+          <button type="button" data-w="900" aria-pressed="false">Desktop</button>
+        </div>
+      </header>
+      <div class="panel-b" style="background:var(--paper);border-radius:0 0 7px 7px">
+        <div id="frame-wrap" style="width:375px;max-width:100%;margin:0 auto">
+          <iframe id="frame" title="Prototype preview" sandbox="allow-scripts allow-same-origin" style="width:100%;height:560px;background:#fff;border:1px solid var(--line-strong);border-radius:8px"></iframe>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Delete file modal -->
+<dialog id="dlg-del" aria-labelledby="dlg-del-h">
+  <form method="post" action="{{ url_for('studio.files_delete', slug=project.slug) }}" class="p-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+    <input type="hidden" name="path" id="del-path-input" value="">
+    <h2 id="dlg-del-h" class="t-panel">Delete <span class="font-mono" id="del-name"></span>?</h2>
+    <p class="mt-2 text-muted">Nothing uses this file. It can't be restored.</p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="del-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid">Delete file</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* Preview switcher */
+  function preview(src, path) {
+    if (!src) return;
+    $('frame').src = src;
+    $('pv-file').textContent = path;
+    $('frame').scrollIntoView({ block: 'nearest' });
+  }
+
+  document.addEventListener('click', function (e) {
+    var p = e.target.closest('[data-prev]');
+    if (p) {
+      preview(p.dataset.prev, p.dataset.path);
+      return;
+    }
+    var d = e.target.closest('[data-del]');
+    if (d && !d.disabled) {
+      var path = d.dataset.del;
+      $('del-name').textContent = path;
+      $('del-path-input').value = path;
+      $('dlg-del').showModal();
+    }
+  });
+
+  var delCancel = $('del-cancel');
+  if (delCancel) {
+    delCancel.addEventListener('click', function () { $('dlg-del').close(); });
+  }
+
+  /* Phone / Desktop segmented button width */
+  document.querySelectorAll('[data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-w]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      $('frame-wrap').style.width = b.dataset.w + 'px';
+    });
+  });
+
+  /* File upload hooks */
+  var pickFiles = $('pick-files');
+  var pickFolder = $('pick-folder');
+  var inFiles = $('in-files');
+  var inFolder = $('in-folder');
+  var upForm = $('up-form');
+
+  if (pickFiles && inFiles) {
+    pickFiles.addEventListener('click', function () { inFiles.click(); });
+    inFiles.addEventListener('change', function () {
+      if (this.files.length) upForm.submit();
+    });
+  }
+
+  if (pickFolder && inFolder) {
+    pickFolder.addEventListener('click', function () { inFolder.click(); });
+    inFolder.addEventListener('change', function () {
+      if (this.files.length) upForm.submit();
+    });
+  }
+
+  /* Drag and drop on dropzone */
+  var dz = $('drop');
+  if (dz) {
+    ['dragenter', 'dragover'].forEach(function (n) {
+      dz.addEventListener(n, function (e) { e.preventDefault(); dz.classList.add('over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (n) {
+      dz.addEventListener(n, function (e) { e.preventDefault(); dz.classList.remove('over'); });
+    });
+    dz.addEventListener('drop', function (e) {
+      if (e.dataTransfer.files.length) {
+        inFiles.files = e.dataTransfer.files;
+        upForm.submit();
+      }
+    });
+  }
+
+  /* Automatically preview the first previewable page if available */
+  var firstPrev = document.querySelector('[data-prev]');
+  if (firstPrev) {
+    preview(firstPrev.dataset.prev, firstPrev.dataset.path);
+  }
+})();
+</script>
+{% endblock %}

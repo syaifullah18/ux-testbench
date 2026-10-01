@@ -1,44 +1,80 @@
 {#- Aggregates for any list of questions, from questions.summarize(). -#}
 {% macro summary_block(items, t) %}
 {% for s in items %}{% set q = s.q %}
-<section class="border border-line rounded-xl p-4 overflow-x-auto">
-    <p class="font-semibold text-ink">{{ q.label }}</p>
-    <p class="text-[12px] text-ink-subtle mb-3">{{ q.type }} · n = {{ s.n }}</p>
+<section class="panel">
+    <header class="panel-h">
+      <div>
+        <h2>{{ q.label }}</h2>
+        <p>{{ q.type|capitalize }}, {{ s.n }} answered</p>
+      </div>
+    </header>
     {% if q.type in ('single', 'multi') %}
         {% set top = (s.counts|map(attribute=1)|max) or 1 %}
-        <ul class="space-y-1.5 text-[14px]">
+        <ul class="rows">
         {% for label, n in s.counts %}
-            <li class="grid grid-cols-[minmax(0,1fr)_8rem_3rem] items-center gap-3">
-                <span>{{ label }}</span>
-                <span class="h-2 rounded bg-surface-subtle"><span class="block h-2 rounded bg-brand" style="width: {{ (n / top * 100)|round(1) }}%"></span></span>
-                <span class="text-right font-semibold">{{ n }}</span>
+            {% set pct = ((n / s.n * 100)|round|int) if s.n else 0 %}
+            <li class="row">
+                <div class="row-main">
+                    <p>{{ label }}</p>
+                    <div class="mt-2 h-2 rounded-full bg-line overflow-hidden">
+                        <div class="h-full rounded-full bg-brand" style="width: {{ (n / top * 100)|round(1) }}%"></div>
+                    </div>
+                </div>
+                <span class="num" style="width:96px;text-align:right">
+                    <span class="t-strong">{{ n }}</span> <span class="text-muted">({{ pct }}%)</span>
+                </span>
             </li>
         {% endfor %}
         </ul>
+        {% if q.type == 'multi' %}
+        <p class="panel-f">People could pick more than one, so percentages can add up to more than 100.</p>
+        {% endif %}
     {% elif q.type == 'scale' %}
-        <p class="text-[14px] mb-2">{{ t('admin.mean') }} <strong>{{ s.mean|num(2) }}</strong> / {{ q.points }}</p>
-        <div class="flex gap-1 text-[12px]">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-surface-subtle py-1"><strong>{{ n }}</strong></div><div class="text-ink-subtle mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
+        <div class="panel-b">
+            <p class="text-[14px] mb-2">{{ t('admin.mean') }} <strong>{{ s.mean|num(2) }}</strong> / {{ q.points }}</p>
+            <div class="flex gap-1 text-[12px]">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-surface-subtle py-1"><strong>{{ n }}</strong></div><div class="text-ink-subtle mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
+        </div>
     {% elif q.type == 'matrix' %}
-        <table class="w-full text-[14px]">
-            <thead><tr class="text-left text-ink-subtle border-b border-line">
-                <th class="py-1.5 pr-3 font-semibold">{{ t('admin.row') }}</th>
-                {% if s.has_picks %}<th class="py-1.5 px-3 font-semibold">{{ t('admin.picked') }}</th>{% endif %}
-                <th class="py-1.5 px-3 font-semibold">{{ t('admin.mean') }} (1-{{ q.points }})</th>
-                <th class="py-1.5 px-3 font-semibold">{{ t('admin.top_two') }}</th><th class="py-1.5 px-3 font-semibold">n</th>
-                {% if q.na_label %}<th class="py-1.5 px-3 font-semibold">{{ q.na_label }}</th>{% endif %}
+        <div class="overflow-x-auto">
+        <table class="tbl" style="min-width:640px">
+            <thead><tr>
+                <th scope="col">{{ t('admin.row') }}</th>
+                {% if s.has_picks %}<th scope="col" class="text-right">{{ t('admin.picked') }}</th>{% endif %}
+                <th scope="col" class="text-right">{{ t('admin.mean') }} (1-{{ q.points }})</th>
+                <th scope="col" class="text-right">{{ t('admin.top_two') }}</th>
+                <th scope="col" class="text-right">n</th>
+                {% if q.na_label %}<th scope="col" class="text-right">{{ q.na_label }}</th>{% endif %}
             </tr></thead>
             <tbody>{% for r in s.rows %}
-            <tr class="border-b border-line last:border-0">
-                <td class="py-1.5 pr-3">{{ r.label }}</td>
-                {% if s.has_picks %}<td class="py-1.5 px-3 font-semibold">{{ r.picks }}</td>{% endif %}
-                <td class="py-1.5 px-3">{{ r.mean|num(2) }}</td><td class="py-1.5 px-3">{{ r.top_pct|pct }}</td><td class="py-1.5 px-3">{{ r.n }}</td>
-                {% if q.na_label %}<td class="py-1.5 px-3">{{ r.na }}</td>{% endif %}
+            <tr>
+                <td class="t-strong">{{ r.label }}</td>
+                {% if s.has_picks %}<td class="num text-right">{{ r.picks }}</td>{% endif %}
+                <td class="num text-right">{{ r.mean|num(2) }}</td>
+                <td class="num text-right">{{ r.top_pct|pct }}</td>
+                <td class="num text-right">{{ r.n }}</td>
+                {% if q.na_label %}<td class="num text-right">{{ r.na }}</td>{% endif %}
             </tr>{% endfor %}</tbody>
         </table>
-        {% if s.has_picks %}<p class="mt-2 text-[12px] text-ink-subtle">{{ t('admin.picked_hint') }}</p>{% endif %}
+        </div>
+        {% if s.has_picks %}<p class="panel-f">{{ t('admin.picked_hint') }}</p>{% endif %}
     {% elif q.type == 'text' %}
-        <details {% if s.texts|length <= 5 %}open{% endif %}><summary class="cursor-pointer text-[14px] text-brand-600 dark:text-brand-400">{{ t('admin.n_answers', n=s.texts|length) }}</summary>
-        <ul class="mt-2 space-y-2 text-[14px]">{% for who, text in s.texts %}<li class="border-l-2 border-line pl-3"><span class="text-ink-subtle text-[12px]">{{ who }}</span><br><span class="whitespace-pre-line">{{ text }}</span></li>{% endfor %}</ul>
+        <details class="acc acc-plain" {% if s.texts|length <= 5 %}open{% endif %}>
+            <summary>
+                <span>
+                    <span class="row-title block">{{ s.texts|length }} answers</span>
+                </span>
+                <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
+            </summary>
+            <ul class="rows" style="border-top:1px solid var(--line)">
+                {% for who, text in s.texts %}
+                <li class="row">
+                    <div class="row-main">
+                        <p>“{{ text }}”</p>
+                        <p class="t-meta">{{ who }}</p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
         </details>
     {% endif %}
 </section>

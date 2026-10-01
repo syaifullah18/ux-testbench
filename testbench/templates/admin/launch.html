@@ -1,0 +1,733 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Launch · {{ project.name }} · UX Testbench{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}launch{% endblock %}
+
+{% block extra_head %}
+<script src="{{ url_for('static', filename='admin/qrcode.js') }}"></script>
+<style>
+  section[id] { scroll-margin-top: 24px; }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'launch' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    <nav class="panel side" aria-label="Launch" id="launch-nav">
+      <a href="#checklist" aria-current="page"><span>Readiness</span></a>
+      <a href="#access"><span>Access and passcodes</span></a>
+      <a href="#status"><span>Status</span></a>
+      <a href="#share"><span>Share</span></a>
+      {% if is_public %}
+      <a href="#listing"><span>Listing</span></a>
+      {% endif %}
+    </nav>
+  </aside>
+
+  <div class="stack min-w-0">
+
+    {% if not can_edit %}
+    <div id="ro" class="panel">
+      <div class="panel-b">
+        <p class="t-strong">This study is read-only</p>
+        <p class="t-meta">You can review readiness. Duplicate the study to change access or go live.</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 1. Readiness -->
+    <section id="checklist" class="panel" aria-labelledby="ck-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="ck-h">Is this study ready?</h2>
+          <p id="ck-note" data-progress-note>{{ checklist_summary.note }}</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <span class="num t-strong" id="ck-progress" data-progress>{{ checklist_summary.ready_count }} of {{ checklist|length }}</span>
+          <span class="h-2 w-32 overflow-hidden rounded-full bg-line">
+            <span class="block h-full rounded-full bg-brand" id="ck-bar" data-progress-bar style="width:{{ checklist_summary.percent }}%"></span>
+          </span>
+        </div>
+      </header>
+      <ul class="rows" id="ck-list">
+        {% for item in checklist %}
+        <li class="row" data-check-id="{{ item.id }}" data-item="{{ item.status }}">
+          <div class="row-main">
+            <p class="row-title">{{ item.title }}</p>
+            <p class="t-meta">{{ item.meta }}</p>
+          </div>
+          <div class="row-state">
+            {% if item.status == 'pass' %}
+              <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>
+            {% elif item.status == 'warn' %}
+              <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span>
+            {% elif item.status == 'fail' %}
+              <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>
+            {% else %}
+              <span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Info</span>
+            {% endif %}
+          </div>
+          <div class="row-act {{ '' if item.action_url and can_edit else 'hidden' }}">
+            {% if item.action_url and can_edit %}
+              <a class="btn {{ 'btn-primary' if item.status == 'fail' else 'btn-secondary' }} btn-sm" href="{{ item.action_url }}">{{ item.action_text or 'Fix' }}</a>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- 2. Access and passcodes -->
+    <section id="access" class="panel" aria-labelledby="ac-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="ac-h">Access and passcodes</h2>
+          <p>Who can get in, and how.</p>
+        </div>
+      </header>
+      <div class="rows">
+        <div class="row">
+          <div class="row-main">
+            <p class="t-meta">Who may enter</p>
+            <p class="row-title" id="ac-type">
+              {{ 'Passcode' if project.access == 'passcode' else 'Open to anyone with the link' }}
+            </p>
+          </div>
+          {% if can_edit %}
+          <div class="row-act">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.home', slug=project.slug) }}#settings">Change</a>
+          </div>
+          {% endif %}
+        </div>
+        <div class="row">
+          <div class="row-main">
+            <p class="t-meta">Participants identify with</p>
+            <p class="row-title" id="ac-id">
+              {{ 'Anonymous, with a resume code' if not project.participant_identifier else project.participant_identifier }}
+            </p>
+          </div>
+          {% if can_edit %}
+          <div class="row-act">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.home', slug=project.slug) }}#settings">Change</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="panel-b" id="pc-box">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="t-strong">Participant passcode</p>
+              <p class="t-meta" id="pc-note">
+                {% if participant_passcode_source == 'env' %}
+                  An environment variable on the server sets this, so it can’t be changed here.
+                {% elif participant_passcode_source == 'studio' %}
+                  Participants type it to enter. You can replace or remove it.
+                {% elif project.access == 'passcode' %}
+                  Nobody can enter until you set one.
+                {% else %}
+                  Access is open, so participants are not asked for one.
+                {% endif %}
+              </p>
+            </div>
+            <span id="pc-pill">
+              {% if participant_passcode_source == 'env' %}
+                <span class="st st-info"><i class="fa-solid fa-server" aria-hidden="true"></i>Set by the server</span>
+              {% elif participant_passcode_source == 'studio' %}
+                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Set here</span>
+              {% elif project.access == 'passcode' %}
+                <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Not set</span>
+              {% else %}
+                <span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not needed</span>
+              {% endif %}
+            </span>
+          </div>
+
+          {% if can_edit and participant_passcode_source != 'env' %}
+          <form id="pc-form" class="mt-6 flex flex-wrap items-start gap-4" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+            <div style="flex:1;">
+              <label class="label block text-sm font-semibold mb-1" for="pc-in">New passcode</label>
+              <input id="pc-in" class="input w-full border border-line rounded-lg px-3 py-2 text-sm" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+              <p class="err text-bad text-xs mt-1 is-hidden" id="pc-err"></p>
+              <p class="help text-xs text-muted mt-1">Stored as a hash. You can set a new one or remove it, but never read it back.</p>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top:28px" id="pc-save">Save passcode</button>
+            <button type="button" class="btn btn-secondary {% if participant_passcode_source != 'studio' %}is-hidden{% endif %}" style="margin-top:28px" id="pc-clear">Remove passcode</button>
+          </form>
+          {% endif %}
+        </div>
+
+        {% if not is_public %}
+        <div class="panel-b" data-only="internal">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="t-strong">Admin passcode</p>
+              <p class="t-meta">Gives full access to this study. Anyone who has it can change everything.</p>
+            </div>
+            <span id="ad-pill">
+              {% if admin_passcode_source == 'env' %}
+                <span class="st st-info"><i class="fa-solid fa-server" aria-hidden="true"></i>Set by the server</span>
+              {% elif admin_passcode_source == 'studio' %}
+                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Set here</span>
+              {% else %}
+                <span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not set</span>
+              {% endif %}
+            </span>
+          </div>
+
+          {% if can_edit and admin_passcode_source != 'env' %}
+          <form id="ad-form" class="mt-6 flex flex-wrap items-start gap-4" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+            <div style="flex:1;">
+              <label class="label block text-sm font-semibold mb-1" for="ad-in">New admin passcode</label>
+              <input id="ad-in" class="input w-full border border-line rounded-lg px-3 py-2 text-sm" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+              <p class="err text-bad text-xs mt-1 is-hidden" id="ad-err"></p>
+            </div>
+            <button type="submit" class="btn btn-secondary" style="margin-top:28px" id="ad-save">Save admin passcode</button>
+            <button type="button" class="btn btn-secondary {% if admin_passcode_source != 'studio' %}is-hidden{% endif %}" style="margin-top:28px" id="ad-clear">Remove admin passcode</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- 3. Status -->
+    <section id="status" class="panel" aria-labelledby="st-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="st-h">Status</h2>
+          <p>Changing status asks you to confirm.</p>
+        </div>
+        <span data-status-pill>
+          {% if project.status == 'live' %}
+            <span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>
+          {% elif project.status == 'closed' %}
+            <span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>
+          {% else %}
+            <span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>
+          {% endif %}
+        </span>
+      </header>
+      <div class="rows" role="radiogroup" aria-label="Study status" id="st-opts">
+        <label class="opt">
+          <input type="radio" name="status" value="draft" {% if project.status == 'draft' %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+          <span class="radio"></span>
+          <span>
+            <span class="opt-title">Draft</span>
+            <span class="opt-desc">Participants see "This study is being prepared". You can still open it yourself to pilot.</span>
+          </span>
+          <span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="status" value="live" {% if project.status == 'live' %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+          <span class="radio"></span>
+          <span>
+            <span class="opt-title">Live</span>
+            <span class="opt-desc">Participants can enter at the study link. Editing questions after this may affect results.</span>
+          </span>
+          <span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="status" value="closed" {% if project.status == 'closed' %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+          <span class="radio"></span>
+          <span>
+            <span class="opt-title">Closed</span>
+            <span class="opt-desc">Nobody new can enter and nobody can resume. Results stay open. You can reopen it.</span>
+          </span>
+          <span></span>
+        </label>
+      </div>
+      <p class="panel-f {% if not checklist_summary.fail_count or project.status == 'live' %}is-hidden{% endif %}" id="st-block" style="color:#B42318;font-weight:600">
+        {% if checklist_summary.fail_count and project.status != 'live' %}
+          Going live is blocked until {{ checklist_summary.fail_count }} item{{ '' if checklist_summary.fail_count == 1 else 's are' }} fixed. See the checklist above.
+        {% endif %}
+      </p>
+    </section>
+
+    <!-- 4. Share -->
+    <section id="share" class="panel" aria-labelledby="sh-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="sh-h">Share</h2>
+          <p id="sh-note">
+            {% if project.status == 'live' %}
+              Send participants the study link. Keep the admin link to yourself.
+            {% elif project.status == 'draft' %}
+              The link works, but participants see "This study is being prepared" until you go live.
+            {% else %}
+              The study is closed. Participants who open the link see "Study completed".
+            {% endif %}
+          </p>
+        </div>
+      </header>
+      <div class="panel-b">
+        <div class="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div class="min-w-0">
+            <label class="label block text-sm font-semibold mb-1" for="link">Participant link <span class="font-normal text-muted">(participants use this)</span></label>
+            <div class="flex flex-wrap gap-2">
+              <input id="link" class="input font-mono flex-1 min-w-[220px] border border-line rounded-lg px-3 py-2 text-sm" value="{{ participant_url }}" readonly>
+              <button type="button" class="btn btn-secondary" id="copy-link">Copy</button>
+              <a class="btn btn-secondary" href="{{ participant_url }}" target="_blank" rel="noopener">Open participant view</a>
+            </div>
+
+            <div class="field mt-6 {% if project.access != 'passcode' %}is-hidden{% endif %}" id="pw-field">
+              <label class="label block text-sm font-semibold mb-1" for="pw">Passcode to include in the message <span class="font-normal text-muted">(optional)</span></label>
+              <input id="pw" class="input max-w-[280px] border border-line rounded-lg px-3 py-2 text-sm" autocomplete="off" placeholder="Type it once">
+              <p class="help text-xs text-muted mt-1">It is only added to the text below on this page. It is never saved. Send the passcode in a different message from the link.</p>
+            </div>
+
+            <div class="field mt-6">
+              <label class="label block text-sm font-semibold mb-1" for="invite">Invitation text</label>
+              <textarea id="invite" class="input w-full border border-line rounded-lg p-3 text-sm font-sans" rows="7" readonly></textarea>
+              <div class="mt-3">
+                <button type="button" class="btn btn-secondary btn-sm" id="copy-invite">Copy text</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="md:text-center">
+            <p class="label block text-sm font-semibold mb-1">QR code</p>
+            <div class="qr rounded-md border border-line p-3 flex items-center justify-center min-w-[150px] min-h-[150px] bg-white text-ink text-xs" id="qr" role="img" aria-label="QR code for the participant link"></div>
+          </div>
+        </div>
+      </div>
+
+      {% if can_edit %}
+      <div class="panel-b border-t border-line bg-surface-subtle rounded-b-[7px]">
+        <label class="label block text-sm font-semibold mb-1" for="adm">Admin link <span class="font-normal text-muted">(only you use this)</span></label>
+        <div class="flex flex-wrap gap-2">
+          <input id="adm" class="input font-mono flex-1 border border-line rounded-lg px-3 py-2 text-sm" value="{{ admin_url }}" readonly>
+          <button type="button" class="btn btn-secondary" id="copy-adm">Copy</button>
+        </div>
+        <p class="help text-xs text-muted mt-1">Do not send this link to participants. It opens the study's settings and results.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- 5. Public listing -->
+    {% if is_public %}
+    <section id="listing" class="panel" aria-labelledby="li-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="li-h">Public listing</h2>
+          <p>Show this study on the Explore page. The operator has to approve it first.</p>
+        </div>
+        <span id="li-pill"><span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not requested</span></span>
+      </header>
+      <label class="row switch-row cursor-pointer" data-lock="edit">
+        <span class="row-main">
+          <span class="row-title block font-semibold text-ink">List this study on Explore</span>
+          <span class="t-meta block text-xs text-muted">Only studies that are live and approved appear.</span>
+        </span>
+        <span class="switch relative inline-flex items-center">
+          <input type="checkbox" id="li-sw" class="sr-only peer" {% if not can_edit %}disabled{% endif %}>
+          <span class="w-11 h-6 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-line after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></span>
+        </span>
+      </label>
+    </section>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+(function() {
+  var $ = function(id) { return document.getElementById(id); };
+  var csrfToken = {{ csrf_token|tojson if csrf_token is defined else '""' }};
+  var projectSlug = {{ project.slug|tojson }};
+  var projectName = {{ project.name|tojson }};
+  var accessMode = {{ project.access|tojson }};
+  var estMins = {{ est_minutes }};
+  var canEdit = {{ 'true' if can_edit else 'false' }};
+  var passcodePostUrl = "{{ url_for('admin.launch_passcode', slug=project.slug) }}";
+
+  function toast(msg) {
+    if (window.UTB && typeof window.UTB.toast === 'function') {
+      window.UTB.toast(msg);
+    } else {
+      var t = $('toast');
+      if (t) {
+        t.textContent = msg;
+        t.classList.remove('is-hidden');
+        setTimeout(function() { t.classList.add('is-hidden'); }, 3200);
+      }
+    }
+  }
+
+  function copy(text, msg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() { toast(msg); }).catch(function() { prompt('Copy:', text); });
+    } else {
+      prompt('Copy:', text);
+    }
+  }
+
+  /* ----------------- Checklist update helper ----------------- */
+  function updateChecklistProgress() {
+    var items = document.querySelectorAll('#ck-list li[data-item]');
+    var total = items.length;
+    var ready = 0;
+    var fail = 0;
+    var warn = 0;
+    items.forEach(function(li) {
+      var st = li.getAttribute('data-item');
+      if (st === 'pass') ready++;
+      else if (st === 'fail') fail++;
+      else if (st === 'warn') warn++;
+    });
+
+    var pct = total > 0 ? Math.round((ready / total) * 100) : 100;
+    var notes = [];
+    if (fail > 0) notes.push(fail + ' item' + (fail === 1 ? ' blocks' : 's block') + ' launch');
+    if (warn > 0) notes.push(warn + ' warning' + (warn === 1 ? '' : 's'));
+    var noteStr = notes.length > 0 ? notes.join(', ') : 'Nothing blocks launch';
+
+    if ($('ck-note')) $('ck-note').textContent = noteStr;
+    if ($('ck-progress')) $('ck-progress').textContent = ready + ' of ' + total;
+    if ($('ck-bar')) $('ck-bar').style.width = pct + '%';
+
+    var curStatus = document.querySelector('#st-opts input:checked');
+    var isLive = curStatus && curStatus.value === 'live';
+    var stBlock = $('st-block');
+    if (stBlock) {
+      stBlock.classList.toggle('is-hidden', !(fail > 0 && !isLive));
+      stBlock.textContent = fail > 0 ? 'Going live is blocked until ' + fail + (fail === 1 ? ' item is' : ' items are') + ' fixed. See the checklist above.' : '';
+    }
+  }
+
+  /* ----------------- Participant passcode ----------------- */
+  var pcForm = $('pc-form');
+  var pcClear = $('pc-clear');
+  var pcIn = $('pc-in');
+  var pcErr = $('pc-err');
+
+  if (pcForm) {
+    pcForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var val = (pcIn.value || '').trim();
+      if (val.length < 6) {
+        if (pcErr) {
+          pcErr.textContent = 'Use at least 6 characters.';
+          pcErr.classList.remove('is-hidden');
+        }
+        pcIn.focus();
+        return;
+      }
+      if (pcErr) pcErr.classList.add('is-hidden');
+
+      var btn = $('pc-save');
+      if (btn) btn.disabled = true;
+      try {
+        var res = await fetch(passcodePostUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ kind: 'participant', action: 'set', passcode: val, csrf_token: csrfToken })
+        });
+        var data = await res.json();
+        if (res.ok && data.ok) {
+          pcIn.value = '';
+          if ($('pc-pill')) $('pc-pill').innerHTML = '<span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Set here</span>';
+          if ($('pc-note')) $('pc-note').textContent = 'Participants type it to enter. You can replace or remove it.';
+          if (pcClear) pcClear.classList.remove('is-hidden');
+
+          var pcCk = document.querySelector('#ck-list li[data-check-id="passcode"]');
+          if (pcCk) {
+            pcCk.setAttribute('data-item', 'pass');
+            var stateEl = pcCk.querySelector('.row-state');
+            if (stateEl) stateEl.innerHTML = '<span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>';
+            var metaEl = pcCk.querySelector('.t-meta');
+            if (metaEl) metaEl.textContent = 'Access is secured with a passcode.';
+            var actEl = pcCk.querySelector('.row-act');
+            if (actEl) actEl.innerHTML = '';
+          }
+          updateChecklistProgress();
+          toast('Participant passcode saved.');
+        } else {
+          if (pcErr) {
+            pcErr.textContent = data.error || 'Failed to save passcode.';
+            pcErr.classList.remove('is-hidden');
+          }
+        }
+      } catch (err) {
+        if (pcErr) {
+          pcErr.textContent = 'Network error saving passcode.';
+          pcErr.classList.remove('is-hidden');
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
+  if (pcClear) {
+    pcClear.addEventListener('click', async function(e) {
+      e.preventDefault();
+      pcClear.disabled = true;
+      try {
+        var res = await fetch(passcodePostUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ kind: 'participant', action: 'clear', csrf_token: csrfToken })
+        });
+        var data = await res.json();
+        if (res.ok && data.ok) {
+          if ($('pc-pill')) $('pc-pill').innerHTML = accessMode === 'passcode'
+            ? '<span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Not set</span>'
+            : '<span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not needed</span>';
+          if ($('pc-note')) $('pc-note').textContent = accessMode === 'passcode'
+            ? 'Nobody can enter until you set one.'
+            : 'Access is open, so participants are not asked for one.';
+          pcClear.classList.add('is-hidden');
+
+          var pcCk = document.querySelector('#ck-list li[data-check-id="passcode"]');
+          if (pcCk) {
+            if (accessMode === 'passcode') {
+              pcCk.setAttribute('data-item', 'fail');
+              var stateEl = pcCk.querySelector('.row-state');
+              if (stateEl) stateEl.innerHTML = '<span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>';
+              var metaEl = pcCk.querySelector('.t-meta');
+              if (metaEl) metaEl.textContent = 'Access needs a passcode and none is set, so nobody could enter.';
+              var actEl = pcCk.querySelector('.row-act');
+              if (actEl) actEl.innerHTML = '<a class="btn btn-primary btn-sm" href="#access">Set passcode</a>';
+            }
+          }
+          updateChecklistProgress();
+          toast('Participant passcode removed.');
+        }
+      } catch (err) {
+        toast('Network error removing passcode.');
+      } finally {
+        pcClear.disabled = false;
+      }
+    });
+  }
+
+  /* ----------------- Admin passcode ----------------- */
+  var adForm = $('ad-form');
+  var adIn = $('ad-in');
+  var adErr = $('ad-err');
+  var adClear = $('ad-clear');
+  if (adForm) {
+    adForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var val = (adIn.value || '').trim();
+      if (val.length < 6) {
+        if (adErr) {
+          adErr.textContent = 'Use at least 6 characters.';
+          adErr.classList.remove('is-hidden');
+        }
+        adIn.focus();
+        return;
+      }
+      if (adErr) adErr.classList.add('is-hidden');
+
+      var btn = $('ad-save');
+      if (btn) btn.disabled = true;
+      try {
+        var res = await fetch(passcodePostUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ kind: 'admin', action: 'set', passcode: val, csrf_token: csrfToken })
+        });
+        var data = await res.json();
+        if (res.ok && data.ok) {
+          adIn.value = '';
+          if ($('ad-pill')) $('ad-pill').innerHTML = '<span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Set here</span>';
+          if (adClear) adClear.classList.remove('is-hidden');
+          toast('Admin passcode saved.');
+        } else {
+          if (adErr) {
+            adErr.textContent = data.error || 'Failed to save admin passcode.';
+            adErr.classList.remove('is-hidden');
+          }
+        }
+      } catch (err) {
+        if (adErr) {
+          adErr.textContent = 'Network error saving admin passcode.';
+          adErr.classList.remove('is-hidden');
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
+  if (adClear) {
+    adClear.addEventListener('click', async function(e) {
+      e.preventDefault();
+      adClear.disabled = true;
+      try {
+        var res = await fetch(passcodePostUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ kind: 'admin', action: 'clear', csrf_token: csrfToken })
+        });
+        var data = await res.json();
+        if (res.ok && data.ok) {
+          if ($('ad-pill')) $('ad-pill').innerHTML = '<span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not set</span>';
+          adClear.classList.add('is-hidden');
+          toast('Admin passcode removed.');
+        }
+      } catch (err) {
+        toast('Network error removing admin passcode.');
+      } finally {
+        adClear.disabled = false;
+      }
+    });
+  }
+
+  /* ----------------- Status Radio & Sync ----------------- */
+  var radios = document.querySelectorAll('#st-opts input[type="radio"]');
+  radios.forEach(function(r) {
+    r.addEventListener('change', function() {
+      var targetStatus = r.value;
+      if (window.UTB && typeof window.UTB.askStatus === 'function') {
+        window.UTB.askStatus(targetStatus);
+      }
+    });
+  });
+
+  document.addEventListener('utb:status', function(e) {
+    var newSt = e.detail;
+    radios.forEach(function(r) {
+      r.checked = (r.value === newSt);
+    });
+
+    var ST_PILLS = {
+      live: '<span class="st st-live"><i class="fa-solid fa-circle" style="font-size:8px" aria-hidden="true"></i>Live</span>',
+      draft: '<span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>',
+      closed: '<span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>'
+    };
+    var pEl = document.querySelector('#status [data-status-pill]');
+    if (pEl && ST_PILLS[newSt]) pEl.innerHTML = ST_PILLS[newSt];
+
+    var shNote = $('sh-note');
+    if (shNote) {
+      shNote.textContent = newSt === 'live'
+        ? 'Send participants the study link. Keep the admin link to yourself.'
+        : newSt === 'draft'
+        ? 'The link works, but participants see "This study is being prepared" until you go live.'
+        : 'The study is closed. Participants who open the link see "Study completed".';
+    }
+
+    updateChecklistProgress();
+
+    if (newSt === 'live') {
+      var sh = $('share');
+      if (sh) sh.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  document.addEventListener('utb:status-cancel', function(e) {
+    var cur = e.detail;
+    radios.forEach(function(r) {
+      r.checked = (r.value === cur);
+    });
+  });
+
+  /* ----------------- Share: Invite, QR, Copy ----------------- */
+  function updateInvite() {
+    var linkVal = $('link') ? $('link').value : '';
+    var txt = 'You are invited to take part in “' + projectName + '”.\n\n' +
+              'It takes about ' + estMins + ' minutes. Your answers and how you use the test pages (time, clicks, scrolling) are recorded for research. No name or contact details are collected unless you offer them.\n\n' +
+              'Start here: ' + linkVal;
+    var pwVal = $('pw') ? $('pw').value.trim() : '';
+    if (accessMode === 'passcode' && pwVal) {
+      txt += '\nPasscode: ' + pwVal + '  (sent separately)';
+    }
+    if ($('invite')) $('invite').value = txt;
+  }
+
+  if ($('pw')) {
+    $('pw').addEventListener('input', updateInvite);
+  }
+  updateInvite();
+
+  if ($('copy-link')) {
+    $('copy-link').addEventListener('click', function() {
+      copy($('link').value, 'Participant link copied.');
+    });
+  }
+  if ($('copy-invite')) {
+    $('copy-invite').addEventListener('click', function() {
+      copy($('invite').value, 'Invitation text copied.');
+    });
+  }
+  if ($('copy-adm')) {
+    $('copy-adm').addEventListener('click', function() {
+      copy($('adm').value, 'Admin link copied.');
+    });
+  }
+
+  // QR code
+  try {
+    if (typeof qrcode !== 'undefined') {
+      var linkUrl = $('link') ? $('link').value : '';
+      var qr = qrcode(0, 'M');
+      qr.addData(linkUrl);
+      qr.make();
+      if ($('qr')) $('qr').innerHTML = qr.createSvgTag(4, 0);
+    } else if ($('qr')) {
+      $('qr').textContent = 'QR code unavailable';
+    }
+  } catch (e) {
+    if ($('qr')) $('qr').textContent = 'QR code unavailable';
+  }
+
+  /* ----------------- Public Listing Switch ----------------- */
+  var liSw = $('li-sw');
+  var liPill = $('li-pill');
+  if (liSw) {
+    liSw.addEventListener('change', function() {
+      if (liPill) {
+        liPill.innerHTML = this.checked
+          ? '<span class="st st-warn"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>Waiting for approval</span>'
+          : '<span class="st st-info"><i class="fa-solid fa-circle-info" aria-hidden="true"></i>Not requested</span>';
+      }
+      toast(this.checked ? 'Requested. The operator reviews it before it appears. Demo only.' : 'Removed from Explore.');
+    });
+  }
+
+  // Sticky in-page nav highlight
+  var navLinks = document.querySelectorAll('#launch-nav a');
+  navLinks.forEach(function(a) {
+    a.addEventListener('click', function() {
+      navLinks.forEach(function(x) { x.removeAttribute('aria-current'); });
+      a.setAttribute('aria-current', 'page');
+    });
+  });
+
+  if (location.hash) {
+    var target = document.querySelector(location.hash);
+    if (target) {
+      setTimeout(function() { target.scrollIntoView({ behavior: 'smooth' }); }, 100);
+    }
+  }
+})();
+</script>
+{% endblock %}

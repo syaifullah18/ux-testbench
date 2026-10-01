@@ -1,68 +1,61 @@
-
-<div class="mb-8 p-6 bg-card border border-line rounded-xl">
-    <h2 class="text-xl font-bold text-ink mb-6">Task Results</h2>
-    
-    <div class="space-y-8">
-        {% for tr in task_results %}
-        <div>
-            <h3 class="font-semibold text-lg text-ink mb-4">{{ loop.index }}. {{ tr.task.prompt }}</h3>
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="p-4 bg-surface-subtle border border-line rounded-lg text-center">
-                    <p class="text-sm text-ink-subtle font-medium mb-1">Success Rate</p>
-                    <p class="text-2xl font-bold text-ink">{{ (tr.success_rate * 100)|round(1) }}%</p>
-                </div>
-                <div class="p-4 bg-surface-subtle border border-line rounded-lg text-center">
-                    <p class="text-sm text-ink-subtle font-medium mb-1">Avg Time</p>
-                    <p class="text-2xl font-bold text-ink">{{ (tr.avg_time_ms / 1000)|round(1) }}s</p>
-                </div>
-                <div class="p-4 bg-surface-subtle border border-line rounded-lg text-center">
-                    <p class="text-sm text-ink-subtle font-medium mb-1">Gave Up</p>
-                    <p class="text-2xl font-bold text-ink">{{ (tr.gave_up_rate * 100)|round(1) }}%</p>
-                </div>
-            </div>
-            
-            <!-- Simple Destinations Table -->
-            <div class="overflow-hidden border border-line rounded-lg">
-                <table class="w-full text-left text-[14px]">
-                    <thead class="bg-surface-subtle border-b border-line">
-                        <tr>
-                            <th class="px-4 py-2 font-semibold text-ink-muted">Destination Selected</th>
-                            <th class="px-4 py-2 font-semibold text-ink-muted w-24">Count</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-line">
-                        {# Count destinations #}
-                        {% set dests = {} %}
-                        {% for r in tr.results %}
-                            {% set key = r.final_node or '(Gave up)' %}
-                            {% if dests.update({key: dests.get(key, 0) + 1}) %}{% endif %}
-                        {% endfor %}
-                        
-                        {% for dest, count in dests|dictsort(by='value', reverse=true) %}
-                        <tr>
-                            <td class="px-4 py-2 flex items-center gap-2">
-                                {% if dest in tr.task.accept %}
-                                <i class="fa-solid fa-check text-emerald-600"></i>
-                                {% elif dest == '(Gave up)' %}
-                                <i class="fa-solid fa-ban text-ink-subtle"></i>
-                                {% else %}
-                                <i class="fa-solid fa-xmark text-red-600"></i>
-                                {% endif %}
-                                <span class="font-medium text-ink">{{ dest }}</span>
-                            </td>
-                            <td class="px-4 py-2 text-ink-muted">{{ count }}</td>
-                        </tr>
-                        {% endfor %}
-                        {% if not dests %}
-                        <tr><td colspan="2" class="px-4 py-8 text-center text-ink-subtle">No participants have completed this task yet.</td></tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% if not loop.last %}<hr class="border-line">{% endif %}
-        {% endfor %}
+{% for tr in task_results %}
+<section class="panel">
+  <header class="panel-h">
+    <div>
+      <h2>Task: {{ tr.task.prompt }}</h2>
+      <p>Correct destination{% if tr.task.accept|length > 1 %}s{% endif %}: {{ tr.task.accept|join(', ') }}. {{ tr.results|length }} participant{% if tr.results|length != 1 %}s{% endif %}.</p>
     </div>
-</div>
-
-
+  </header>
+  <dl class="grid gap-6 sm:grid-cols-3 p-6">
+    <div>
+      <dt class="t-meta">Success</dt>
+      <dd class="t-strong num">{{ (tr.success_rate * 100)|round|int }}%</dd>
+    </div>
+    <div>
+      <dt class="t-meta">Average time</dt>
+      <dd class="t-strong num">{{ (tr.avg_time_ms / 1000)|round(0)|int }} s</dd>
+    </div>
+    <div>
+      <dt class="t-meta">Gave up</dt>
+      <dd class="t-strong num">{{ (tr.gave_up_rate * 100)|round|int }}%</dd>
+    </div>
+  </dl>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:520px;border-top:1px solid var(--line)">
+      <thead>
+        <tr>
+          <th scope="col">Where people ended</th>
+          <th scope="col" class="text-right">People</th>
+          <th scope="col">Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set dests = {} %}
+        {% for r in tr.results %}
+          {% set key = r.final_node or '(Gave up)' %}
+          {% if dests.update({key: dests.get(key, 0) + 1}) %}{% endif %}
+        {% endfor %}
+        
+        {% for dest, count in dests|dictsort(by='value', reverse=true) %}
+        <tr>
+          <td class="t-strong">{{ dest }}</td>
+          <td class="num text-right">{{ count }}</td>
+          <td>
+            {% if dest in tr.task.accept %}
+              <span class="st st-ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Correct</span>
+            {% elif dest == '(Gave up)' %}
+              <span class="st st-info"><i class="fa-solid fa-flag" aria-hidden="true"></i>Gave up</span>
+            {% else %}
+              <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Wrong place</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not dests %}
+        <tr><td colspan="3" class="px-4 py-8 text-center text-muted">No participants have completed this task yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}

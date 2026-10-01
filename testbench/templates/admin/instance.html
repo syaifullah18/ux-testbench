@@ -1,0 +1,431 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ 'Platform' if is_public else 'Instance' }} · UX Testbench{% endblock %}
+{% block shell %}workspace{% endblock %}
+{% block tab %}instance{% endblock %}
+
+{% block extra_head %}
+<style>
+  section[id] { scroll-margin-top: 24px; }
+  .side .count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    background: #FEE4E2;
+    color: #B42318;
+  }
+</style>
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+{% if not is_allowed %}
+<div id="denied" class="panel">
+  <div class="panel-b">
+    <p class="t-strong">You do not have access to this page</p>
+    <p class="t-meta mt-1">Only the superadmin can open the instance. In public mode, only a platform admin can.</p>
+    <a class="btn btn-secondary mt-4" href="{{ url_for('admin.overview') }}">Back to studies</a>
+  </div>
+</div>
+{% else %}
+<div id="page">
+  <div class="mb-6">
+    <h1 class="t-page" id="ttl">{{ 'Platform' if is_public else 'Instance' }}</h1>
+    <p class="mt-1 text-muted" id="sub">
+      {% if is_public %}
+        Accounts, studies and reports across the whole platform. Every action here is written to the audit log.
+      {% else %}
+        This server: its studies, its configuration and what the operator did. There are no accounts in internal mode.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+    <aside class="lg:sticky lg:top-6 lg:self-start">
+      <nav class="panel side" id="side" aria-label="Operator pages">
+        <a href="{{ url_for('admin.instance', s='overview') }}" {% if cur_sec == 'overview' %}aria-current="page"{% endif %}>
+          <span>Overview</span>
+        </a>
+        {% if is_public %}
+        <a href="{{ url_for('admin.instance', s='users') }}" {% if cur_sec == 'users' %}aria-current="page"{% endif %}>
+          <span>Users</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin.instance', s='studies') }}" {% if cur_sec == 'studies' %}aria-current="page"{% endif %}>
+          <span>Studies</span>
+        </a>
+        {% if is_public %}
+        <a href="{{ url_for('admin.instance', s='reports') }}" {% if cur_sec == 'reports' %}aria-current="page"{% endif %}>
+          <span>Reports</span>
+          {% if open_reports_count %}
+          <span class="count">{{ open_reports_count }}</span>
+          {% endif %}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin.instance', s='audit') }}" {% if cur_sec == 'audit' %}aria-current="page"{% endif %}>
+          <span>Audit log</span>
+        </a>
+      </nav>
+    </aside>
+
+    <div class="stack min-w-0" id="content">
+
+      {% if cur_sec == 'overview' %}
+      <!-- Overview Section -->
+      <section class="panel" aria-labelledby="o-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="o-h">At a glance</h2>
+            <p>Counted from what is stored on this server.</p>
+          </div>
+        </header>
+        <dl class="grid gap-6 sm:grid-cols-3 p-6">
+          <div>
+            <dt class="t-meta text-xs">Studies</dt>
+            <dd class="t-strong num text-2xl font-bold mt-1">{{ total_studies }}</dd>
+          </div>
+          <div>
+            <dt class="t-meta text-xs">Live</dt>
+            <dd class="t-strong num text-2xl font-bold mt-1">{{ live_studies }}</dd>
+          </div>
+          <div>
+            <dt class="t-meta text-xs">Participants</dt>
+            <dd class="t-strong num text-2xl font-bold mt-1">{{ total_participants }}</dd>
+          </div>
+          {% if offline_studies %}
+          <div>
+            <dt class="t-meta text-xs">Offline</dt>
+            <dd class="t-strong num text-2xl font-bold text-bad mt-1">{{ offline_studies }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="c-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="c-h">Configuration</h2>
+            <p>What the server is set up to do. Problems are listed first.</p>
+          </div>
+        </header>
+        <ul class="rows">
+          <li class="row">
+            <div class="row-main">
+              <p class="row-title">Superadmin passcode</p>
+              <p class="t-meta">{{ 'Set in the server environment.' if superadmin_set else 'Not configured. Anyone can access in internal demo mode.' }}</p>
+            </div>
+            <div class="row-state">
+              {% if superadmin_set %}
+                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Fine</span>
+              {% else %}
+                <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Check</span>
+              {% endif %}
+            </div>
+          </li>
+          <li class="row">
+            <div class="row-main">
+              <p class="row-title">Data folder</p>
+              <p class="t-meta">Writable. {{ storage_mb }} MB used.</p>
+            </div>
+            <div class="row-state"><span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Fine</span></div>
+          </li>
+          <li class="row">
+            <div class="row-main">
+              <p class="row-title">Upload limit</p>
+              <p class="t-meta">Files up to 5 MB, 200 files per study.</p>
+            </div>
+            <div class="row-state"><span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Fine</span></div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="panel" aria-labelledby="q-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="q-h">Limits in force</h2>
+            <p>Set in the server environment. Change them there.</p>
+          </div>
+        </header>
+        <ul class="rows">
+          <li class="row">
+            <div class="row-main"><p class="row-title">Studies on this server</p></div>
+            <div class="row-state"><span class="num t-strong">No limit set</span></div>
+          </li>
+          <li class="row">
+            <div class="row-main"><p class="row-title">Storage per study</p></div>
+            <div class="row-state"><span class="num t-strong">100 MB</span></div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="panel" aria-labelledby="a-h">
+        <header class="panel-h">
+          <div><h2 id="a-h">Recent operator actions</h2></div>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.instance', s='audit') }}">Open the audit log</a>
+        </header>
+        <ul class="rows">
+          {% if recent_audit %}
+            {% for a in recent_audit[:3] %}
+            <li class="row">
+              <div class="row-main">
+                <p class="row-title">{{ a.action }}{% if a.project_slug %}: {{ a.project_slug }}{% endif %}</p>
+                <p class="t-meta">{{ a.at_formatted }}, {{ a.actor or 'Superadmin' }}</p>
+              </div>
+            </li>
+            {% endfor %}
+          {% else %}
+            <li class="row">
+              <div class="row-main"><p class="t-meta">No operator actions logged yet.</p></div>
+            </li>
+          {% endif %}
+        </ul>
+      </section>
+
+      {% elif cur_sec == 'studies' %}
+      <!-- Studies Section -->
+      <section class="panel" aria-labelledby="s-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="s-h">Studies</h2>
+            <p>{{ studies|length }} studies on this server.</p>
+          </div>
+        </header>
+        <div class="overflow-x-auto">
+          <table class="tbl w-full min-w-[640px]">
+            <thead>
+              <tr>
+                <th scope="col">Study</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="text-right">Participants</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for x in studies %}
+              <tr>
+                <td>
+                  <p class="t-strong">{{ x.name }}</p>
+                  <p class="t-meta font-mono" style="font-size:14px">/{{ x.slug }}</p>
+                </td>
+                <td>
+                  {% if x.is_offline %}
+                    <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Offline</span>
+                  {% elif x.status == 'live' %}
+                    <span class="st st-live"><i class="fa-solid fa-circle text-[8px]" aria-hidden="true"></i>Live</span>
+                  {% elif x.status == 'closed' %}
+                    <span class="st st-closed">Closed</span>
+                  {% else %}
+                    <span class="st st-draft">Draft</span>
+                  {% endif %}
+                </td>
+                <td class="num text-right">{{ x.participants }}</td>
+                <td class="text-right">
+                  <div class="flex justify-end gap-2">
+                    <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.dashboard', slug=x.slug) }}">Open as admin</a>
+                    <button type="button" class="btn btn-secondary btn-sm" data-act="{{ 'restore' if x.is_offline else 'offline' }}" data-slug="{{ x.slug }}">
+                      {{ 'Restore' if x.is_offline else 'Take offline' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {% elif cur_sec == 'audit' %}
+      <!-- Audit Log Section -->
+      <section class="panel" aria-labelledby="au-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="au-h">Audit log</h2>
+            <p>Every operator action, newest first. Entries cannot be edited.</p>
+          </div>
+        </header>
+        <div class="panel-b flex flex-wrap gap-6 border-b border-line">
+          <div>
+            <label class="label block text-xs font-semibold mb-1" for="fa">Who</label>
+            <select id="fa" class="input w-auto min-w-[200px] border border-line rounded-lg px-3 py-1.5 text-sm">
+              <option value="">All</option>
+              {% for actor in audit_actors %}
+                <option value="{{ actor }}">{{ actor }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label block text-xs font-semibold mb-1" for="fb">Action</label>
+            <select id="fb" class="input w-auto min-w-[200px] border border-line rounded-lg px-3 py-1.5 text-sm">
+              <option value="">All</option>
+              {% for act in audit_actions %}
+                <option value="{{ act }}">{{ act }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {% if audit_entries %}
+        <div class="overflow-x-auto">
+          <table class="tbl w-full min-w-[820px]" id="audit-tbl">
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">Who</th>
+                <th scope="col">Action</th>
+                <th scope="col">Detail</th>
+                <th scope="col">Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in audit_entries %}
+              <tr data-actor="{{ a.actor }}" data-action="{{ a.action }}">
+                <td class="num text-xs">{{ a.at_formatted }}</td>
+                <td>{{ a.actor or 'Superadmin' }}</td>
+                <td class="t-strong">
+                  {{ a.action }}
+                  {% if a.project_slug %}
+                    <span class="t-meta block font-mono text-xs">/{{ a.project_slug }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-xs text-muted">{{ a.detail_text }}</td>
+                <td class="font-mono text-xs">{{ a.ip or '127.0.0.1' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="panel-b">
+          <p class="t-strong">No audit log entries yet</p>
+          <p class="t-meta mt-1">Actions taken by operators appear here.</p>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<!-- Reason modal dialog -->
+<dialog id="dlg" aria-labelledby="dlg-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="dialog" id="dlg-form" class="p-6">
+    <h2 id="dlg-h" class="t-panel"></h2>
+    <p id="dlg-body" class="mt-2 text-muted text-sm leading-relaxed"></p>
+    <div class="field mt-6" id="dlg-reason-wrap">
+      <label class="label block text-sm font-semibold mb-1" for="dlg-reason">Reason</label>
+      <textarea id="dlg-reason" class="input w-full border border-line rounded-lg p-2.5 text-sm" rows="3" maxlength="500"></textarea>
+      <p class="err text-bad text-xs mt-1 is-hidden" id="dlg-err"></p>
+      <p class="help text-xs text-muted mt-1">Saved to the audit log with your name and the time.</p>
+    </div>
+    <div class="mt-6 flex flex-wrap justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="dlg-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="dlg-ok"></button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function() {
+  var CSRF_TOKEN = {{ csrf_token|tojson if csrf_token is defined else '""' }};
+  var dlg = document.getElementById('dlg');
+  var dlgH = document.getElementById('dlg-h');
+  var dlgBody = document.getElementById('dlg-body');
+  var dlgOk = document.getElementById('dlg-ok');
+  var dlgCancel = document.getElementById('dlg-cancel');
+  var dlgReason = document.getElementById('dlg-reason');
+  var dlgErr = document.getElementById('dlg-err');
+  var pending = null;
+
+  var TEXT = {
+    offline: ['Take this study offline?', 'Participants see “This study is not available”. Nothing is deleted.', 'Take offline'],
+    restore: ['Restore this study?', 'It goes back to the status it had before.', 'Restore study']
+  };
+
+  document.querySelectorAll('[data-act]').forEach(function(b) {
+    b.addEventListener('click', function(e) {
+      e.preventDefault();
+      var act = b.getAttribute('data-act');
+      var slug = b.getAttribute('data-slug');
+      var t = TEXT[act] || [act, '', act];
+      pending = { act: act, slug: slug };
+      dlgH.textContent = t[0];
+      dlgBody.textContent = t[1];
+      dlgOk.textContent = t[2];
+      dlgReason.value = '';
+      dlgErr.classList.add('is-hidden');
+      if (typeof dlg.showModal === 'function') dlg.showModal();
+      else dlg.setAttribute('open', '');
+    });
+  });
+
+  if (dlgCancel) {
+    dlgCancel.addEventListener('click', function() {
+      if (dlg.open) dlg.close();
+      else dlg.removeAttribute('open');
+      pending = null;
+    });
+  }
+
+  if (dlgOk) {
+    dlgOk.addEventListener('click', async function() {
+      if (!pending) return;
+      var reason = (dlgReason.value || '').trim();
+      if (!reason) {
+        dlgErr.textContent = 'Write a short reason. It goes in the audit log.';
+        dlgErr.classList.remove('is-hidden');
+        dlgReason.focus();
+        return;
+      }
+      dlgErr.classList.add('is-hidden');
+      dlgOk.disabled = true;
+
+      try {
+        var res = await fetch("{{ url_for('admin.instance_action') }}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': CSRF_TOKEN
+          },
+          body: JSON.stringify({ action: pending.act, slug: pending.slug, reason: reason, csrf_token: CSRF_TOKEN })
+        });
+        var data = await res.json();
+        if (res.ok && data.ok) {
+          if (dlg.open) dlg.close();
+          else dlg.removeAttribute('open');
+          window.location.reload();
+        } else {
+          dlgErr.textContent = (data && data.error) || 'Failed to perform action.';
+          dlgErr.classList.remove('is-hidden');
+        }
+      } catch (err) {
+        dlgErr.textContent = 'Network error.';
+        dlgErr.classList.remove('is-hidden');
+      } finally {
+        dlgOk.disabled = false;
+      }
+    });
+  }
+
+  // Audit filter
+  var fa = document.getElementById('fa');
+  var fb = document.getElementById('fb');
+  function filterAudit() {
+    var aVal = fa ? fa.value : '';
+    var bVal = fb ? fb.value : '';
+    var rows = document.querySelectorAll('#audit-tbl tbody tr');
+    rows.forEach(function(r) {
+      var matchA = !aVal || r.getAttribute('data-actor') === aVal;
+      var matchB = !bVal || r.getAttribute('data-action') === bVal;
+      r.style.display = (matchA && matchB) ? '' : 'none';
+    });
+  }
+  if (fa) fa.addEventListener('change', filterAudit);
+  if (fb) fb.addEventListener('change', filterAudit);
+})();
+</script>
+{% endif %}
+{% endblock %}

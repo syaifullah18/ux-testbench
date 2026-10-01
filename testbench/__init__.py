@@ -30,7 +30,10 @@ def create_app(overrides=None):
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE") == "1",
         MAX_CONTENT_LENGTH=int(os.environ.get("MAX_UPLOAD_MB", 50)) * 1024 * 1024,
         TESTBENCH_MODE=os.environ.get("TESTBENCH_MODE", "internal"),
+        APP_DOMAIN=os.environ.get("APP_DOMAIN", ""),
+        SERVER_NAME=os.environ.get("SERVER_NAME"),
         LOCAL_ASSETS=os.environ.get("LOCAL_ASSETS") == "1",
+        TEMPLATES_AUTO_RELOAD=True,
     )
     app.config.update(overrides or {})
     if app.config["TESTBENCH_MODE"] == "public" and not app.config.get("TESTING"):
@@ -111,12 +114,32 @@ def create_app(overrides=None):
             if not token:
                 abort(403, "Missing CSRF token")
             given = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+            if not given and request.is_json:
+                try:
+                    payload = request.get_json(silent=True) or {}
+                    if isinstance(payload, dict):
+                        given = payload.get("csrf_token")
+                except Exception:
+                    pass
             if not given or not hmac.compare_digest(given, token):
                 abort(403, "Invalid CSRF token")
 
     @app.context_processor
-    def inject_csrf():
-        return {"csrf_token": session.get("csrf_token", "")}
+    def inject_template_globals():
+        from .context import is_super
+        user = None
+        if os.environ.get("TESTBENCH_MODE", "internal") == "public":
+            try:
+                from . import auth
+                user = auth.current_user()
+            except Exception:
+                pass
+        return {
+            "csrf_token": session.get("csrf_token", ""),
+            "is_super": is_super(),
+            "user": user,
+            "current_user": user,
+        }
 
     from . import admin, auth, platform_admin, public, studio, web
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":

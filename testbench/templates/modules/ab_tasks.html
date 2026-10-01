@@ -30,6 +30,7 @@
 
 <dialog id="dlg" class="rounded-xl p-0 w-[min(32rem,calc(100vw-2rem))] backdrop:bg-slate-900/50">
     <form id="f-answer" class="p-6 space-y-4" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
         <h2 id="d-title" class="text-lg font-bold text-ink"></h2>
         <p id="d-prompt" class="text-[14px] text-ink-muted"></p>
         <div id="d-fields" class="space-y-4"></div>

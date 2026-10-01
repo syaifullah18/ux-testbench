@@ -1,23 +1,148 @@
-{% extends "base.html" %}
-{% block width %}max-w-6xl{% endblock %}
-{% block nav_right %}
-<span class="flex items-center gap-3 text-[13px]">
-    <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold">{{ t('admin.badge') }}</span>
-    <a href="{{ url_for('admin.logout', slug=project.slug) }}" class="text-white/70 hover:text-white underline">{{ t('common.logout') }}</a>
-</span>
-{% endblock %}
-{% block main %}
-<div class="bg-surface-subtle border-b border-line">
-    <div class="max-w-6xl mx-auto px-4 sm:px-8 py-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[14px]">
-        <a href="{{ url_for('admin.dashboard', slug=project.slug) }}" class="hover:text-brand-600 dark:text-brand-400 {% if request.endpoint == 'admin.dashboard' %}font-semibold text-ink{% endif %}">{{ t('admin.overview') }}</a>
-        {% for m in project.modules.values() %}
-        <a href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}" class="hover:text-brand-600 dark:text-brand-400 {% if module and module.id == m.id %}font-semibold text-ink{% endif %}">{{ m.title }}</a>
-        {% endfor %}
-        <a href="{{ url_for('studio.home', slug=project.slug) }}" class="hover:text-brand-600 dark:text-brand-400 {% if request.endpoint and request.endpoint.startswith('studio.') %}font-semibold text-ink{% endif %}"><i class="fa-solid fa-pen-ruler mr-1"></i>{{ t('studio.tab') }}</a>
-        <a href="{{ url_for('admin.participants', slug=project.slug) }}" class="hover:text-brand-600 dark:text-brand-400 {% if request.endpoint in ('admin.participants', 'admin.participant') %}font-semibold text-ink{% endif %}">{{ t('admin.participants') }}</a>
+<!doctype html>
+<html lang="{{ project.locale if project else 'en' }}" {% if project and project.brand and project.brand.primary %}style="--brand: {{ project.brand.primary }};"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · UX Testbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.tail{{ '' }}windcss.com"></script>
+  <script src="{{ url_for('static', filename='admin/tw.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin/app.css') }}">
+  {%- set brand = project.brand if project and project.brand and project.brand.primary else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
+  {%- macro _rgb(hex) -%}{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}{%- endmacro -%}
+  {%- macro _tint(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r + (255 - r) * p)|round|int }} {{ (g + (255 - g) * p)|round|int }} {{ (b + (255 - b) * p)|round|int }}{%- endmacro -%}
+  {%- macro _shade(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}{%- endmacro -%}
+  <style>
+    :root {
+      --brand-50:  {{ _tint(brand.primary, 0.95) }};
+      --brand-100: {{ _tint(brand.primary, 0.89) }};
+      --brand-200: {{ _tint(brand.primary, 0.76) }};
+      --brand-300: {{ _tint(brand.primary, 0.60) }};
+      --brand-400: {{ _tint(brand.primary, 0.33) }};
+      --brand-500: {{ _rgb(brand.primary) }};
+      --brand-600: {{ _shade(brand.primary, 0.12) }};
+      --brand-700: {{ _shade(brand.primary, 0.27) }};
+      --brand-800: {{ _shade(brand.primary, 0.42) }};
+      --brand-900: {{ _shade(brand.primary, 0.55) }};
+      --brand-950: {{ _shade(brand.primary, 0.72) }};
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body data-shell="{% block shell %}workspace{% endblock %}" data-tab="{% block tab %}studies{% endblock %}">
+<div id="preloader" aria-hidden="true"><svg width="44" height="44" viewBox="0 0 22 22"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg></div>
+
+<a class="skip" href="#main">Skip to content</a>
+{% if self.shell() != 'none' %}
+<header class="topbar bg-ink text-white">
+  <div class="wrap flex h-14 items-center gap-8" style="padding-top:0">
+    {% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
+    {% set ns = namespace(is_super=false) %}
+    {% if is_super is defined and is_super %}
+      {% if is_super is callable %}
+        {% set ns.is_super = is_super() %}
+      {% else %}
+        {% set ns.is_super = is_super %}
+      {% endif %}
+    {% endif %}
+    {% set home_url = url_for('public.dashboard') if is_public else ((url_for('admin.dashboard', slug=project.slug) if project else url_for('admin.overview')) if not ns.is_super else url_for('admin.overview')) %}
+    <a href="{{ home_url }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
+      <svg width="24" height="24" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+      <span>UX Testbench</span>
+    </a>
+    <nav aria-label="Workspace" class="flex items-center gap-1">
+      {% if is_public or ns.is_super %}
+      <a class="topnav" href="{{ home_url }}" {% if self.tab() == 'studies' %}aria-current="page"{% endif %}>Studies</a>
+      {% endif %}
+      {% if is_public %}
+        {% if (user and user.is_platform_admin) or ns.is_super %}
+          <a class="topnav" href="{{ url_for('admin.instance') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Platform</a>
+        {% endif %}
+      {% else %}
+        {% if ns.is_super %}
+          <a class="topnav" href="{{ url_for('admin.instance') }}" {% if self.tab() == 'instance' %}aria-current="page"{% endif %}>Instance</a>
+        {% endif %}
+      {% endif %}
+      <a class="topnav" href="{{ url_for('admin.help') }}" {% if self.tab() == 'help' %}aria-current="page"{% endif %}>Help</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-4 text-sm">
+      {% if is_public %}
+        {% if user %}
+        <div class="relative">
+          <button id="acct-btn" data-dropdown-toggle="acct-menu" data-dropdown-placement="bottom-end" class="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 hover:bg-white/10" aria-label="Account menu">
+            <span class="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-sm font-bold">{{ user.name[:2]|upper if user.name else 'ME' }}</span>
+            <span class="text-base font-medium">{{ user.name or user.email }}</span>
+            <i class="fa-solid fa-chevron-down text-xs text-white/70" aria-hidden="true"></i>
+          </button>
+          <div id="acct-menu" class="menu z-50 hidden w-64 text-ink">
+            <div class="px-3 py-2">
+              <p class="font-semibold">{{ user.name or 'Researcher' }}</p>
+              <p class="t-meta">{{ user.email }}</p>
+            </div>
+            <hr class="my-1 border-line">
+            <a href="{{ url_for('auth.account') }}">Account</a>
+            <a href="{{ url_for('auth.logout') }}">Sign out</a>
+          </div>
+        </div>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}" class="text-base text-white/80 underline-offset-2 hover:text-white hover:underline">Sign in</a>
+        {% endif %}
+      {% else %}
+        <span class="rounded-md bg-white/10 px-3 py-1 font-semibold">{% if ns.is_super %}Super Admin{% else %}Study Admin{% endif %}</span>
+        {% if project %}
+        <a href="{{ url_for('admin.logout', slug=project.slug) }}" class="text-base text-white/80 underline-offset-2 hover:text-white hover:underline">Log out</a>
+        {% else %}
+        <a href="{{ url_for('admin.super_logout') }}" class="text-base text-white/80 underline-offset-2 hover:text-white hover:underline">Log out</a>
+        {% endif %}
+      {% endif %}
     </div>
-</div>
-<main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 pt-8 pb-12">
-    {% block content %}{% endblock %}
+  </div>
+</header>
+
+{% block header %}{% endblock %}
+{% endif %}
+
+{% block page %}
+<main id="main" class="{% block main_class %}wrap main stack{% endblock %}">
+  {% block content %}{% endblock %}
 </main>
 {% endblock %}
+
+<div id="toast-wrap" class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none w-max max-w-[90vw]">
+  {% set flash_msgs = get_flashed_messages(with_categories=true) %}
+  {% set all_notices = [] %}
+  {% set seen_msgs = [] %}
+  {% for cat, m in flash_msgs %}
+    {% if m not in seen_msgs %}
+      {% set _ = all_notices.append({'cat': cat, 'msg': m}) %}
+      {% set _ = seen_msgs.append(m) %}
+    {% endif %}
+  {% endfor %}
+  {% set q_notice = notice or request.args.get('notice') %}
+  {% if q_notice and q_notice not in seen_msgs %}
+    {% set _ = all_notices.append({'cat': 'success', 'msg': q_notice}) %}
+    {% set _ = seen_msgs.append(q_notice) %}
+  {% endif %}
+  {% set q_err = error or request.args.get('error') %}
+  {% if q_err and q_err not in seen_msgs %}
+    {% set _ = all_notices.append({'cat': 'error', 'msg': q_err}) %}
+    {% set _ = seen_msgs.append(q_err) %}
+  {% endif %}
+
+  {% for item in all_notices %}
+  <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-ink{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
+    <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
+    <span>{{ item.msg }}</span>
+  </div>
+  {% endfor %}
+  <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden is-hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+<script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

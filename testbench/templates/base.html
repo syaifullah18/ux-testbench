@@ -61,21 +61,72 @@
     {% block main %}
     <main class="flex-1 w-full {{ self.width() }} mx-auto px-4 sm:px-8 pt-8 pb-12">
         {% block flashes %}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="space-y-2 mb-6">
-            {% for category, message in messages %}
-            <div class="rounded-xl px-4 py-3 text-sm border {% if category == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-emerald-50 border-emerald-200 text-emerald-800{% endif %}">
-                <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %} mr-1.5"></i>{{ message }}
+        <div id="toast-wrap" class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none w-max max-w-[90vw]">
+            {% set flash_msgs = get_flashed_messages(with_categories=true) %}
+            {% set all_notices = [] %}
+            {% set seen_msgs = [] %}
+            {% for cat, m in flash_msgs %}
+                {% if m not in seen_msgs %}
+                    {% set _ = all_notices.append({'cat': cat, 'msg': m}) %}
+                    {% set _ = seen_msgs.append(m) %}
+                {% endif %}
+            {% endfor %}
+            {% set q_notice = notice or request.args.get('notice') %}
+            {% if q_notice and q_notice not in seen_msgs %}
+                {% set _ = all_notices.append({'cat': 'success', 'msg': q_notice}) %}
+                {% set _ = seen_msgs.append(q_notice) %}
+            {% endif %}
+            {% set q_err = error or request.args.get('error') %}
+            {% if q_err and q_err not in seen_msgs %}
+                {% set _ = all_notices.append({'cat': 'error', 'msg': q_err}) %}
+                {% set _ = seen_msgs.append(q_err) %}
+            {% endif %}
+
+            {% for item in all_notices %}
+            <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-ink{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
+                <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
+                <span>{{ item.msg }}</span>
             </div>
             {% endfor %}
+            <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
         </div>
-        {% endif %}
-        {% endwith %}
         {% endblock %}
         {% block content %}{% endblock %}
     </main>
     {% endblock %}
+    <script>
+    (function () {
+        var items = document.querySelectorAll('#toast-wrap .toast-item');
+        if (items.length) {
+            setTimeout(function () {
+                items.forEach(function (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(8px)';
+                    setTimeout(function () {
+                        if (el.parentNode) el.parentNode.removeChild(el);
+                    }, 350);
+                });
+            }, 4000);
+        }
+        document.addEventListener('click', function (e) {
+            var item = e.target.closest('#toast-wrap .toast-item, #toast-wrap #toast');
+            if (item && !item.classList.contains('is-hidden') && !item.classList.contains('hidden') && item.style.display !== 'none') {
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(8px)';
+                setTimeout(function () {
+                    if (item.id === 'toast') {
+                        item.style.display = 'none';
+                        item.classList.add('hidden', 'is-hidden');
+                        item.style.opacity = '';
+                        item.style.transform = '';
+                    } else if (item.parentNode) {
+                        item.parentNode.removeChild(item);
+                    }
+                }, 300);
+            }
+        });
+    })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -211,3 +211,89 @@ def test_invitation_routes_are_absent_in_internal_mode(projects_dir, make_app):
     assert client.get("/signup", follow_redirects=True).status_code == 404
     from testbench.config import RESERVED_SLUGS
     assert {"signup", "login", "app", "s", "invite"} <= RESERVED_SLUGS
+
+
+def test_public_mode_example_project_not_admin_for_unauthenticated(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    client = app.test_client()
+
+    # Unauthenticated visitor hitting example admin dashboard gets redirected to /login
+    resp = client.get("/example/admin/")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+    # Write routes return 302 (redirect to login) or 403, and do not execute
+    resp = client.post("/example/admin/status", data={"status": "closed"})
+    assert resp.status_code in (302, 403)
+
+    resp = client.post("/example/admin/p/1/delete")
+    assert resp.status_code in (302, 403)
+
+    resp = client.post("/example/admin/launch/passcode", json={"action": "enable", "passcode": "secret"})
+    assert resp.status_code in (302, 401, 403)
+
+    resp = client.post("/example/admin/studio/passcodes", data={"action": "save"})
+    assert resp.status_code in (302, 403)
+
+
+def test_viewer_cannot_perform_write_actions(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    owner_with_project(app, slug="study", email="owner@example.org")
+    make_user(app, "viewer@example.org")
+
+    with app.app_context():
+        viewer = users.get_user_by_email("viewer@example.org")
+        users.add_membership("study", viewer["id"], "viewer")
+        assert users.can(viewer, "study", "view") is True
+        assert users.can(viewer, "study", "edit") is False
+
+        # Add a participant to test participant routes
+        from testbench.web import get_project
+        from testbench.context import Ctx
+        proj = get_project("study")
+        ctx = Ctx(proj, admin=True)
+        ctx.conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES ('tester-1', '2026-04-18T10:00:00Z', '2026-04-18T10:30:00Z')")
+        ctx.conn.commit()
+
+    client = app.test_client()
+    login(app, client, "viewer@example.org")
+
+    # Viewer can view dashboard and participants
+    assert client.get("/study/admin/").status_code == 200
+    assert client.get("/study/admin/participants").status_code == 200
+
+    # But viewer is forbidden from write actions
+    assert client.post("/study/admin/status", data={"status": "closed"}).status_code == 403
+    assert client.post("/study/admin/launch/passcode", json={"action": "enable", "passcode": "secret"}).status_code == 403
+    assert client.post("/study/admin/studio/passcodes", data={"participant_passcode": "123"}).status_code == 403
+    assert client.post("/study/admin/p/1/delete").status_code == 403
+    assert client.post("/study/admin/p/1", data={"grade": "pass"}).status_code == 403
+
+
+def test_study_cloning_requires_view_permission_and_no_silent_fallback(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    owner_with_project(app, slug="secret-study", email="owner@example.org")
+    make_user(app, "other@example.org")
+
+    client = app.test_client()
+    login(app, client, "other@example.org")
+
+    # Attempting to copy a study without view permission is denied
+    resp_get = client.get("/app/new?from=secret-study", follow_redirects=True)
+    assert "You do not have permission to copy" in resp_get.get_data(as_text=True)
+
+    resp_post = client.post("/app/new", data={"slug": "stolen-study", "name": "Stolen", "source": "duplicate", "from": "secret-study"}, follow_redirects=True)
+    assert "You do not have permission to copy" in resp_post.get_data(as_text=True)
+    with app.app_context():
+        from testbench.web import registry
+        assert "stolen-study" not in registry().projects
+
+    # Attempting to copy a non-existent study does not fall back to copying registry's first project
+    resp_nonexistent = client.post("/app/new", data={"slug": "fallback-test", "name": "Fallback", "source": "duplicate", "from": "nonexistent-slug"}, follow_redirects=True)
+    html_nonexistent = resp_nonexistent.get_data(as_text=True)
+    assert "Source project" in html_nonexistent and "nonexistent-slug" in html_nonexistent and "not found" in html_nonexistent
+    with app.app_context():
+        from testbench.web import registry
+        assert "fallback-test" not in registry().projects
+
+

@@ -1,9 +1,12 @@
 import re
+from pathlib import Path
 from flask import abort, request, send_from_directory
 
 from .. import questions as Q
 from .. import storage
 from .base import ADVANCE, ModuleType
+
+ALLOWED_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico", ".bmp", ".tif", ".tiff"}
 
 
 class FirstClick(ModuleType):
@@ -16,14 +19,20 @@ class FirstClick(ModuleType):
             scope.add("first_click needs a `tasks:` list")
             return out
         for i, t in enumerate(raw["tasks"]):
+            if not isinstance(t, dict):
+                scope.add(f"tasks[{i}] must be a mapping")
+                continue
             tid = str(t.get("id") or "")
             if not tid or not re.fullmatch(r"[a-z0-9_-]+", tid):
                 scope.add(f"tasks[{i}] needs a valid `id:` (alphanumeric/dash/underscore)")
             if not t.get("prompt"):
                 scope.add(f"tasks[{i}] needs a `prompt:`")
-            if not t.get("image"):
+            img = str(t.get("image") or "")
+            if not img:
                 scope.add(f"tasks[{i}] needs an `image:` (URL or relative path)")
-            out["tasks"].append({"id": tid, "prompt": str(t["prompt"]), "image": str(t["image"])})
+            elif "://" not in img and Path(img.split("?")[0]).suffix.lower() not in ALLOWED_IMAGE_EXT:
+                scope.add(f"tasks[{i}].image must be an image file (.png, .jpg, .svg, .webp, etc.)")
+            out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "image": img})
 
         out["post"] = Q.normalize(raw.get("post", []), scope, "post")
         out["final"] = Q.normalize(raw.get("final", []), scope, "final")
@@ -93,9 +102,24 @@ class FirstClick(ModuleType):
                           page_no=1, page_count=1, answers=answers, errors=errors, prior=prior, last=True)
 
     def action(self, ctx, path):
-        # Allow serving assets if image path doesn't start with http
-        if ".." not in path:
-            return send_from_directory(ctx.project.dir, path, max_age=0)
+        # Only serve image assets configured in this module's tasks
+        from pathlib import Path
+        clean_path = Path(path).as_posix().lstrip("/")
+        if ".." in path or clean_path.startswith("../"):
+            abort(404)
+        allowed_images = {
+            Path(t["image"]).as_posix().lstrip("/")
+            for t in self.m.conf.get("tasks", [])
+            if t.get("image") and "://" not in t["image"]
+        }
+        if clean_path not in allowed_images:
+            abort(404)
+        if Path(clean_path).suffix.lower() not in ALLOWED_IMAGE_EXT:
+            abort(404)
+        if (ctx.project.dir / clean_path).is_file():
+            return send_from_directory(ctx.project.dir, clean_path, max_age=0)
+        if (ctx.project.dir / "prototypes" / clean_path).is_file():
+            return send_from_directory(ctx.project.dir / "prototypes", clean_path, max_age=0)
         abort(404)
 
     admin_action = action

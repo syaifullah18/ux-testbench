@@ -1,0 +1,166 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{% if cur_module %}{{ cur_module.title }} · {% endif %}Results · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}results{% endblock %}
+
+{% block extra_head %}
+<style>
+  .res-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) 112px minmax(0, 2fr) 120px; gap: 16px; align-items: center; padding: 16px 24px; }
+  @media (max-width: 960px) { .res-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; } .res-head { display: none; } }
+  .side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+  .verdict-note { font-size: 14px; color: var(--muted); }
+  .tbl tbody.task-g th { font-size: 16px; color: var(--ink); background: #fff; border-bottom: 0; padding-top: 16px; }
+  .tbl tbody.task-g + tbody.task-g th { border-top: 1px solid var(--line); }
+  .sub-r td { padding-top: 8px; padding-bottom: 8px; border-bottom: 0; }
+  .tbl td.num, .tbl th.text-right { white-space: nowrap; }
+  .tbl tfoot td { border-top: 1px solid var(--line); background: #FAFBFC; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'results' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    {% set active_page = 'module' if cur_module else 'summary' %}
+    {% include "admin/_results_sidebar.html" %}
+  </aside>
+
+  <div class="stack min-w-0" id="content">
+    {% if not cur_module %}
+      {# Summary View #}
+      <section class="panel" aria-labelledby="sm-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="sm-h">{{ project.name }}</h2>
+            <p>{{ n_participants }} participant{{ 's' if n_participants != 1 else '' }} entered.</p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.project_export', slug=project.slug) }}">Export data</a>
+        </header>
+      </section>
+
+      {% if n_participants > 0 %}
+        <section class="panel" aria-labelledby="na-h">
+          <header class="panel-h">
+            <h2 id="na-h">Needs attention</h2>
+          </header>
+          {% if needs_attention %}
+            <ul class="rows">
+              {% for item in needs_attention %}
+                <li class="row">
+                  <div class="row-main">
+                    <p class="row-title">{{ item.title }}</p>
+                    {% if item.detail %}<p class="t-meta">{{ item.detail }}</p>{% endif %}
+                  </div>
+                  <div class="row-state">
+                    <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>{{ item.label or 'Drop-off' }}</span>
+                  </div>
+                  <div class="row-act">
+                    <a class="btn btn-secondary btn-sm" href="{{ item.action_url }}">Open report</a>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="panel-b">
+              <p class="t-meta">Nothing needs attention.</p>
+            </div>
+          {% endif %}
+        </section>
+      {% else %}
+        <section class="panel">
+          <div class="panel-b">
+            <p class="t-strong">No one has entered this study yet</p>
+            <p class="t-meta mt-1">Results appear here once people finish a module. Go to Launch to share the participant link.</p>
+            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="panel" aria-labelledby="ml-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="ml-h">Findings by module</h2>
+            <p>In the order participants see them.</p>
+          </div>
+        </header>
+        <div class="res-grid res-head" style="background:#FAFBFC;border-bottom:1px solid var(--line);padding-top:12px;padding-bottom:12px;font-size:14px;font-weight:600;color:var(--muted)" aria-hidden="true">
+          <span>Module</span>
+          <span>Finished</span>
+          <span>Headline</span>
+          <span></span>
+        </div>
+        <ul class="rows">
+          {% for m in modules_list %}
+            <li class="res-grid">
+              <div class="min-w-0">
+                <p class="row-title">{{ m.title }}</p>
+                <p class="t-meta">{{ m.type_label }}</p>
+              </div>
+              <div>
+                {% if m.started %}
+                  <span class="num t-strong">{{ m.finished }}</span>
+                  <span class="t-meta block">of {{ m.started }} started</span>
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </div>
+              <p>{{ m.headline|safe }}</p>
+              <div class="text-right">
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}">Open report</a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+    {% else %}
+      {# Module Report View #}
+      <section class="panel" aria-labelledby="rh">
+        <header class="panel-h">
+          <div>
+            <h2 id="rh">{{ cur_module.title }}</h2>
+            <p>{{ cur_module_type_label }}{% if cur_module.description %} · {{ cur_module.description }}{% endif %}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.module_export', slug=project.slug, mid=cur_module.id) }}">Export CSV</a>
+          </div>
+        </header>
+        <div class="panel-b flex flex-wrap items-center gap-x-8 gap-y-2">
+          <p><span class="num t-strong">{{ cur_stat.started }}</span> started</p>
+          <p><span class="num t-strong">{{ cur_stat.finished }}</span> finished{% if cur_stat.started %} ({{ (cur_stat.finished / cur_stat.started * 100)|round|int }}%){% endif %}</p>
+          {% if cur_stat.finished < 8 and cur_stat.finished > 0 %}
+            <p><span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Indicative</span> <span class="t-meta">{{ cur_stat.finished }} of 8 needed</span></p>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if cur_stat.started == 0 %}
+        <section class="panel">
+          <div class="panel-b">
+            <p class="t-strong">No one has entered this module yet.</p>
+            <p class="t-meta mt-1">Share the participant link from Launch, then check back here.</p>
+            <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
+          </div>
+        </section>
+      {% elif cur_stat.finished == 0 %}
+        <section class="panel">
+          <div class="panel-b">
+            <p class="t-strong"><span class="num">{{ cur_stat.started }}</span> started, none finished yet.</p>
+            <p class="t-meta mt-1">Reports use finished sessions only.</p>
+          </div>
+        </section>
+      {% else %}
+        {{ report_body|safe }}
+      {% endif %}
+
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

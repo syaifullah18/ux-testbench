@@ -1,86 +1,281 @@
 {% extends "admin/_layout.html" %}
-{% block title %}{{ t('admin.overview') }}{% endblock %}
+{% block title %}Overview · {{ project.name }}{% endblock %}
+{% block tab %}overview{% endblock %}
+
+{% block header %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-ink">{{ project.name }}</h1>
-        <p class="text-[14px] text-ink-subtle">{{ t('admin.n_participants', n=n_participants) }} · <a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('web.home', slug=project.slug) }}">/{{ project.slug }}/</a></p>
-    </div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-    <div class="border border-line rounded-xl p-4 bg-card">
-        <h2 class="font-bold text-ink mb-4">Participant Funnel</h2>
-        <div class="flex flex-col gap-3">
-            <div class="flex items-center group">
-                <div class="w-1/3 text-sm text-ink-muted">Signed Up ({{ funnel.total }})</div>
-                <div class="w-2/3"><div class="bg-blue-200 h-8 rounded group-hover:bg-blue-300 transition-colors" style="width: 100%"></div></div>
-            </div>
-            <div class="flex items-center group">
-                <div class="w-1/3 text-sm text-ink-muted">Started Any ({{ funnel.started }})</div>
-                <div class="w-2/3"><div class="bg-blue-400 h-8 rounded group-hover:bg-blue-500 transition-colors" style="width: {{ (funnel.started / funnel.total * 100)|round if funnel.total else 0 }}%"></div></div>
-            </div>
-            <div class="flex items-center group">
-                <div class="w-1/3 text-sm text-ink-muted">Finished Any ({{ funnel.finished }})</div>
-                <div class="w-2/3"><div class="bg-blue-600 h-8 rounded group-hover:bg-blue-700 transition-colors" style="width: {{ (funnel.finished / funnel.total * 100)|round if funnel.total else 0 }}%"></div></div>
-            </div>
-        </div>
-    </div>
 
-    <div class="border border-line rounded-xl p-4 bg-card flex flex-col">
-        <h2 class="font-bold text-ink mb-4">Daily Signups (Last 14 Days)</h2>
-        {% set max_count = daily_signups|map(attribute='count')|max|default(1) %}
-        {% if max_count == 0 %}{% set max_count = 1 %}{% endif %}
-        <div class="flex items-end gap-1 flex-1 border-b border-line pb-1 mt-4">
-            {% for d in daily_signups %}
-            <div class="flex-1 bg-brand rounded-t hover:bg-brand-700 transition-colors relative group" 
-                 style="height: {{ (d.count / max_count * 100)|round }}%" 
-                 title="{{ d.date }}: {{ d.count }}">
-                 <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-ink-subtle opacity-0 group-hover:opacity-100">{{ d.count }}</div>
-            </div>
-            {% endfor %}
-            {% if not daily_signups %}
-            <div class="w-full text-center text-sm text-ink-subtle pb-4">No signups yet</div>
-            {% endif %}
-        </div>
-        <div class="flex justify-between mt-1 text-[10px] text-ink-subtle">
-            {% if daily_signups %}
-            <span>{{ daily_signups[0].date }}</span>
-            <span>{{ daily_signups[-1].date }}</span>
-            {% endif %}
-        </div>
-    </div>
-</div>
+  <!-- One-time notice after creating a study -->
+  <div id="created" class="{% if request.args.get('created') != '1' %}is-hidden{% endif %} flex items-start gap-4 rounded-lg border border-[#B7DFC3] bg-ok-soft p-4" role="status">
+    <i class="fa-solid fa-circle-check mt-1 text-ok" aria-hidden="true"></i>
+    <p class="flex-1"><span class="font-semibold text-ok">Study created.</span> It's in draft, so participants can't enter yet. Work through the checklist below, then go live.</p>
+    <button type="button" class="text-muted hover:text-ink" id="created-x" aria-label="Dismiss"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+  </div>
 
-<div class="border border-line rounded-xl overflow-x-auto mb-8">
-    <table class="w-full text-[14px]">
-        <thead><tr class="border-b border-line text-left text-ink-subtle">
-            <th class="px-4 py-2 font-semibold">{{ t('admin.module') }}</th><th class="px-4 py-2 font-semibold">{{ t('admin.type') }}</th>
-            <th class="px-4 py-2 font-semibold">{{ t('admin.started') }}</th><th class="px-4 py-2 font-semibold">{{ t('admin.finished') }}</th><th></th>
-        </tr></thead>
-        <tbody>
-        {% for m in project.modules.values() %}
-        <tr class="border-b border-line last:border-0">
-            <td class="px-4 py-2.5"><a class="font-semibold text-ink hover:text-brand-600 dark:text-brand-400" href="{{ url_for('admin.module_report', slug=project.slug, mid=m.id) }}">{{ m.title }}</a>
-                {% if m.requires %}<span class="text-[12px] text-ink-subtle"> · {{ t('admin.requires') }} {{ m.requires|join(', ') }}</span>{% endif %}
-                {% if m.audience %}<span class="text-[12px] text-ink-subtle"> · {{ t('admin.restricted') }}</span>{% endif %}</td>
-            <td class="px-4 py-2.5 text-ink-subtle">{{ m.type }}</td>
-            <td class="px-4 py-2.5">{{ stats[m.id].started }}</td>
-            <td class="px-4 py-2.5">{{ stats[m.id].finished }}</td>
-            <td class="px-4 py-2.5 text-right"><a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('admin.module_export', slug=project.slug, mid=m.id) }}"><i class="fa-solid fa-download mr-1"></i>CSV</a></td>
-        </tr>
+
+  <!-- Phase Panel -->
+  <section class="panel" aria-labelledby="phase-h">
+    <div class="panel-b">
+      <div class="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div class="max-w-2xl">
+          <h2 id="phase-h" class="t-page">
+            {% if status == 'draft' %}
+            Draft: not open to participants
+            {% elif status == 'live' %}
+            Live: collecting responses
+            {% else %}
+            Closed: no new participants
+            {% endif %}
+          </h2>
+          <p class="mt-2 text-muted">
+            {% if status == 'draft' %}
+            Finish the checklist, then open the study to participants from Launch.
+            {% elif status == 'live' %}
+            Participants can enter at the study link. Read results whenever you like, but wait for enough finishes before you decide.
+            {% else %}
+            Results stay open. Export your data, then delete it when you no longer need it.
+            {% endif %}
+          </p>
+        </div>
+        <div>
+          {% if status == 'draft' %}
+          <a class="btn btn-primary" href="{{ url_for('admin.launch', slug=project.slug) }}">Finish setup</a>
+          {% elif status == 'live' %}
+          <a class="btn btn-primary" href="{{ url_for('admin.results', slug=project.slug) }}">Read results</a>
+          {% else %}
+          <a class="btn btn-primary" href="{{ url_for('admin.export_view', slug=project.slug) }}">Export results</a>
+          {% endif %}
+        </div>
+      </div>
+      <ol class="rail mt-8" data-rail aria-label="Study phases">
+        {% for p in phase_steps %}
+        {% set cls = 'done' if loop.index0 < current_phase_idx else ('now' if loop.index0 == current_phase_idx else '') %}
+        <li class="{{ cls }}" style="--i:{{ loop.index0 }}" {% if cls == 'now' %}aria-current="step"{% endif %}>
+          <span class="dot">{% if loop.index0 < current_phase_idx %}<i class="fa-solid fa-check" aria-hidden="true"></i>{% endif %}</span>
+          <span class="name">{{ p.name }}{% if loop.index0 < current_phase_idx %}<span class="sr-only"> (done)</span>{% endif %}</span>
+          {% if cls == 'now' or (loop.index0 == 3 and status == 'draft') %}
+          <span class="note">{{ p.note }}</span>
+          {% endif %}
+        </li>
         {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <!-- Setup checklist (draft or upon request) -->
+  {% if status == 'draft' or request.args.get('checklist') == '1' %}
+  <section id="checklist" class="panel" aria-labelledby="ck-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="ck-h">Setup checklist</h2>
+        <p data-progress-note>{{ checklist_summary.note }}</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="num t-strong" data-progress>{{ checklist_summary.ready_count }} of {{ checklist|length }} ready</span>
+        <span class="h-2 w-32 overflow-hidden rounded-full bg-line">
+          <span class="block h-full rounded-full bg-brand" data-progress-bar style="width: {{ checklist_summary.percent }}%"></span>
+        </span>
+      </div>
+    </header>
+    <ul class="rows">
+      {% for item in checklist %}
+      <li class="row" data-item="{{ item.status }}">
+        <div class="row-main">
+          <p class="row-title">{{ item.title }}</p>
+          <p class="t-meta">{{ item.meta }}</p>
+        </div>
+        <div class="row-state">
+          {% if item.status == 'pass' %}
+          <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>
+          {% elif item.status == 'warn' %}
+          <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span>
+          {% else %}
+          <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>
+          {% endif %}
+        </div>
+        <div class="row-act">
+          {% if item.action_url %}
+          <a class="btn {% if item.status == 'fail' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="{{ item.action_url }}">{{ item.action_text }}</a>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <!-- Needs attention (live, closed, or draft with items) -->
+  {% if status != 'draft' or needs_attention %}
+  <section class="panel" aria-labelledby="na-h">
+    <header class="panel-h"><h2 id="na-h">Needs attention</h2></header>
+    <ul class="rows" id="na-list">
+      {% for item in needs_attention %}
+      <li class="row">
+        <div class="row-main">
+          <p class="row-title">{{ item.title }}</p>
+          {% if item.detail %}<p class="t-meta">{{ item.detail }}</p>{% endif %}
+        </div>
+        <div class="row-state">
+          <span class="st st-{{ item.status }}">
+            {% if item.status == 'warn' %}<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            {% else %}<i class="fa-solid fa-circle-info" aria-hidden="true"></i>{% endif %}
+            {{ item.label }}
+          </span>
+        </div>
+        <div class="row-act">
+          {% if item.action_url %}
+          <a class="btn btn-secondary btn-sm" href="{{ item.action_url }}">{{ item.action_text }}</a>
+          {% endif %}
+        </div>
+      </li>
+      {% else %}
+      <li class="row"><p class="t-meta">Nothing needs attention.</p></li>
+      {% endfor %}
+    </ul>
+    <p class="panel-f">
+      <a class="link" href="{{ url_for('admin.dashboard', slug=project.slug) }}?checklist=1#checklist">Review the setup checklist</a>
+    </p>
+  </section>
+  {% endif %}
+
+  <!-- Health (live and closed or if data exists) -->
+  {% if n_participants > 0 or status != 'draft' %}
+  <div class="stack-2" id="health">
+    <!-- Funnel -->
+    <section class="panel" aria-labelledby="fn-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="fn-h">How far participants get</h2>
+          <p id="fn-sub" class="t-meta mt-1">{{ funnel.entered }} people entered the study.</p>
+        </div>
+      </header>
+      <dl class="panel-b space-y-6" id="funnel">
+        {% set stages = [
+          ('Signed in', funnel.entered, 0.3),
+          ('Started a module', funnel.started, 0.5),
+          ('Finished at least one', funnel.finished, 0.75),
+          ('Finished every module', funnel.finished_all, 1.0)
+        ] %}
+        {% for label, count, op in stages %}
+        {% set pct = (count / funnel.entered * 100)|round|int if funnel.entered else 0 %}
+        <div>
+          <div class="flex justify-between">
+            <dt class="font-medium text-ink">{{ label }}</dt>
+            <dd class="num"><span class="t-strong">{{ count }}</span> <span class="text-muted">({{ pct }}%)</span></dd>
+          </div>
+          <div class="mt-2 h-2 rounded-full bg-line overflow-hidden">
+            <div class="h-full rounded-full bg-brand" style="width: {{ pct }}%; opacity: {{ op }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </dl>
+    </section>
+
+    <!-- Signups per day -->
+    <section class="panel" aria-labelledby="sg-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="sg-h">Signups per day</h2>
+          <p id="sg-sub" class="t-meta mt-1">
+            {% if busiest_day %}
+            Busiest day was {{ busiest_day.date }} with {{ busiest_day.count }} signups.
+            {% else %}
+            No signups recorded in this period.
+            {% endif %}
+          </p>
+        </div>
+      </header>
+      <div class="panel-b">
+        {% set max_s = max_signups if max_signups > 0 else 1 %}
+        <div class="flex h-40 items-end gap-2 border-b border-line-strong pb-1" id="bars" role="img" aria-label="Daily signups chart">
+          {% for d in daily_signups %}
+          <div class="flex h-full flex-1 flex-col items-center justify-end group relative">
+            {% if d.count > 0 %}
+            <span class="num mb-1 text-xs t-strong">{{ d.count }}</span>
+            <div class="w-full rounded-t-[3px] bg-brand transition-all hover:brightness-110" style="height: {{ (d.count / max_s * 100)|round }}%"></div>
+            {% else %}
+            <div class="w-full h-0.5 rounded-t-[3px] bg-line"></div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mt-2 flex justify-between t-meta text-xs">
+          <span>{{ first_signup_date }}</span>
+          <span>{{ last_signup_date }}</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  {% endif %}
+
+  <!-- Modules Table -->
+  <section class="panel" aria-labelledby="mod-h">
+    <header class="panel-h">
+      <h2 id="mod-h">Modules</h2>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.home', slug=project.slug) }}">Open Build</a>
+    </header>
+    <div class="overflow-x-auto">
+      <table class="tbl min-w-[760px]">
+        <thead>
+          <tr>
+            <th scope="col">Module</th>
+            <th scope="col">Type</th>
+            <th scope="col" class="text-right">Started</th>
+            <th scope="col" class="text-right">Finished</th>
+            <th scope="col">Completion</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in project.modules.values() %}
+          {% set m_stat = stats.get(m.id, {'started': 0, 'finished': 0}) %}
+          {% set m_pct = (m_stat.finished / m_stat.started * 100)|round|int if m_stat.started else 0 %}
+          {% set m_drop = m_stat.started - m_stat.finished %}
+          {% set is_dropoff = m_stat.started >= 3 and (m_drop / m_stat.started >= 0.3) %}
+          <tr>
+            <td>
+              <span class="t-strong">{{ m.title }}</span>
+              {% if m.requires %}
+              <span class="t-meta block">Needs {{ m.requires|join(', ') }} first</span>
+              {% endif %}
+            </td>
+            <td>{{ m.type|replace('_', ' ')|capitalize }}</td>
+            <td class="num text-right">{{ m_stat.started }}</td>
+            <td class="num text-right">{{ m_stat.finished }}</td>
+            <td>
+              {% if m_stat.started > 0 %}
+              <span class="num t-strong">{{ m_pct }}%</span>
+              {% if is_dropoff %}
+              <span class="st st-warn ml-2"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>{{ m_drop }} stopped</span>
+              {% endif %}
+              {% else %}
+              <span class="text-muted">No responses yet</span>
+              {% endif %}
+            </td>
+            <td class="whitespace-nowrap text-right">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}">Report</a>
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('studio.module_edit', slug=project.slug, mid=m.id) }}">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
         </tbody>
-    </table>
-</div>
-<details class="border border-red-300 rounded-xl p-4" {% if reset_failed %}open{% endif %}>
-    <summary class="font-semibold text-red-700 cursor-pointer">{{ t('admin.reset_title') }}</summary>
-    <p class="text-[14px] mt-2">{{ t('admin.reset_desc') }}</p>
-    <form method="post" action="{{ url_for('admin.reset', slug=project.slug) }}" class="mt-3 flex flex-wrap gap-3 items-end" onsubmit="return confirm({{ t('admin.reset_confirm')|tojson }})">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div><label for="rp" class="block text-[13px] mb-1">{{ t('admin.reset_passcode') }}</label>
-            <input id="rp" type="password" name="passcode" class="border border-line rounded-lg px-3 py-2 text-[14px]"></div>
-        <button class="min-h-11 inline-flex items-center justify-center px-4 rounded-lg bg-red-600 text-white text-[14px] font-semibold hover:bg-red-700">{{ t('admin.reset_button') }}</button>
-        {% if reset_failed %}<p class="w-full text-[13px] text-red-700">{{ t('admin.reset_failed') }}</p>{% endif %}
-    </form>
-</details>
+      </table>
+    </div>
+  </section>
+
+
+<script>
+  (function () {
+    var created = document.getElementById('created');
+    var createdX = document.getElementById('created-x');
+    if (createdX && created) {
+      createdX.addEventListener('click', function () {
+        created.classList.add('is-hidden');
+      });
+    }
+  })();
+</script>
 {% endblock %}

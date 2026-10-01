@@ -19,6 +19,7 @@ projects/*
 .DS_Store
 .vscode/
 .idea/
+.history/
 
 # Built assets and the downloaded Tailwind binary (scripts/build-assets.sh)
 testbench/static/vendor/
@@ -33,3 +34,4 @@ backups/
 *.claude*
 .coverage
 skills-lock.json
+reference

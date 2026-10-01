@@ -38,3 +38,43 @@ def test_first_click_steps():
     m = DummyModule(p, {"type": "first_click", "tasks": [{"id": "t1"}, {"id": "t2"}], "post": [{"id": "q"}]})
     fc = FirstClick(m)
     assert fc.steps({}) == ["t1", "t2", "post1", "post2"]
+
+
+def test_first_click_validation_missing_prompt_or_image():
+    p = DummyProject()
+    m = DummyModule(p, {"type": "first_click", "tasks": [
+        {"id": "t1"}  # missing both prompt and image
+    ]})
+    fc = FirstClick(m)
+
+    class DummyScope:
+        def __init__(self):
+            self.errors = []
+        def add(self, err):
+            self.errors.append(err)
+
+    scope = DummyScope()
+    out = fc.validate(m.conf, scope)
+    assert any("prompt" in err for err in scope.errors)
+    assert any("image" in err for err in scope.errors)
+    assert len(out["tasks"]) == 1
+    assert out["tasks"][0]["prompt"] == ""
+    assert out["tasks"][0]["image"] == ""
+
+
+def test_first_click_validation_non_dict_task():
+    p = DummyProject()
+    m = DummyModule(p, {"type": "first_click", "tasks": ["not_a_dict"]})
+    fc = FirstClick(m)
+
+    class DummyScope:
+        def __init__(self):
+            self.errors = []
+        def add(self, err):
+            self.errors.append(err)
+
+    scope = DummyScope()
+    out = fc.validate(m.conf, scope)
+    assert any("must be a mapping" in err for err in scope.errors)
+
+

@@ -4,8 +4,9 @@ Only active in public mode (TESTBENCH_MODE=public). In internal mode these
 routes return 404, so existing deployments are completely unaffected.
 """
 import re
+from urllib.parse import urlsplit
 
-from flask import (Blueprint, abort, flash, redirect, render_template, request,
+from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    session as cookie, url_for)
 
 from . import limits, mail, moderation, users
@@ -55,7 +56,29 @@ def require_login():
     return user, None
 
 
+def _safe_next_url(target):
+    if not target:
+        return None
+    if "\\" in target:
+        return None
+    parsed = urlsplit(target)
+    if parsed.scheme or parsed.netloc:
+        return None
+    if not parsed.path.startswith("/") or parsed.path.startswith("//"):
+        return None
+    return target
+
+
 def _base_url():
+    import os
+    domain = (
+        current_app.config.get("APP_DOMAIN")
+        or os.environ.get("APP_DOMAIN")
+        or current_app.config.get("SERVER_NAME")
+    )
+    if domain:
+        scheme = "https" if (current_app.config.get("SESSION_COOKIE_SECURE") or request.is_secure) else "http"
+        return f"{scheme}://{domain}"
     return request.host_url.rstrip("/")
 
 
@@ -166,8 +189,10 @@ def login():
     errors = {}
     form = {"email": ""}
 
+    next_url = _safe_next_url(request.args.get("next")) or url_for("public.dashboard")
+
     if current_user():
-        return redirect(request.args.get("next") or url_for("public.dashboard"))
+        return redirect(next_url)
 
     if request.method == "POST":
         form["email"] = request.form.get("email", "").strip()
@@ -187,7 +212,7 @@ def login():
                     cookie[SESSION_COOKIE_KEY] = sid
                     users.update_last_login(user["id"])
                     clear_rate(request.remote_addr, "auth_login")
-                    return redirect(request.args.get("next") or url_for("public.dashboard"))
+                    return redirect(next_url)
             else:
                 record_failed_login(request.remote_addr, "auth_login")
                 errors["email"] = t("auth.login_failed")
@@ -211,7 +236,9 @@ def forgot():
     t, sent = translator("en"), False
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        if not is_rate_limited(request.remote_addr, "forgot"):
+        limited = is_rate_limited(request.remote_addr, "forgot")
+        record_failed_login(request.remote_addr, "forgot")
+        if not limited:
             user = users.get_user_by_email(email)
             if user:
                 token = users.create_token(user["id"], "reset", hours=1)

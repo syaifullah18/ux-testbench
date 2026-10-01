@@ -1,0 +1,25 @@
+# Card sort module. Reference: docs/configuration.md
+type: card_sort
+title: Group content
+instructions: Drag each card into the group where you expect to find it, or create your own group.
+minutes: 10
+
+cards:
+  - id: account-settings
+    label: Account settings
+  - id: billing-history
+    label: Billing history
+  - id: security-keys
+    label: Security keys
+  - id: user-guide
+    label: User guide
+  - id: api-reference
+    label: API reference
+  - id: contact-support
+    label: Contact support
+
+categories:
+  - Account
+  - Help & Documentation
+
+allow_new_categories: true

@@ -1,0 +1,346 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Help · UX Testbench{% endblock %}
+{% block shell %}workspace{% endblock %}
+{% block tab %}help{% endblock %}
+
+{% block extra_head %}
+<style>
+  section[id] { scroll-margin-top: 24px; }
+  .tbl td { font-size: 16px; line-height: 1.5; }
+</style>
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="t-page">Help &amp; Reference</h1>
+  <p class="mt-1 text-muted">Comprehensive guide to study lifecycles, research modules, statistical rules, and study configuration.</p>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    <nav class="panel side" aria-label="Help" id="help-nav">
+      <a href="#status" aria-current="page"><span>Draft, live and closed</span></a>
+      <a href="#modules"><span>Choosing a module</span></a>
+      <a href="#readiness"><span>Launch checklist</span></a>
+      <a href="#reading"><span>Reading results</span></a>
+      <a href="#privacy"><span>Access &amp; privacy</span></a>
+      {% if is_public %}
+      <a href="#report"><span>Report a study</span></a>
+      {% endif %}
+    </nav>
+  </aside>
+
+  <div class="stack min-w-0">
+
+    <!-- 1. Draft, live and closed (2-column Table with UI component badge as 1st column) -->
+    <section class="panel" id="status" aria-labelledby="s-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="s-h">Draft, live and closed</h2>
+          <p>What each status means for participants, data integrity, and researcher workflows.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Status</th>
+              <th scope="col">What it means &amp; rules</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span>
+              </td>
+              <td>
+                Participants see “This study is being prepared” and cannot start. You can edit questions, prototypes, modules, and settings without restriction. Use <strong>Preview</strong> to test the flow yourself.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-live"><i class="fa-solid fa-circle text-[8px]" aria-hidden="true"></i>Live</span>
+              </td>
+              <td>
+                Participants can enter at the study link (and passcode if required). Changing questions now can make answers hard to compare, so the editor warns you. Use when actively fielding your study.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-closed"><i class="fa-solid fa-lock" aria-hidden="true"></i>Closed</span>
+              </td>
+              <td>
+                Nobody new can enter and people inside cannot resume. All responses, reports, and CSV exports stay intact. You can reopen the study anytime by setting the status back to Live.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Offline</span>
+              </td>
+              <td>
+                Administrative hold. Participants see “This study is not available”. Data and configuration are preserved while platform operators review reported concerns.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">You can switch status at any time using the status badge dropdown in the header or on the <strong>Launch</strong> page.</p>
+    </section>
+
+    <!-- 3. Choosing a module (2-column Table with UI component badge as 1st column) -->
+    <section class="panel" id="modules" aria-labelledby="m-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="m-h">Choosing a module</h2>
+          <p>Pick by the research question you need answered.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Module</th>
+              <th scope="col">Question answered &amp; outputs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-info">A/B test</span>
+              </td>
+              <td>
+                <strong>Which of two designs is easier to use?</strong> Each person performs the same tasks across two interactive prototypes. You get task completion speed, success rate, perceived ease ratings, sign test p-values, order effect checks, and a plain automated verdict.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Survey</span>
+              </td>
+              <td>
+                <strong>Who are your participants, and what is hard for them?</strong> Collect screener criteria, demographics, satisfaction rating scales, or open post-task reflections. Place it first so subsequent modules can branch or filter based on responses.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">First click</span>
+              </td>
+              <td>
+                <strong>Where do people click first on a screen?</strong> Evaluates initial mental models and visual affordance on a static mockup or screenshot. Delivers interactive click heatmaps, percentage of clicks inside expected areas, and median time to first click.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Card sort</span>
+              </td>
+              <td>
+                <strong>How do people categorize and conceptualize your content?</strong> Uses 15 to 40 cards. Choose closed (fixed categories), open (participant-named categories), or hybrid for both. Delivers co-occurrence matrices, category agreement ratios, and popular groupings.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Tree test</span>
+              </td>
+              <td>
+                <strong>Where would people navigate in a text-only hierarchy?</strong> Tests menu and information architecture isolated from visual design. Delivers overall task success rates, directness percentage (navigating without backtracking), and weakest task identification.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">Modules can be reordered by dragging them on the <strong>Build</strong> page.</p>
+    </section>
+
+    <!-- 4. Launch checklist (2-column Table with UI component badge as 1st column) -->
+    <section class="panel" id="readiness" aria-labelledby="ck-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="ck-h">Launch checklist</h2>
+          <p>Every check on the Launch page validates specific study criteria before fielding.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Check State</th>
+              <th scope="col">What it means &amp; impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Done</span>
+              </td>
+              <td>
+                All required configuration files, assets, and validation criteria are verified. Contributes to your launch readiness score and permits fielding.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Warning</span>
+              </td>
+              <td>
+                A recommended practice is missing (e.g. consent statement for timing tracking, manual grading needed on A/B tasks, or single-member team). Advisory only — does not prevent launching.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Blocks launch</span>
+              </td>
+              <td>
+                A critical requirement is unfulfilled (e.g. passcode access enabled without setting one, missing prototype file, or YAML syntax error). Must be resolved before switching status to Live.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">Checklist items are evaluated dynamically whenever you make changes in the Studio or on the Launch page.</p>
+    </section>
+
+    <!-- 5. Reading results (2-column Table) -->
+    <section class="panel" id="reading" aria-labelledby="r-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="r-h">Reading results</h2>
+          <p>Every sentence in a report is produced by a fixed rule, not written by a model. The same numbers always give the same sentence.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Term</th>
+              <th scope="col">What it means</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="t-strong">Indicative</td>
+              <td>A report is marked Indicative until enough people have finished. The number is set in the module’s decision rule for A/B tests, and is 8 for the other types. Below it, no report says a design won.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Intervals</td>
+              <td>A range next to a number shows how far it could be from the truth. If the 95% confidence interval range crosses zero, the difference may be chance, and the report says so.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">A/B verdict</td>
+              <td>Each check (speed, success, ease) reads for, against or unsure, then the overall line follows the strongest pattern: all three for, a mix of for and against, all against, or not enough evidence on any check. It is never stronger than the least certain check.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Order effect</td>
+              <td>Only stated as a fact, for example “Search and filters is faster in both orders.” It never claims that order did or did not drive the result — that is not something the numbers alone can show.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Drop-off</td>
+              <td>A module is flagged when at least 2 people and at least 20% stopped at the same point. One person leaving is not flagged.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Card sort agreement</td>
+              <td>A card has a clear home when at least 70% of people used the same category. Between 50% and 69% indicates moderate consensus; under 50% is “no clear home”.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">First click</td>
+              <td>The share of people who clicked inside the target area, and the median time to their first click. First-click success strongly correlates with final task completion.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Tree test</td>
+              <td>Success across all tasks, success without backtracking (directness ratio), and the single weakest task by name and share.</td>
+            </tr>
+            <tr>
+              <td class="t-strong">Sign test</td>
+              <td>Where a check is about direction (for example, which variant was faster for each person), a p-value from the exact two-sided test is shown alongside it.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">Reports can be viewed online or downloaded as raw CSV datasets from the <strong>Results</strong> page.</p>
+    </section>
+
+    <!-- 6. Access, identity and privacy (2-column Table with UI component badge as 1st column) -->
+    <section class="panel" id="privacy" aria-labelledby="pr-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="pr-h">Access, identity and privacy</h2>
+          <p>How authentication, passcodes, and participant privacy are safeguarded.</p>
+        </div>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="tbl w-full">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 22%">Identity Mode</th>
+              <th scope="col">Privacy &amp; security rules</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="st st-draft">Anonymous</span>
+              </td>
+              <td>
+                Participants receive a randomized resume code (e.g. <code>WXYZ-4567</code>). <strong>Zero personally identifiable information (PII)</strong> is collected, requested, or stored.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Passcode</span>
+              </td>
+              <td>
+                Shared study gatekeeper configured on the Launch page. Stored using salted cryptographic hashes (PBKDF2/SHA256) so the raw secret is never stored in plaintext and can be rotated anytime.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <span class="st st-info">Participant ID</span>
+              </td>
+              <td>
+                Pre-assigned identifiers or email domains validated against allowed whitelist patterns. Responses remain strictly isolated within each study's private SQLite database.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="panel-f">All participant sessions and module responses are stored locally in isolated SQLite databases per study.</p>
+    </section>
+
+    <!-- 7. Report a study (public mode) -->
+    {% if is_public %}
+    <section class="panel" id="report" aria-labelledby="rp-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="rp-h">Report a study</h2>
+          <p>If someone sent you a study that looks deceptive or inappropriate.</p>
+        </div>
+      </header>
+      <div class="row">
+        <div class="row-main">
+          <p class="row-title">Tell the platform operators</p>
+          <p class="t-meta">You do not need an account to report a study. A platform administrator reviews every report promptly.</p>
+        </div>
+        <div class="row-act" style="width:auto">
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('public.report') if 'public.report' in url_for.__globals__ else '/report' }}">Report a study</a>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('#help-nav a').forEach(function(a) {
+  a.addEventListener('click', function() {
+    document.querySelectorAll('#help-nav a').forEach(function(x) { x.removeAttribute('aria-current'); });
+    a.setAttribute('aria-current', 'page');
+  });
+});
+if (location.hash) {
+  var t = document.querySelector(location.hash);
+  if (t) {
+    setTimeout(function() { t.scrollIntoView({ behavior: 'smooth' }); }, 100);
+  }
+}
+</script>
+{% endblock %}

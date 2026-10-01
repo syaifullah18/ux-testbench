@@ -17,7 +17,7 @@ class CardSort(ModuleType):
     type_name = "card_sort"
 
     def validate(self, raw, scope):
-        c = {"type": "card_sort", "id": self.m.id, "title": raw.get("title", self.m.id)}
+        c = {"type": "card_sort", "id": self.m.id, "title": str(raw.get("title") or self.m.id)}
         
         cards = raw.get("cards")
         if not isinstance(cards, list) or not cards:
@@ -33,6 +33,10 @@ class CardSort(ModuleType):
                 else:
                     scope.add(f"card {i} must be a string or object with a 'label'")
                     
+        card_ids = [card["id"] for card in c["cards"]]
+        if len(card_ids) != len(set(card_ids)):
+            scope.add("card ids must be unique")
+
         cats = raw.get("categories", [])
         if not isinstance(cats, list):
             scope.add("'categories' must be a list of strings")
@@ -42,20 +46,25 @@ class CardSort(ModuleType):
         c["allow_new_categories"] = bool(raw.get("allow_new_categories", not bool(c["categories"])))
         c["instructions"] = str(raw.get("instructions", "Sort the cards into categories."))
         
-        c["pre"] = Q.normalize(raw.get("pre", []), scope.down("pre"))
-        c["post"] = Q.normalize(raw.get("post", []), scope.down("post"))
-        c["final"] = Q.normalize(raw.get("final", []), scope.down("final"))
+        c["pre"] = Q.normalize(raw.get("pre", []), scope, "pre")
+        c["post"] = Q.normalize(raw.get("post", []), scope, "post")
+        c["final"] = Q.normalize(raw.get("final", []), scope, "final")
+
+        all_q = c["pre"] + c["post"] + c["final"]
+        q_ids = [q["id"] for q in all_q]
+        if len(q_ids) != len(set(q_ids)):
+            scope.add("all question ids must be unique across the module")
+
         return c
 
     def check_refs(self, scope):
         c = self.m.conf
-        Q.check_refs(c["pre"], scope.down("pre"), self.m.project)
-        Q.check_refs(c["post"], scope.down("post"), self.m.project)
-        Q.check_refs(c["final"], scope.down("final"), self.m.project)
+        all_qs = c.get("pre", []) + c.get("post", []) + c.get("final", [])
+        Q.check_refs(all_qs, scope, self.m.project, self.m.id, self.question_ids())
 
     def question_ids(self):
         c = self.m.conf
-        return Q.gather_ids(c["pre"]) | Q.gather_ids(c["post"]) | Q.gather_ids(c["final"])
+        return {q["id"] for q in c.get("pre", []) + c.get("post", []) + c.get("final", [])}
 
     def steps(self, state):
         c = self.m.conf
@@ -67,59 +76,124 @@ class CardSort(ModuleType):
         return res
 
     def step_label(self, step, t):
-        if step == "sort": return t("card_sort.sort", "Card Sorting")
+        if step == "sort": return t("card_sort.sort")
         if step in ("pre", "post"): return t(f"module.{step}_survey")
         return t("module.final_questions")
 
     def handle(self, ctx, step):
         c = self.m.conf
         if step in ("pre", "post", "final"):
-            if request.method == "POST":
-                errs = Q.validate_answers(c[step], request.form, ctx.conn, ctx.session["id"])
-                if not errs:
-                    storage.save_page(ctx.conn, ctx.session["id"], step, request.form)
-                    return ADVANCE
-                ctx.set_errors(errs)
-            
-            return ctx.render("modules/survey_page.html",
-                              page={"title": c.get("title", self.m.id), "questions": c[step]},
-                              answers=request.form if request.method == "POST" else storage.page_answers(ctx.conn, ctx.session["id"], step))
+            return self._handle_survey(ctx, step, c.get(step, []))
 
         if step == "sort":
             if request.method == "POST":
                 # Expecting JSON: { card_id: category_name, ... }
-                data = request.json
+                data = request.get_json(silent=True) or request.form.to_dict() or {}
                 if not isinstance(data, dict):
                     abort(400)
                 storage.save_page(ctx.conn, ctx.session["id"], step, data)
-                return jsonify({"ok": True})
+                ctx.conn.commit()
+                return ADVANCE
                 
             return ctx.render("modules/card_sort.html", conf=c)
             
         abort(404)
 
+    def _handle_survey(self, ctx, page_id, questions):
+        answers, errors = storage.page_answers(ctx.conn, ctx.session["id"], page_id), {}
+        prior = storage.module_answers(ctx.conn, ctx.session["id"])
+        if request.method == "POST":
+            answers, errors = Q.parse(questions, request.form, prior, ctx.lookup)
+            if not errors:
+                storage.save_page(ctx.conn, ctx.session["id"], page_id, answers)
+                ctx.conn.commit()
+                return ADVANCE
+        return ctx.render("modules/survey_page.html", page={"title": "", "intro": "", "questions": questions}, 
+                          page_no=1, page_count=1, answers=answers, errors=errors, prior=prior, last=True)
+
     def report(self, ctx):
         c = self.m.conf
         sessions = self._finished_runs(ctx.conn)
+        n = len(sessions)
         
-        # Aggregate logic
-        # For each card, count how many times it was put in each category
-        # cards[card_id][category_name] = count
+        predefined_cats = list(c.get("categories", []))
+        all_cats_set = set(predefined_cats)
+        created_counts = {}
+        
         matrix = {card["id"]: {} for card in c["cards"]}
         
         for s in sessions:
             sort_data = storage.page_answers(ctx.conn, s["id"], "sort")
+            seen_created_in_session = set()
             for card_id, cat_name in sort_data.items():
-                if card_id in matrix and cat_name:
+                if not cat_name:
+                    continue
+                all_cats_set.add(cat_name)
+                if cat_name not in predefined_cats:
+                    seen_created_in_session.add(cat_name)
+                if card_id in matrix:
                     matrix[card_id][cat_name] = matrix[card_id].get(cat_name, 0) + 1
-                    
-        return ctx.render_fragment("modules/card_sort_report.html", 
-                                   sessions=sessions, 
-                                   cards=c["cards"],
-                                   matrix=matrix)
+            for cat_name in seen_created_in_session:
+                created_counts[cat_name] = created_counts.get(cat_name, 0) + 1
+
+        extra_cats = sorted(all_cats_set - set(predefined_cats))
+        all_categories = predefined_cats + extra_cats
+
+        card_stats = []
+        clear_home_count = 0
+        for card in c["cards"]:
+            counts = matrix.get(card["id"], {})
+            top_cat = None
+            max_c = 0
+            for cat, count in counts.items():
+                if count > max_c:
+                    max_c = count
+                    top_cat = cat
+            agree = (max_c / n) if n > 0 else 0
+            if agree >= 0.7:
+                clear_home_count += 1
+            card_stats.append({
+                "id": card["id"],
+                "label": card["label"],
+                "counts": counts,
+                "top_cat": top_cat,
+                "max_count": max_c,
+                "agree": agree,
+                "agree_pct": round(agree * 100),
+            })
+
+        card_stats.sort(key=lambda x: x["agree"], reverse=True)
+        created_list = sorted(created_counts.items(), key=lambda x: (-x[1], x[0]))
+
+        if n == 0:
+            headline = "No responses yet."
+        elif clear_home_count == len(card_stats):
+            headline = f"All {len(card_stats)} cards have a clear home (at least 70% agreement)."
+        elif clear_home_count == 0:
+            headline = f"None of the {len(card_stats)} cards reached 70% agreement on a single category."
+        else:
+            headline = f"{clear_home_count} of {len(card_stats)} cards have a clear home (at least 70% agreement)."
+
+        return ctx.render_fragment(
+            "modules/card_sort_report.html",
+            sessions=sessions,
+            n=n,
+            cards=c["cards"],
+            card_stats=card_stats,
+            all_categories=all_categories,
+            created_list=created_list,
+            headline=headline,
+            matrix=matrix,
+        )
 
     def _finished_runs(self, conn):
-        sessions = conn.execute("SELECT id, identity, finished_at FROM sessions WHERE module_id = ? AND finished_at IS NOT NULL ORDER BY finished_at", (self.m.id,)).fetchall()
+        sessions = conn.execute(
+            "SELECT s.id, p.identity, s.finished_at FROM sessions s "
+            "JOIN participants p ON p.id = s.participant_id "
+            "WHERE s.module_id = ? AND s.finished_at IS NOT NULL "
+            "ORDER BY s.finished_at",
+            (self.m.id,)
+        ).fetchall()
         return sessions
 
     def detail(self, ctx, session):

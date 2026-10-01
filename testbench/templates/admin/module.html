@@ -1,12 +1,1367 @@
 {% extends "admin/_layout.html" %}
-{% block title %}{{ module.title }}{% endblock %}
+{% block title %}Edit {{ module.title }} · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}build{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'build' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-ink">{{ module.title }}</h1>
-        <p class="text-[14px] text-ink-subtle">{{ module.type }}{% if module.description %} · {{ module.description }}{% endif %}</p>
+<style>
+.target-editor {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.target-img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  display: block;
+  cursor: crosshair;
+}
+.target-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--brand);
+  background: rgba(124, 58, 237, 0.16);
+  cursor: move;
+  touch-action: none;
+  z-index: 10;
+}
+.target-box:hover, .target-box.is-active {
+  border-color: var(--brand);
+  background: rgba(124, 58, 237, 0.22);
+}
+.target-box .handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid var(--brand);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  z-index: 12;
+}
+.target-box .handle:hover {
+  background: var(--brand);
+  border-color: #ffffff;
+  transform: scale(1.2);
+}
+.target-box .handle-nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.target-box .handle-ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.target-box .handle-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.target-box .handle-se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.target-box .handle-n  { left: 50%; top: -5px; margin-left: -5px; cursor: ns-resize; }
+.target-box .handle-s  { left: 50%; bottom: -5px; margin-left: -5px; cursor: ns-resize; }
+.target-box .handle-w  { left: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+.target-box .handle-e  { right: -5px; top: 50%; margin-top: -5px; cursor: ew-resize; }
+.target-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+</style>
+<nav class="crumbs mb-4" aria-label="Breadcrumb">
+  <a href="{{ url_for('studio.home', slug=project.slug) }}" id="crumb-build">Build</a>
+  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+  <a href="{{ url_for('studio.home', slug=project.slug) }}" id="crumb-mods">Modules</a>
+  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+  <span class="t-strong text-ink" id="crumb-now" aria-current="page">{{ module.title }}</span>
+</nav>
+
+<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" id="ed">
+  <div class="stack min-w-0">
+    <!-- Module header with tabs -->
+    <section class="panel" aria-labelledby="mh">
+      <header class="panel-h" style="border-bottom:0">
+        <div class="min-w-0">
+          <h2 id="mh" class="t-panel">{{ module.title }}</h2>
+          <p class="t-meta">
+            <span id="mh-type">{{ module_type_label }}</span>, id <span class="font-mono" id="mh-id">{{ module.id }}</span>,
+            <span id="mh-resp">{% if started %}{{ started }} people have started it{% else %}no responses yet{% endif %}</span>
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a class="btn btn-secondary btn-sm" id="prev-link" href="{{ url_for('admin.preview', slug=project.slug) if 'admin.preview' in url_for.__globals__ else url_for('web.home', slug=project.slug) }}?m={{ module.id }}">
+            <i class="fa-regular fa-eye text-xs" aria-hidden="true"></i>Preview this module
+          </a>
+          <a class="btn btn-secondary btn-sm" id="rep-link" href="{{ url_for('admin.results', slug=project.slug, m=module.id) }}">
+            View report
+          </a>
+        </div>
+      </header>
+      <div class="tabs" role="tablist" aria-label="Module sections" style="margin:0;padding:0 24px" id="tabs">
+        <button type="button" class="tab" role="tab" data-tab="setup">Setup</button>
+        <button type="button" class="tab" role="tab" data-tab="content" aria-current="page">Content</button>
+        <button type="button" class="tab" role="tab" data-tab="advanced">Advanced</button>
+      </div>
+    </section>
+
+    <!-- Live-data notice -->
+    <div id="live" class="{% if not started %}is-hidden{% endif %} panel">
+      <div class="panel-b flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-start gap-4">
+          <span class="st st-warn flex-none"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Has responses</span>
+          <p><span class="t-strong" id="live-n">{{ started }} people started this module.</span> Edits may make answers hard to compare. To keep old data clean, save your changes as a new module.</p>
+        </div>
+        {% if can_edit %}
+        <form method="post" action="{{ url_for('studio.module_duplicate', slug=project.slug, mid=module.id) }}" class="m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+          <button type="submit" class="btn btn-secondary btn-sm" id="dup">Duplicate as new module</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
-    <a href="{{ url_for('admin.module_export', slug=project.slug, mid=module.id) }}" class="min-h-11 inline-flex items-center justify-center px-3 rounded-lg bg-brand-600 text-white text-[14px] hover:bg-brand-700"><i class="fa-solid fa-download mr-1"></i>CSV</a>
+
+    <!-- Validation summary -->
+    <section id="summary" class="is-hidden panel" aria-labelledby="sum-h" role="alert">
+      <header class="panel-h"><h2 id="sum-h" class="text-bad"></h2></header>
+      <ul class="rows" id="sum-list"></ul>
+    </section>
+
+    <!-- Panels -->
+    <div data-panel="setup" class="stack is-hidden" id="panel-setup"></div>
+    <div data-panel="content" class="stack" id="panel-content"></div>
+    <div data-panel="advanced" class="stack is-hidden" id="panel-advanced"></div>
+
+    <!-- Sticky Save bar -->
+    <div class="savebar" id="savebar" role="region" aria-label="Save changes">
+      <div class="flex flex-wrap items-center gap-4">
+        <span id="sb-dirty" class="t-meta">All changes saved</span>
+        <span id="sb-errors" class="is-hidden st st-fail"></span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2" {% if not can_edit %}data-roles="viewer"{% endif %}>
+        {% if can_edit %}
+        <button type="button" class="btn btn-secondary" id="discard">Discard</button>
+        <button type="button" class="btn btn-secondary" id="check">Check</button>
+        <button type="button" class="btn btn-primary" id="save" disabled>Save</button>
+        {% else %}
+        <p class="t-meta">You have view access. Editing is turned off.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- What a participant does -->
+  <aside id="outline" class="lg:sticky lg:top-6 lg:self-start" aria-labelledby="fl-h">
+    <div class="panel">
+      <header class="panel-h">
+        <div>
+          <h2 id="fl-h">What a participant does</h2>
+          <p>Follows your settings. Select a step to jump to it.</p>
+        </div>
+      </header>
+      <ol class="rows" id="flow"></ol>
+    </div>
+  </aside>
 </div>
-{{ body }}
+
+<!-- Preview a variant -->
+<dialog id="dlg-prev" aria-labelledby="dlg-prev-h" style="max-width:720px">
+  <div class="panel-h">
+    <h2 id="dlg-prev-h" class="t-panel">Preview</h2>
+    <div class="seg" role="group" aria-label="Width">
+      <button type="button" data-w="375" aria-pressed="true">Phone</button>
+      <button type="button" data-w="680" aria-pressed="false">Desktop</button>
+    </div>
+  </div>
+  <div class="panel-b" style="background:var(--paper)">
+    <div id="prev-frame" style="width:375px;max-width:100%;margin:0 auto">
+      <p class="t-strong" id="prev-name"></p>
+      <p class="t-meta mb-3" id="prev-file"></p>
+      <iframe id="prev-iframe" title="Variant preview" sandbox="allow-scripts allow-same-origin" style="width:100%;height:480px;background:#fff;border:1px solid var(--line-strong);border-radius:8px"></iframe>
+    </div>
+  </div>
+  <div class="panel-f flex justify-end">
+    <button type="button" class="btn btn-secondary" id="prev-close">Close</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var slug = {{ project.slug|tojson }};
+  var mid = {{ module.id|tojson }};
+  var TYPE = {{ module_type|tojson }};
+  var isAB = TYPE === 'ab_test';
+  var canEdit = {{ 'true' if can_edit else 'false' }};
+  var started = {{ started or 0 }};
+  var CSRF_TOKEN = {{ (csrf_token if csrf_token is defined else '')|tojson }};
+  var SAVE_URL = {{ url_for('studio.module_edit', slug=project.slug, mid=module.id)|tojson }};
+
+  var FILES = {{ available_files|tojson }};
+  var MODULE_LIST = {{ other_modules|tojson }};
+  var TYPE_LABEL = {
+    ab_test: 'A/B test',
+    survey: 'Survey',
+    tree_test: 'Tree test',
+    card_sort: 'Card sort',
+    first_click: 'First click'
+  };
+
+  var INITIAL = {{ initial_data|tojson }};
+  var S = clone(INITIAL);
+  var dirty = false;
+  var openKeys = {};
+  var errors = [];
+  var showSummary = false;
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function getP(o, p) { return p.split('.').reduce(function (a, k) { return a ? a[k] : undefined; }, o); }
+  function setP(o, p, v) { var ks = p.split('.'), last = ks.pop(); ks.reduce(function (a, k) { return a[k]; }, o)[last] = v; }
+  function norm(s) { return String(s).toUpperCase().replace(/[\s\W_]+/g, ''); }
+  var dis = canEdit ? '' : ' disabled';
+
+  function field(label, inner, help, opt) {
+    return '<div class="field"><label class="label">' + label + (opt ? ' <span class="font-normal text-muted">(optional)</span>' : '') + '</label>' + inner + (help ? '<p class="help">' + help + '</p>' : '') + '</div>';
+  }
+  function inp(id, path, val, extra) {
+    return '<input id="' + id + '" class="input' + ((extra && extra.mono) ? ' font-mono' : '') + '" data-b="' + path + '" value="' + esc(val) + '"' + ((extra && extra.ph) ? ' placeholder="' + esc(extra.ph) + '"' : '') + dis + ' autocomplete="off"><p class="err is-hidden" data-err-for="' + id + '"></p>';
+  }
+  function area(id, path, val, rows, extra) {
+    return '<textarea id="' + id + '" class="input' + ((extra && extra.mono) ? ' mono-area' : '') + '" rows="' + rows + '" data-b="' + path + '"' + dis + ' spellcheck="false"' + ((extra && extra.style) ? ' style="' + extra.style + '"' : '') + '>' + esc(val) + '</textarea><p class="err is-hidden" data-err-for="' + id + '"></p>';
+  }
+  function panel(id, title, sub, action, body) {
+    return '<section class="panel" id="' + id + '" aria-labelledby="' + id + '-h"><header class="panel-h"><div><h2 id="' + id + '-h">' + title + '</h2>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (action || '') + '</header>' + body + '</section>';
+  }
+
+  /* Setup tab */
+  function setupHtml() {
+    var reqs = MODULE_LIST.filter(function (m) { return m.id !== mid; }).map(function (m) {
+      return '<label class="row" style="cursor:pointer"><input type="checkbox" class="check" data-req="' + m.id + '"' + (S.requires.indexOf(m.id) >= 0 ? ' checked' : '') + dis + '><span class="row-main"><span class="row-title">' + esc(m.title) + '</span></span></label>';
+    }).join('');
+    var basics = panel('sec-basics', 'Basics', 'What participants see on their home screen.', '',
+      '<div class="panel-b">' +
+      field('Title', inp('f-title', 'title', S.title)) +
+      field('Description', inp('f-desc', 'description', S.description), 'One sentence under the title.', true) +
+      field('Estimated minutes', '<input id="f-min" class="input" style="max-width:160px" type="number" min="1" data-b="minutes" data-num value="' + esc(S.minutes) + '"' + dis + '><p class="err is-hidden" data-err-for="f-min"></p>', 'Shown on the card. Study totals add these up.', true) +
+      '</div>');
+    var order = panel('sec-requires', 'Must finish first', 'This module stays locked until the ones you tick are finished.', '',
+      '<div class="rows">' + (reqs || '<p class="panel-b t-meta">There are no other modules yet.</p>') + '</div>');
+    var mopts = MODULE_LIST.map(function (m) { return '<option value="' + m.id + '"' + (S.audModule === m.id ? ' selected' : '') + '>' + esc(m.title) + '</option>'; }).join('');
+    var aud = panel('sec-audience', 'Who sees this module', 'Everyone, unless you add a rule. Hidden modules show as not found.', '',
+      '<div class="panel-b">' +
+      field('Participant code matches', inp('f-aud', 'audPattern', S.audPattern, { mono: true, ph: '^D' }), 'A pattern tested against the participant’s code. Leave empty for everyone.', true) +
+      field('Based on an answer', '<div class="flex flex-wrap items-center gap-2"><select class="input" style="width:auto" data-b="audModule"' + dis + '><option value="">Choose a module</option>' + mopts + '</select>' +
+        '<input class="input" style="width:160px" data-b="audQuestion" placeholder="question id" value="' + esc(S.audQuestion) + '"' + dis + '>' +
+        '<select class="input" style="width:auto" data-b="audOp"' + dis + '><option value="equals"' + (S.audOp === 'equals' ? ' selected' : '') + '>is</option><option value="in"' + (S.audOp === 'in' ? ' selected' : '') + '>is one of</option><option value="not_in"' + (S.audOp === 'not_in' ? ' selected' : '') + '>is not one of</option></select>' +
+        '<input class="input" style="width:160px" data-b="audValue" placeholder="value" value="' + esc(S.audValue) + '"' + dis + '></div>',
+        'Hidden until that module has been answered. Tick it under “Must finish first” so this module appears once the answer exists.', true) +
+      '</div>');
+    return basics + order + aud;
+  }
+
+  /* Content tab - A/B Test */
+  var ENTRY_EXTS = /\.(html?|png|jpe?g|gif|webp|svg|avif|ico|bmp|tiff?|pdf|mp4|webm|mov|ogg|mp3|wav|m4a|txt|md)$/i;
+  function variantRows() {
+    var entryFiles = FILES.filter(function (f) { return ENTRY_EXTS.test(f); });
+    return S.variants.map(function (v, i) {
+      var opts = entryFiles.map(function (f) { return '<option value="' + f + '"' + (v.file === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
+      return '<div class="var-grid rows-item" data-vi="' + i + '">' +
+        '<span class="font-mono t-strong" style="padding-top:8px">' + esc(v.key) + '</span>' +
+        '<div><label class="sr-only-x" for="f-var-' + i + '-label">Label for variant ' + esc(v.key) + '</label>' + inp('f-var-' + i + '-label', 'variants.' + i + '.label', v.label) + '</div>' +
+        '<div><label class="sr-only-x" for="f-var-' + i + '-file">Entry file for variant ' + esc(v.key) + '</label><select id="f-var-' + i + '-file" class="input" data-b="variants.' + i + '.file"' + dis + '><option value="">Choose a file</option>' + opts + '</select><p class="err is-hidden" data-err-for="f-var-' + i + '-file"></p></div>' +
+        '<label class="flex items-center gap-2" style="padding-top:8px;cursor:pointer"><input type="radio" class="check" name="baseline" value="' + esc(v.key) + '" data-b="baseline"' + (S.baseline === v.key ? ' checked' : '') + dis + '><span>Baseline</span></label>' +
+        '<div class="flex gap-2"><button type="button" class="btn btn-secondary btn-sm" data-act="var-prev" data-i="' + i + '">Preview</button>' +
+        (canEdit && S.variants.length > 2 ? '<button type="button" class="btn btn-secondary btn-sm btn-icon" data-act="var-del" data-i="' + i + '" aria-label="Remove variant ' + esc(v.key) + '"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' : '') + '</div>' +
+        '</div>';
+    }).join('');
+  }
+  function variantsPanel() {
+    return panel('sec-variants', 'Variants', 'The prototypes people compare. Everything else is compared with the baseline.',
+      canEdit ? '<button type="button" class="btn btn-secondary btn-sm" data-act="var-add">Add variant</button>' : '',
+      '<div class="var-grid var-head" aria-hidden="true"><span>Key</span><span>Label</span><span>Entry file</span><span>Baseline</span><span></span></div>' + '<div class="rows">' + variantRows() + '</div>');
+  }
+  var ORDERS = [
+    ['rotate', 'Rotate', 'Cycles through every order so each comes up equally often. Recommended.'],
+    ['code_parity', 'By code number', 'Decided by the number in the participant’s code, so you control who sees what first.'],
+    ['random', 'Random', 'Each participant gets a random order.'],
+    ['fixed', 'Fixed', 'Always in the order listed above.']
+  ];
+  function orderPanel() {
+    var opts = ORDERS.map(function (o) {
+      return '<label class="opt"><input type="radio" name="order" value="' + o[0] + '" data-b="order"' + (S.order === o[0] ? ' checked' : '') + dis + '><span class="radio"></span><span><span class="opt-title">' + o[1] + '</span><span class="opt-desc">' + o[2] + '</span></span><span></span></label>';
+    }).join('');
+    return panel('sec-order', 'Order and introduction', 'Which prototype people see first, and what you tell them before they start.', '',
+      '<div class="rows">' + opts + '<div class="panel-b">' + field('Introduction', area('f-intro', 'intro', S.intro, 3), 'Shown on the first screen.', true) + '</div></div>');
+  }
+  function taskBody(t, i) {
+    return '<div class="acc-b">' +
+      field('Title', inp('f-task-' + i + '-title', 'tasks.' + i + '.title', t.title), 'A short name used in the report.') +
+      field('What the participant is asked to do', area('f-task-' + i + '-prompt', 'tasks.' + i + '.prompt', t.prompt, 2)) +
+      '<div class="field grid gap-6 sm:grid-cols-2"><div><label class="label">Answer field label</label>' + inp('f-task-' + i + '-fl', 'tasks.' + i + '.fieldLabel', t.fieldLabel) + '</div>' +
+      '<div><label class="label">Answer type</label><select class="input" data-b="tasks.' + i + '.kind" data-rerender' + dis + '><option value="text"' + (t.kind === 'text' ? ' selected' : '') + '>Free text</option><option value="choice"' + (t.kind === 'choice' ? ' selected' : '') + '>Pick one</option></select></div></div>' +
+      (t.kind === 'choice'
+        ? field('Choices', area('f-task-' + i + '-opts', 'tasks.' + i + '.options', t.options, 3), 'One per line.')
+        : field('Placeholder', inp('f-task-' + i + '-ph', 'tasks.' + i + '.placeholder', t.placeholder), 'Example text inside the empty field.', true)) +
+      field('Accepted answers', '<textarea class="input mono-area" rows="' + Math.max(3, t.accept.length + 1) + '" data-accept="' + i + '"' + dis + ' spellcheck="false">' + esc(t.accept.join('\n')) + '</textarea>',
+        '<span data-hint="' + i + '"></span>', true) +
+      field('Probe note', inp('f-task-' + i + '-probe', 'tasks.' + i + '.probe', t.probe), 'For you only. What this task is meant to reveal.', true) +
+      (canEdit ? '<div class="flex flex-wrap gap-2" style="margin-top:24px">' +
+        (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="task-up" data-i="' + i + '">Move up</button>' : '') +
+        (i < S.tasks.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="task-down" data-i="' + i + '">Move down</button>' : '') +
+        '<button type="button" class="btn btn-secondary btn-sm" data-act="task-del" data-i="' + i + '">Delete task</button></div>' : '') +
+      '</div>';
+  }
+  function taskPill(t) {
+    return t.accept.filter(Boolean).length
+      ? '<span class="st st-ok sum-pill"><i class="fa-solid fa-check" aria-hidden="true"></i>Answer key</span>'
+      : '<span class="st st-info sum-pill"><i class="fa-solid fa-hand" aria-hidden="true"></i>Graded by hand</span>';
+  }
+  function tasksPanel() {
+    var rows = S.tasks.map(function (t, i) {
+      return '<details class="acc" data-k="task-' + i + '"' + (openKeys['task-' + i] ? ' open' : '') + '><summary><span class="num t-meta">' + (i + 1) + '</span>' +
+        '<span class="min-w-0"><span class="row-title block" data-sum-title="' + i + '">' + esc(t.title || 'Untitled task') + '</span><span class="t-meta block truncate" data-sum-prompt="' + i + '">' + esc(t.prompt) + '</span></span>' +
+        '<span data-sum-pill="' + i + '">' + taskPill(t) + '</span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary>' + taskBody(t, i) + '</details>';
+    }).join('');
+    return panel('sec-tasks', 'Tasks', 'What each participant does on every prototype. A task without an answer key is graded by hand.',
+      canEdit ? '<button type="button" class="btn btn-secondary btn-sm" data-act="task-add">Add task</button>' : '',
+      '<div class="rows">' + (rows || '<p class="panel-b t-meta">No tasks yet. Add one so participants have something to do.</p>') + '</div>');
+  }
+
+  function qBody(list, i, q) {
+    var p = list + '.' + i, id = 'f-' + list + '-' + i;
+    var types = [['single', 'Pick one'], ['multi', 'Pick several'], ['scale', 'Rating scale'], ['text', 'Text answer']].map(function (t) { return '<option value="' + t[0] + '"' + (q.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
+    return '<div class="acc-b">' +
+      field('Question', inp(id + '-label', p + '.label', q.label)) +
+      '<div class="field grid gap-6 sm:grid-cols-2"><div><label class="label">Type</label><select class="input" data-b="' + p + '.type" data-rerender' + dis + '>' + types + '</select></div>' +
+      '<div><label class="label">Id</label>' + inp(id + '-id', p + '.id', q.id, { mono: true }) + '<p class="help">Used in your data export and in the decision rule.</p></div></div>' +
+      (q.type === 'scale' ? '<div class="field grid gap-6 sm:grid-cols-3"><div><label class="label">Points</label><input class="input" type="number" min="2" max="11" data-b="' + p + '.points" data-num value="' + esc(q.points) + '"' + dis + '></div><div><label class="label">Low end</label>' + inp(id + '-low', p + '.low', q.low) + '</div><div><label class="label">High end</label>' + inp(id + '-high', p + '.high', q.high) + '</div></div>' : '') +
+      ((q.type === 'single' || q.type === 'multi') ? field('Choices', area(id + '-opts', p + '.options', q.options, 3), 'One per line.') : '') +
+      '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-b="' + p + '.required"' + (q.required ? ' checked' : '') + dis + '><span class="track"></span></span><span>Required</span></label></div>' +
+      (canEdit ? '<div class="flex flex-wrap gap-2" style="margin-top:24px">' +
+        (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="q-up" data-l="' + list + '" data-i="' + i + '">Move up</button>' : '') +
+        (i < S[list].length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="q-down" data-l="' + list + '" data-i="' + i + '">Move down</button>' : '') +
+        '<button type="button" class="btn btn-secondary btn-sm" data-act="q-del" data-l="' + list + '" data-i="' + i + '">Delete question</button></div>' : '') +
+      '</div>';
+  }
+  var QT = { single: 'Pick one', multi: 'Pick several', scale: 'Rating scale', text: 'Text answer' };
+  function qRows(list) {
+    var rows = S[list].map(function (q, i) {
+      var k = list + '-' + i;
+      return '<details class="acc" data-k="' + k + '"' + (openKeys[k] ? ' open' : '') + '><summary><span class="num t-meta">' + (i + 1) + '</span>' +
+        '<span class="min-w-0"><span class="row-title block" data-sum-ql="' + list + '.' + i + '">' + esc(q.label || 'Untitled question') + '</span><span class="t-meta block">' + (QT[q.type] || q.type) + (q.required ? ', required' : ', optional') + ', id ' + esc(q.id) + '</span></span><span></span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary>' + qBody(list, i, q) + '</details>';
+    }).join('');
+    return rows + (canEdit ? '<div class="row"><button type="button" class="btn btn-secondary btn-sm" data-act="q-add" data-l="' + list + '"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add question</button></div>' : '');
+  }
+  function toggleRow(path, checked, title, sub) {
+    return '<label class="row switch-row"><span class="row-main"><span class="row-title block">' + title + '</span><span class="t-meta block">' + sub + '</span></span><span class="switch"><input type="checkbox" data-b="' + path + '"' + (checked ? ' checked' : '') + dis + '><span class="track"></span></span></label>';
+  }
+  function questionsPanel() {
+    return panel('sec-questions', 'Questions', 'What you ask around the tasks.', '',
+      '<div class="group-h" style="border-top:0">After each task</div>' +
+      '<div class="rows">' + toggleRow('ease', S.ease, 'Ask how easy the task was', 'A 1 to 7 rating after every task.') + '</div>' +
+      '<div class="group-h">After each variant</div><div class="rows">' + qRows('post') + '</div>' +
+      '<div class="group-h">At the end</div><div class="rows">' + toggleRow('preference', S.preference, 'Ask which version they would use', 'Shown once, after every variant.') + qRows('final') + '</div>');
+  }
+  function rulePanel() {
+    var scales = S.post.filter(function (q) { return q.type === 'scale' && q.id; });
+    var opts = '<option value="">no rating question</option>' + scales.map(function (q) { return '<option value="' + esc(q.id) + '"' + (S.rule.question === q.id ? ' selected' : '') + '>' + esc(q.label.length > 30 ? q.label.slice(0, 30) + '…' : q.label) + '</option>'; }).join('');
+    var bl = S.variants.filter(function (v) { return v.key === S.baseline; })[0];
+    return panel('sec-rule', 'Decision rule', 'The checks a report uses to say whether a challenger beats the baseline.', '',
+      '<div class="panel-b"><p style="line-height:2.4">I will call a challenger better than <span class="t-strong">' + esc(bl ? bl.label : 'the baseline') + '</span> if it is faster for most people who tried both, is not less successful, and ' +
+      '<span>scores at least <input id="f-rule-gain" class="input inline-in" type="number" step="0.1" min="0" data-b="rule.gain" data-num value="' + esc(S.rule.gain) + '"' + dis + '> higher on ' +
+      '<select id="f-rule-q" class="input inline-sel" data-b="rule.question"' + dis + '>' + opts + '</select></span>, once at least ' +
+      '<input id="f-rule-min" class="input inline-in" type="number" min="1" data-b="rule.min" data-num value="' + esc(S.rule.min) + '"' + dis + '> people have finished.</p>' +
+      '<p class="err is-hidden" data-err-for="f-rule-min"></p><p class="err is-hidden" data-err-for="f-rule-gain"></p><p class="err is-hidden" data-err-for="f-rule-q"></p>' +
+      '<p class="help">Below the minimum, the report is marked “Indicative” and never says a variant won. The rating check needs a rating scale question under “After each variant”.</p></div>');
+  }
+
+  /* Survey builder */
+  var SQT = [['single', 'Pick one'], ['multi', 'Pick several'], ['scale', 'Rating scale'], ['matrix', 'Rating grid'], ['text', 'Text answer']];
+  var SQL = {}; SQT.forEach(function (t) { SQL[t[0]] = t[1]; });
+  function allQs() { var o = []; S.pages.forEach(function (p, pi) { p.questions.forEach(function (q, qi) { o.push({ q: q, pi: pi, qi: qi }); }); }); return o; }
+  function sqBody(pi, qi, q) {
+    var p = 'pages.' + pi + '.questions.' + qi, id = 'f-sq-' + pi + '-' + qi, n = S.pages[pi].questions.length;
+    var types = SQT.map(function (t) { return '<option value="' + t[0] + '"' + (q.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('');
+    var scale = '<div class="field grid gap-6 sm:grid-cols-3"><div><label class="label">Points</label><input class="input" type="number" min="2" max="11" data-b="' + p + '.points" data-num value="' + esc(q.points) + '"' + dis + '></div><div><label class="label">Low end</label>' + inp(id + '-low', p + '.low', q.low) + '</div><div><label class="label">High end</label>' + inp(id + '-high', p + '.high', q.high) + '</div></div>';
+    var body = field('Question', inp(id + '-label', p + '.label', q.label)) +
+      field('Hint', inp(id + '-hint', p + '.hint', q.hint), 'Shown under the question label.', true) +
+      '<div class="field grid gap-6 sm:grid-cols-2"><div><label class="label">Type</label><select class="input" data-b="' + p + '.type" data-rerender' + dis + '>' + types + '</select></div><div><label class="label">Id</label>' + inp(id + '-id', p + '.id', q.id, { mono: true }) + '<p class="help">Used in your data export and in conditions.</p></div></div>';
+    if (q.type === 'scale') body += scale;
+    if (q.type === 'single' || q.type === 'multi') {
+      var allEarlier = allQs();
+      var myIdx = allEarlier.findIndex(function (x) { return x.pi === pi && x.qi === qi; });
+      var srcCandidates = (myIdx >= 0 ? allEarlier.slice(0, myIdx) : []).filter(function (x) {
+        return (x.q.type === 'matrix' || x.q.type === 'single' || x.q.type === 'multi') && x.q.id;
+      });
+      var optFromChoices = '<option value="">Custom choices below</option>' + srcCandidates.map(function (c) {
+        return '<option value="' + esc(c.q.id) + '"' + (q.optionsFrom === c.q.id ? ' selected' : '') + '>' + esc(c.q.id) + ' (' + (SQL[c.q.type] || c.q.type) + ': ' + esc(c.q.label.slice(0, 30)) + ')</option>';
+      }).join('');
+      if (q.optionsFrom && !srcCandidates.some(function (c) { return c.q.id === q.optionsFrom; })) {
+        optFromChoices += '<option value="' + esc(q.optionsFrom) + '" selected>' + esc(q.optionsFrom) + ' (earlier question)</option>';
+      }
+      body += field('Choices source', '<select class="input" data-b="' + p + '.optionsFrom" data-rerender' + dis + '>' + optFromChoices + '</select><p class="err is-hidden" data-err-for="' + id + '-from"></p>', 'Take choices dynamically from an earlier question.', true);
+      if (!q.optionsFrom) {
+        body += field('Choices', area(id + '-opts', p + '.options', q.options, 4), 'One per line. Format as <code>label</code> or <code>id: label</code>.');
+      } else {
+        body += '<div class="field"><p class="t-meta" style="padding:4px 0"><i class="fa-solid fa-link" style="margin-right:6px"></i>Choices are populated dynamically from <strong>' + esc(q.optionsFrom) + '</strong>.</p></div>';
+      }
+      body += field('Columns', '<input class="input" style="max-width:160px" type="number" min="1" max="4" data-b="' + p + '.columns" data-num value="' + esc(q.columns || (q.type === 'single' ? 2 : 1)) + '"' + dis + '>', 'Layout choices in 1 to 4 columns.', true);
+    }
+    if (q.type === 'multi') body += field('Most they can pick', '<input class="input" style="max-width:160px" type="number" min="1" data-b="' + p + '.max" data-num value="' + esc(q.max) + '"' + dis + '>', 'Leave empty to let them pick any number.', true);
+    if (q.type === 'matrix') {
+      body += field('Rows', area(id + '-rows', p + '.rows', q.rows, 5), 'One per line. Format as <code>label</code> or <code>id: label</code>.') +
+        scale +
+        field('“Never done” / N/A label', inp(id + '-na', p + '.na_label', q.na_label, { ph: 'Never done' }), 'Text for the extra N/A column. Leave empty if not needed.', true);
+    }
+    if (q.type === 'text') {
+      body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-b="' + p + '.long"' + (q.long ? ' checked' : '') + dis + '><span class="track"></span></span><span>Multi-line text area (long answer)</span></label></div>';
+    }
+    body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-b="' + p + '.required"' + (q.required ? ' checked' : '') + dis + '><span class="track"></span></span><span>Required</span></label></div>';
+    body += '<div class="field"><label class="flex items-center gap-4" style="cursor:pointer"><span class="switch"><input type="checkbox" data-rerender data-b="' + p + '.showIf.on"' + (q.showIf && q.showIf.on ? ' checked' : '') + dis + '><span class="track"></span></span><span>Only show this question when an earlier answer matches</span></label>';
+    if (q.showIf && q.showIf.on) {
+      var mods = '<option value="">This module</option>' + MODULE_LIST.filter(function (m) { return m.id !== mid; }).map(function (m) { return '<option value="' + m.id + '"' + (q.showIf.module === m.id ? ' selected' : '') + '>' + esc(m.title) + '</option>'; }).join('');
+      var ops = [['equals', 'is'], ['in', 'is one of'], ['not_in', 'is not one of']].map(function (o) { return '<option value="' + o[0] + '"' + (q.showIf.op === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+      body += '<div class="flex flex-wrap items-center gap-2 mt-4"><select class="input" style="width:auto" data-b="' + p + '.showIf.module"' + dis + '>' + mods + '</select>' +
+        '<input id="' + id + '-cq" class="input font-mono" style="width:180px" data-b="' + p + '.showIf.q" placeholder="question id" value="' + esc(q.showIf.q) + '"' + dis + '>' +
+        '<select class="input" style="width:auto" data-b="' + p + '.showIf.op"' + dis + '>' + ops + '</select>' +
+        '<input id="' + id + '-cv" class="input" style="width:220px" data-b="' + p + '.showIf.value" placeholder="value, or values separated by commas" value="' + esc(q.showIf.value) + '"' + dis + '></div>' +
+        '<p class="err is-hidden" data-err-for="' + id + '-cq"></p><p class="help">Questions from another module need that module ticked under “Must finish first”.</p>';
+    }
+    body += '</div>';
+    if (canEdit) body += '<div class="flex flex-wrap gap-2" style="margin-top:24px">' + (qi > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="sq-up" data-p="' + pi + '" data-i="' + qi + '">Move up</button>' : '') + (qi < n - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="sq-down" data-p="' + pi + '" data-i="' + qi + '">Move down</button>' : '') + '<button type="button" class="btn btn-secondary btn-sm" data-act="sq-del" data-p="' + pi + '" data-i="' + qi + '">Delete question</button></div>';
+    return '<div class="acc-b">' + body + '</div>';
+  }
+  function surveyContent() {
+    return S.pages.map(function (pg, pi) {
+      var rows = pg.questions.map(function (q, qi) {
+        var k = 'sq-' + pi + '-' + qi;
+        return '<details class="acc" data-k="' + k + '"' + (openKeys[k] ? ' open' : '') + '><summary><span class="num t-meta">' + (qi + 1) + '</span><span class="min-w-0"><span class="row-title block" data-sum-sq="' + pi + '.' + qi + '">' + esc(q.label || 'Untitled question') + '</span><span class="t-meta block">' + (SQL[q.type] || q.type) + (q.required ? ', required' : ', optional') + ', id ' + esc(q.id) + (q.showIf && q.showIf.on ? ', conditional' : '') + '</span></span><span></span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary>' + sqBody(pi, qi, q) + '</details>';
+      }).join('');
+      var act = canEdit ? '<div class="flex gap-2">' + (pi > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-up" data-i="' + pi + '">Move up</button>' : '') + (pi < S.pages.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-down" data-i="' + pi + '">Move down</button>' : '') + (S.pages.length > 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="pg-del" data-i="' + pi + '">Delete page</button>' : '') + '</div>' : '';
+      return panel('sec-page-' + pi, 'Page ' + (pi + 1), plural(pg.questions.length, 'question') + ' on this page.', act,
+        '<div class="panel-b">' +
+        field('Page title', inp('f-sp-' + pi + '-title', 'pages.' + pi + '.title', pg.title), 'Shown at the top of the page and in the progress list.', true) +
+        field('Page introduction', area('f-sp-' + pi + '-intro', 'pages.' + pi + '.intro', pg.intro, 2), 'Instructions or context shown under the page title before questions.', true) +
+        '</div>' +
+        '<div class="rows">' + rows + (canEdit ? '<div class="row"><button type="button" class="btn btn-secondary btn-sm" data-act="sq-add" data-p="' + pi + '"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add question</button></div>' : '') + '</div>');
+    }).join('') + (canEdit ? '<div><button type="button" class="btn btn-secondary" data-act="pg-add"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add page</button></div>' : '');
+  }
+
+  /* Tree test */
+  function parseTree(text) {
+    var nodes = [], stack = [], problems = [], seen = {};
+    String(text || '').split('\n').forEach(function (raw, i) {
+      if (!raw.trim()) return;
+      var lead = raw.match(/^\s*/)[0];
+      if (/\t/.test(lead)) problems.push({ line: i + 1, msg: 'Line ' + (i + 1) + ' uses a tab. Indent with spaces.' });
+      else if (lead.length % 2) problems.push({ line: i + 1, msg: 'Line ' + (i + 1) + ' is indented by ' + lead.length + ' spaces. Indent in steps of 2.' });
+      var depth = Math.floor(lead.length / 2);
+      if (depth > stack.length) { problems.push({ line: i + 1, msg: 'Line ' + (i + 1) + ' skips a level. It can only be one step deeper than the line above.' }); depth = stack.length; }
+      stack = stack.slice(0, depth);
+      var name = raw.trim(), path = stack.concat([name]).join(' > ');
+      if (seen[path]) problems.push({ line: i + 1, msg: '“' + name + '” appears twice under the same parent (line ' + (i + 1) + ').' });
+      seen[path] = true; nodes.push({ name: name, depth: depth, path: path, line: i + 1 }); stack.push(name);
+    });
+    nodes.forEach(function (n, i) { n.leaf = !(nodes[i + 1] && nodes[i + 1].depth > n.depth); });
+    return { nodes: nodes, problems: problems };
+  }
+  function treeFacts(T) {
+    var top = T.nodes.filter(function (n) { return n.depth === 0; }).length, deep = T.nodes.reduce(function (a, n) { return Math.max(a, n.depth + 1); }, 0);
+    return plural(T.nodes.length, 'item') + ', ' + plural(top, 'top-level item') + ', ' + plural(deep, 'level') + ' deep.';
+  }
+  function treeContent() {
+    var T = parseTree(S.outline);
+    var prev = T.nodes.length ? '<ul class="rows" style="max-height:360px;overflow:auto">' + T.nodes.map(function (n) { return '<li class="row" style="padding:8px 24px 8px ' + (24 + n.depth * 24) + 'px"><i class="fa-solid ' + (n.leaf ? 'fa-file-lines' : 'fa-folder') + ' text-muted" style="width:16px" aria-hidden="true"></i><span class="' + (n.depth === 0 ? 't-strong' : '') + '">' + esc(n.name) + '</span></li>'; }).join('') + '</ul><p class="panel-f">' + esc(treeFacts(T)) + ' This is what participants can open and pick from.</p>' : '<p class="panel-b t-meta">Type the tree on the left and it appears here.</p>';
+    var tree = panel('sec-tree', 'The tree', 'One item per line. Indent with 2 spaces to put an item inside the one above.', '',
+      '<div class="grid gap-0 md:grid-cols-2"><div class="panel-b">' + field('Outline', area('f-outline', 'outline', S.outline, 16, { mono: true }), 'Example: a line “Rooms”, then “  Meeting Rooms” one step in.') + '</div><div style="border-left:1px solid var(--line)">' + prev + '</div></div>');
+    var intro = panel('sec-intro', 'Introduction', 'What you tell people before they start.', '', '<div class="panel-b">' + field('Introduction', area('f-intro', 'intro', S.intro, 3), 'Shown on the first screen.', true) + '</div>');
+    var tasks = S.tasks.map(function (t, i) {
+      var k = 'tt-' + i, picks = T.nodes.map(function (n) { var on = t.correct.indexOf(n.path) >= 0; return '<label class="row" style="padding:8px 24px 8px ' + (24 + n.depth * 24) + 'px;cursor:pointer"><input type="checkbox" class="check" data-correct="' + i + '" data-path="' + esc(n.path) + '"' + (on ? ' checked' : '') + dis + '><span class="' + (n.depth === 0 ? 't-strong' : '') + '">' + esc(n.name) + '</span></label>'; }).join('');
+      var stale = t.correct.filter(function (c) { return !T.nodes.some(function (n) { return n.path === c; }); });
+      return '<details class="acc" data-k="' + k + '"' + (openKeys[k] ? ' open' : '') + '><summary><span class="num t-meta">' + (i + 1) + '</span><span class="min-w-0"><span class="row-title block" data-sum-tt="' + i + '">' + esc(t.prompt || 'Untitled task') + '</span><span class="t-meta block">' + (t.correct.length ? plural(t.correct.length, 'correct place') : 'No correct place chosen') + '</span></span><span>' + (t.correct.length ? '<span class="st st-ok sum-pill"><i class="fa-solid fa-check" aria-hidden="true"></i>Answer key</span>' : '<span class="st st-fail sum-pill">Needs an answer</span>') + '</span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary><div class="acc-b">' +
+        field('What the participant is asked to find', area('f-tt-' + i + '-prompt', 'tasks.' + i + '.prompt', t.prompt, 2), 'Describe the goal, not the name of the item you are testing.') +
+        '<div class="field"><label class="label" id="f-tt-' + i + '-lbl">Correct places</label><div id="f-tt-' + i + '-correct" tabindex="-1" class="panel" style="max-height:260px;overflow:auto">' + (picks || '<p class="panel-b t-meta">Add items to the tree first.</p>') + '</div><p class="err is-hidden" data-err-for="f-tt-' + i + '-correct"></p><p class="help">Tick every place that counts as a right answer. Picking a group means anything inside it also counts as being in that group.' + (stale.length ? ' <span class="text-bad">Not in the tree any more: ' + esc(stale.join(', ')) + '.</span>' : '') + '</p></div>' +
+        (canEdit ? '<div class="flex flex-wrap gap-2" style="margin-top:24px">' + (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="ts-up" data-i="' + i + '">Move up</button>' : '') + (i < S.tasks.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="ts-down" data-i="' + i + '">Move down</button>' : '') + '<button type="button" class="btn btn-secondary btn-sm" data-act="ts-del" data-i="' + i + '">Delete task</button></div>' : '') + '</div></details>';
+    }).join('');
+    var taskP = panel('sec-tasks', 'Tasks', 'Each task asks people to find one thing in the tree.', canEdit ? '<button type="button" class="btn btn-secondary btn-sm" data-act="ts-add">Add task</button>' : '', '<div class="rows">' + (tasks || '<p class="panel-b t-meta">No tasks yet.</p>') + '</div>');
+    return intro + tree + taskP;
+  }
+
+  /* Card sort */
+  var MODES = [['closed', 'Closed', 'People sort cards into your categories only.'], ['hybrid', 'Hybrid', 'People use your categories, and can also make their own.'], ['open', 'Open', 'People make all the categories themselves.']];
+  function sortContent() {
+    var opts = MODES.map(function (o) { return '<label class="opt"><input type="radio" name="mode" value="' + o[0] + '" data-b="mode"' + (S.mode === o[0] ? ' checked' : '') + dis + '><span class="radio"></span><span><span class="opt-title">' + o[1] + '</span><span class="opt-desc">' + o[2] + '</span></span><span></span></label>'; }).join('');
+    var mode = panel('sec-mode', 'How people sort', 'Decides whether you give the categories, or they do.', '', '<div class="rows">' + opts + '</div>');
+    var main = panel('sec-cards', 'Cards and categories', 'A card is one thing to place. A category is a group you offer.', '',
+      '<div class="grid gap-0 md:grid-cols-2"><div class="panel-b">' + field('Cards', area('f-cards', 'cards', S.cards, 14), '<span data-count="cards"></span>') + '</div>' +
+      (S.mode === 'open' ? '<div class="panel-b" style="border-left:1px solid var(--line)"><p class="t-strong">No categories to set</p><p class="t-meta mt-1">In an open sort people make their own. Switch to hybrid or closed to offer some.</p></div>' : '<div class="panel-b" style="border-left:1px solid var(--line)">' + field('Categories', area('f-cats', 'categories', S.categories, 14), '<span data-count="cats"></span>') + '</div>') + '</div>');
+    var intro = panel('sec-intro', 'Introduction', 'What you tell people before they start.', '', '<div class="panel-b">' + field('Introduction', area('f-intro', 'intro', S.intro, 3), 'Shown on the first screen.', true) + '</div>');
+    return intro + mode + main;
+  }
+  function refreshCounts() {
+    var c = document.querySelector('[data-count="cards"]');
+    if (c) { var n = lines(S.cards).length; c.textContent = 'One per line. ' + plural(n, 'card') + '.' + (n && n < 12 ? ' Under 12 cards gives thin results.' : '') + (n > 40 ? ' Over 40 cards is tiring. Most people stop caring around 30.' : ''); }
+    var d = document.querySelector('[data-count="cats"]');
+    if (d) d.textContent = 'One per line. ' + plural(lines(S.categories).length, 'category', 'categories') + '.';
+  }
+
+  /* First click */
+  var IMAGE_EXTS = /\.(png|jpe?g|gif|webp|svg|avif|ico|bmp|tiff?)$/i;
+  function clickContent() {
+    var intro = panel('sec-intro', 'Introduction', 'What you tell people before they start.', '', '<div class="panel-b">' + field('Introduction', area('f-intro', 'intro', S.intro, 3), 'Shown on the first screen.', true) + '</div>');
+    var imgFiles = FILES.filter(function (f) { return IMAGE_EXTS.test(f); });
+    var rows = S.tasks.map(function (t, i) {
+      var k = 'ct-' + i;
+      var opts = '<option value="">Choose an image</option>' + imgFiles.map(function (f) { return '<option value="' + f + '"' + (t.image === f ? ' selected' : '') + '>' + f + '</option>'; }).join('');
+      function num(f, label) { return '<div><label class="label" for="f-ct-' + i + '-' + f + '">' + label + '</label><input id="f-ct-' + i + '-' + f + '" class="input" type="number" min="0" data-b="tasks.' + i + '.' + f + '" data-num value="' + esc(t[f]) + '"' + dis + '></div>'; }
+      var hasImg = t.image && imgFiles.indexOf(t.image) !== -1;
+      var imgSrc = t.image ? (t.image.startsWith('prototypes/') ? '{{ url_for("studio.files_raw", slug=project.slug, rel="") }}' + esc(t.image) : esc(t.image)) : '';
+      var previewHtml = '<div class="field"><p class="label">Preview</p>' +
+        (hasImg
+          ? '<div class="target-editor" data-ti="' + i + '">' +
+            '<img class="target-img" src="' + imgSrc + '" alt="Prototype screenshot" draggable="false" onerror="var p=this.closest(\'.field\');if(p){var ed=p.querySelector(\'.target-editor\');if(ed)ed.style.display=\'none\';var ph=p.querySelector(\'.target-placeholder\');if(ph)ph.style.display=\'flex\';var hp=p.querySelector(\'.help\');if(hp)hp.style.display=\'none\';}">' +
+            '<div class="target-box" data-ti="' + i + '">' +
+            '<div class="handle handle-nw" data-handle="nw"></div>' +
+            '<div class="handle handle-ne" data-handle="ne"></div>' +
+            '<div class="handle handle-sw" data-handle="sw"></div>' +
+            '<div class="handle handle-se" data-handle="se"></div>' +
+            '<div class="handle handle-n" data-handle="n"></div>' +
+            '<div class="handle handle-s" data-handle="s"></div>' +
+            '<div class="handle handle-w" data-handle="w"></div>' +
+            '<div class="handle handle-e" data-handle="e"></div>' +
+            '<span class="target-badge"></span>' +
+            '</div></div>' +
+            '<div class="target-placeholder" style="display:none;border:2px dashed var(--line-strong);border-radius:8px;padding:32px 16px;text-align:center;background:var(--paper);color:var(--muted);flex-direction:column;align-items:center;justify-content:center;gap:8px;">' +
+            '<i class="fa-regular fa-image" style="font-size:28px;color:var(--muted);opacity:0.7"></i>' +
+            '<span style="font-size:14px;font-weight:500">Select an image first</span>' +
+            '</div>' +
+            '<p class="help">Drag the box to move it, drag handles to resize, or click and drag on the image to draw a target area.</p>'
+          : '<div class="target-placeholder" style="border:2px dashed var(--line-strong);border-radius:8px;padding:32px 16px;text-align:center;background:var(--paper);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">' +
+            '<i class="fa-regular fa-image" style="font-size:28px;color:var(--muted);opacity:0.7"></i>' +
+            '<span style="font-size:14px;font-weight:500">Select an image first</span>' +
+            '</div>'
+        ) + '</div>';
+
+      return '<details class="acc" data-k="' + k + '"' + (openKeys[k] ? ' open' : '') + '><summary><span class="num t-meta">' + (i + 1) + '</span><span class="min-w-0"><span class="row-title block" data-sum-ct="' + i + '">' + esc(t.prompt || 'Untitled task') + '</span><span class="t-meta block">' + esc(t.image || 'No image chosen') + '</span></span><span></span><i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i></summary><div class="acc-b">' +
+        field('What the participant is asked to do', area('f-ct-' + i + '-prompt', 'tasks.' + i + '.prompt', t.prompt, 2, { style: 'min-height:56px;resize:vertical' })) +
+        '<div class="field" style="margin-top:16px"><label class="label" for="f-ct-' + i + '-image">Image</label><select id="f-ct-' + i + '-image" class="input" data-b="tasks.' + i + '.image" data-rerender' + dis + '>' + opts + '</select><p class="err is-hidden" data-err-for="f-ct-' + i + '-image"></p><p class="help">Images come from Prototypes. Upload a screenshot or an SVG there first.</p></div>' +
+        field('Target name', inp('f-ct-' + i + '-label', 'tasks.' + i + '.label', t.label), 'Used in the report, for example “Contact support link”.') +
+        '<div class="field"><p class="label">Target area, in pixels</p><div class="grid gap-4 sm:grid-cols-4">' + num('x', 'Left') + num('y', 'Top') + num('w', 'Width') + num('h', 'Height') + '</div><p class="err is-hidden" data-err-for="f-ct-' + i + '-w"></p></div>' +
+        previewHtml +
+        (canEdit ? '<div class="flex flex-wrap gap-2" style="margin-top:24px">' + (i > 0 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-up" data-i="' + i + '">Move up</button>' : '') + (i < S.tasks.length - 1 ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-down" data-i="' + i + '">Move down</button>' : '') + '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-del" data-i="' + i + '">Delete task</button></div>' : '') + '</div></details>';
+    }).join('');
+    return intro + panel('sec-tasks', 'Tasks', 'Each task shows one image and records where people click first.', canEdit ? '<button type="button" class="btn btn-secondary btn-sm" data-act="cs-add">Add task</button>' : '', '<div class="rows">' + (rows || '<p class="panel-b t-meta">No tasks yet.</p>') + '</div>');
+  }
+
+  function contentHtml() {
+    if (TYPE === 'survey') return surveyContent();
+    if (TYPE === 'tree_test') return treeContent();
+    if (TYPE === 'card_sort') return sortContent();
+    if (TYPE === 'first_click') return clickContent();
+    return variantsPanel() + orderPanel() + tasksPanel() + questionsPanel() + rulePanel();
+  }
+
+  /* Advanced tab */
+  function toYaml() { return isAB ? toYamlAB() : toYamlOther(); }
+  function toYamlAB() {
+    var y = 'type: ab_test\ntitle: ' + yq(S.title) + '\n';
+    if (S.description) y += 'description: ' + yq(S.description) + '\n';
+    if (S.minutes !== '' && S.minutes != null) y += 'minutes: ' + S.minutes + '\n';
+    if (S.requires.length) y += 'requires: [' + S.requires.join(', ') + ']\n';
+    y += '\nvariants:\n' + S.variants.map(function (v) { return '  ' + v.key + ': { label: ' + yq(v.label) + ', file: ' + yq(v.file) + ' }'; }).join('\n') + '\nbaseline: ' + S.baseline + '\norder: ' + S.order + '\n\nintro: >-\n  ' + S.intro + '\n\n';
+    y += 'ease_question: ' + (S.ease ? 'true' : 'false') + '\n';
+    y += 'preference: ' + (S.preference ? 'true' : 'false') + '\n\ntasks:\n';
+    S.tasks.forEach(function (t, i) {
+      var id = t.id || String(t.title).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 24) || 'task_' + (i + 1);
+      var opts = lines(t.options);
+      y += '  - id: ' + id + '\n    title: ' + yq(t.title) + '\n    prompt: ' + yq(t.prompt) + '\n    fields: [{ id: ' + id + ', label: ' + yq(t.fieldLabel) + (t.kind === 'choice' ? ', kind: choice' : '') + (t.kind === 'choice' && opts.length ? ', options: [' + opts.map(yq).join(', ') + ']' : '') + (t.placeholder ? ', placeholder: ' + yq(t.placeholder) : '') + ' }]\n';
+      if (t.accept.filter(Boolean).length) y += '    accept: { ' + id + ': [' + t.accept.filter(Boolean).map(function (a) { return '"' + a + '"'; }).join(', ') + '] }\n';
+      if (t.probe) y += '    probe: ' + yq(t.probe) + '\n';
+    });
+    function ql(list) { return S[list].map(function (q) { return '  - id: ' + q.id + '\n    type: ' + q.type + '\n    label: ' + yq(q.label) + (q.type === 'scale' ? '\n    labels: [' + yq(q.low || 'Strongly disagree') + ', ' + yq(q.high || 'Strongly agree') + ']' : '') + (q.required ? '' : '\n    required: false'); }).join('\n'); }
+    y += '\npost_survey:\n' + ql('post') + '\n\nfinal_survey:\n' + ql('final') + '\n\ndecision_rule:\n  min_participants: ' + S.rule.min + '\n' + (S.rule.question ? '  survey_questions: [' + S.rule.question + ']\n' : '') + '  min_survey_gain: ' + S.rule.gain + '\n';
+    return y;
+  }
+  function yq(s) {
+    var str = String(s == null ? '' : s);
+    if (/[:#\[\]{},&*!|>'"%@`]|^\s|\s$|^(yes|no|true|false|null|on|off)$/i.test(str) || str === '') {
+      return '"' + str.replace(/"/g, '\\"') + '"';
+    }
+    return str;
+  }
+  function formatYamlLines(rawText, indent) {
+    var lns = lines(rawText);
+    if (!lns.length) return '';
+    var hasKv = lns.some(function (l) { return l.indexOf(':') > 0; });
+    if (hasKv) {
+      return lns.map(function (l) {
+        var idx = l.indexOf(':');
+        if (idx > 0) {
+          var k = l.slice(0, idx).trim();
+          var v = l.slice(idx + 1).trim();
+          return indent + yq(k) + ': ' + yq(v);
+        }
+        return indent + yq(l.trim()) + ': ' + yq(l.trim());
+      }).join('\n') + '\n';
+    } else {
+      return lns.map(function (l) {
+        return indent + '- ' + yq(l);
+      }).join('\n') + '\n';
+    }
+  }
+  function head(type) { var y = 'type: ' + type + '\ntitle: ' + yq(S.title) + '\n'; if (S.description) y += 'description: ' + yq(S.description) + '\n'; if (S.minutes !== '' && S.minutes != null) y += 'minutes: ' + S.minutes + '\n'; if (S.requires.length) y += 'requires: [' + S.requires.join(', ') + ']\n'; return y; }
+  function toYamlOther() {
+    var y = head(TYPE);
+    if (TYPE === 'survey') {
+      y += '\npages:\n';
+      S.pages.forEach(function (pg) {
+        y += '  - title: ' + yq(pg.title) + '\n';
+        if (pg.intro) y += '    intro: ' + yq(pg.intro) + '\n';
+        y += '    questions:\n';
+        pg.questions.forEach(function (q) {
+          y += '      - id: ' + q.id + '\n        type: ' + q.type + '\n        label: ' + yq(q.label) + '\n';
+          if (q.hint) y += '        hint: ' + yq(q.hint) + '\n';
+          if (q.type === 'single' || q.type === 'multi') {
+            if (q.optionsFrom) {
+              y += '        options_from: ' + q.optionsFrom + '\n';
+            } else {
+              var optLns = lines(q.options);
+              if (optLns.some(function (l) { return l.indexOf(':') > 0; })) {
+                y += '        options:\n' + formatYamlLines(q.options, '          ');
+              } else {
+                y += '        options: [' + optLns.map(yq).join(', ') + ']\n';
+              }
+            }
+            if (q.columns && Number(q.columns) !== (q.type === 'single' ? 2 : 1)) {
+              y += '        columns: ' + q.columns + '\n';
+            }
+          }
+          if (q.type === 'multi' && q.max !== '' && q.max != null) y += '        max: ' + q.max + '\n';
+          if (q.type === 'matrix') {
+            y += '        rows:\n' + formatYamlLines(q.rows, '          ');
+            if (q.na_label) y += '        na_label: ' + yq(q.na_label) + '\n';
+          }
+          if (q.type === 'scale' || q.type === 'matrix') {
+            y += '        points: ' + q.points + '\n        labels: [' + yq(q.low || 'Very difficult') + ', ' + yq(q.high || 'Very easy') + ']\n';
+          }
+          if (q.type === 'text') {
+            if (q.long === false) y += '        long: false\n';
+          }
+          if (!q.required) y += '        required: false\n';
+          if (q.showIf && q.showIf.on) {
+            var ref = q.showIf.module ? (q.showIf.module + '.' + q.showIf.q) : q.showIf.q;
+            var valPart = (q.showIf.op === 'equals')
+              ? yq(q.showIf.value)
+              : '[' + q.showIf.value.split(',').map(function (v) { return yq(v.trim()); }).filter(Boolean).join(', ') + ']';
+            y += '        show_if: { ref: ' + ref + ', ' + q.showIf.op + ': ' + valPart + ' }\n';
+          }
+        });
+      });
+    } else if (TYPE === 'tree_test') {
+      var T = parseTree(S.outline);
+      function nodesToYamlTree(nodes) {
+        var root = [];
+        var stack = [{ depth: -1, children: root }];
+        nodes.forEach(function (n) {
+          var id = n.name.toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || 'item';
+          var item = { id: id, label: n.name, children: [] };
+          while (stack.length > 1 && stack[stack.length - 1].depth >= n.depth) {
+            stack.pop();
+          }
+          stack[stack.length - 1].children.push(item);
+          stack.push({ depth: n.depth, children: item.children });
+        });
+        function serialize(items, indent) {
+          var out = '';
+          items.forEach(function (it) {
+            out += indent + '- id: ' + yq(it.id) + '\n' + indent + '  label: ' + yq(it.label) + '\n';
+            if (it.children.length) {
+              out += indent + '  children:\n' + serialize(it.children, indent + '    ');
+            }
+          });
+          return out;
+        }
+        return serialize(root, '  ');
+      }
+      y += '\ninstructions: ' + yq(S.intro) + '\n\ntree:\n' + nodesToYamlTree(T.nodes) + '\ntasks:\n';
+      S.tasks.forEach(function (t, i) {
+        var tid = t.id || 'task_' + (i + 1);
+        var accepts = t.correct.map(function (c) {
+          var parts = c.split(' > ');
+          var leaf = parts[parts.length - 1];
+          return leaf.toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || leaf;
+        });
+        y += '  - id: ' + tid + '\n    prompt: ' + yq(t.prompt) + '\n    accept: [' + accepts.map(yq).join(', ') + ']\n';
+      });
+    } else if (TYPE === 'card_sort') {
+      y += 'allow_new_categories: ' + (S.mode !== 'closed' ? 'true' : 'false') + '\n\n';
+      y += 'instructions: ' + yq(S.intro) + '\n\ncards:\n' + lines(S.cards).map(function (c, i) {
+        return '  - id: c' + (i + 1) + '\n    label: ' + yq(c);
+      }).join('\n') + '\n';
+      if (S.mode !== 'open') y += '\ncategories:\n' + lines(S.categories).map(function (c) { return '  - ' + yq(c); }).join('\n') + '\n';
+    } else if (TYPE === 'first_click') {
+      y += '\ninstructions: ' + yq(S.intro) + '\n\ntasks:\n' + S.tasks.map(function (t, i) {
+        var tid = t.id || 'task_' + (i + 1);
+        return '  - id: ' + tid + '\n    prompt: ' + yq(t.prompt) + '\n    image: ' + t.image + '\n    target: { name: ' + yq(t.label) + ', x: ' + t.x + ', y: ' + t.y + ', width: ' + t.w + ', height: ' + t.h + ' }';
+      }).join('\n') + '\n';
+    }
+    return y;
+  }
+  var HISTORY = {{ history|tojson }};
+  function advancedHtml() {
+    return panel('sec-yaml', 'Edit as YAML', 'The same file the form writes. Saving from here replaces what the form shows.', '',
+      '<div class="panel-b"><textarea id="yaml" class="input mono-area" rows="22" spellcheck="false"' + dis + '>' + esc(S.yaml == null ? ({{ raw_yaml|tojson }} || toYaml()) : S.yaml) + '</textarea>' +
+      '<p class="help">Every save checks the whole study first. If anything is wrong, nothing is written.</p></div>') +
+      panel('sec-history', 'Version history', 'Restoring loads an older version into the form so you can review it before saving.', '',
+        '<ul class="rows">' + (HISTORY.length ? HISTORY.map(function (h, i) { return '<li class="row"><div class="row-main"><p class="row-title">' + esc(h.when) + '</p><p class="t-meta">' + esc(h.file) + '</p></div>' + (canEdit ? '<a href="{{ url_for("studio.edit", slug=project.slug, file="modules/" ~ module.id ~ ".yaml") }}?restore=' + encodeURIComponent(h.id) + '" class="btn btn-secondary btn-sm">Restore</a>' : '') + '</li>'; }).join('') : '<li class="panel-b t-meta">No older versions saved yet.</li>') + '</ul>');
+  }
+
+  function lines(t) { return String(t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+  function plural(n, a, b) { return n + ' ' + (n === 1 ? a : (b || a + 's')); }
+
+  /* Outline */
+  function updateFlow() {
+    if (isAB) return updateFlowAB();
+    var items = [];
+    if (TYPE === 'survey') S.pages.forEach(function (pg, pi) { items.push(['#sec-page-' + pi, 'Page ' + (pi + 1) + (pg.title ? ': ' + pg.title : ''), plural(pg.questions.length, 'question') + (pg.questions.some(function (q) { return q.showIf && q.showIf.on; }) ? ', some conditional' : '')]); });
+    else if (TYPE === 'tree_test') { items.push(['#sec-intro', 'Introduction', S.intro ? 'Your text' : 'No text']); S.tasks.forEach(function (t, i) { items.push(['#sec-tasks', 'Task ' + (i + 1), t.prompt || 'Untitled task']); }); }
+    else if (TYPE === 'card_sort') { items.push(['#sec-intro', 'Introduction', S.intro ? 'Your text' : 'No text']); items.push(['#sec-cards', 'Sort ' + plural(lines(S.cards).length, 'card'), { closed: 'Into your categories only', hybrid: 'Into your categories or their own', open: 'Into categories they make' }[S.mode]]); }
+    else if (TYPE === 'first_click') { items.push(['#sec-intro', 'Introduction', S.intro ? 'Your text' : 'No text']); S.tasks.forEach(function (t, i) { items.push(['#sec-tasks', 'Task ' + (i + 1), t.prompt || 'Untitled task']); }); }
+    var note = { survey: 'Pages appear in this order. Conditional questions only show when their answer matches', tree_test: 'Tasks appear in the order listed', card_sort: 'Cards appear in a random order for each person', first_click: 'Tasks appear in the order listed' }[TYPE];
+    $('flow').innerHTML = items.map(function (it, i) {
+      return '<li class="row" style="padding:12px 24px"><span class="num t-meta" style="width:20px">' + (i + 1) + '</span><a class="row-main" href="' + it[0] + '"><span class="row-title block">' + esc(it[1]) + '</span><span class="t-meta block">' + esc(it[2]) + '</span></a></li>';
+    }).join('') + '<li class="panel-f" style="border-radius:0 0 7px 7px">' + esc(note) + '.</li>';
+  }
+  function updateFlowAB() {
+    var items = [];
+    items.push(['#sec-order', 'Introduction', S.intro ? 'Your text' : 'No text']);
+    var order = { rotate: 'Order rotates between participants', code_parity: 'Order follows the code number', random: 'Order is random', fixed: 'Always in the order listed' }[S.order];
+    S.variants.forEach(function (v) {
+      var bits = [S.tasks.length + (S.tasks.length === 1 ? ' task' : ' tasks')];
+      if (S.ease) bits.push('ease rating');
+      if (S.post.length) bits.push(S.post.length + (S.post.length === 1 ? ' question' : ' questions'));
+      items.push(['#sec-tasks', 'Variant ' + v.key + ': ' + (v.label || 'Untitled'), bits.join(', ')]);
+    });
+    if (S.preference && S.variants.length > 1) items.push(['#sec-questions', 'Preference', 'Which version would they use']);
+    if (S.final.length) items.push(['#sec-questions', 'Final questions', S.final.length + (S.final.length === 1 ? ' question' : ' questions')]);
+    $('flow').innerHTML = items.map(function (it, i) {
+      return '<li class="row" style="padding:12px 24px"><span class="num t-meta" style="width:20px">' + (i + 1) + '</span><a class="row-main" href="' + it[0] + '"><span class="row-title block">' + esc(it[1]) + '</span><span class="t-meta block">' + esc(it[2]) + '</span></a></li>';
+    }).join('') + '<li class="panel-f" style="border-radius:0 0 7px 7px">' + esc(order) + '.</li>';
+  }
+
+  /* Validation */
+  function typeValidate(add) {
+    if (TYPE === 'survey') {
+      var seen = {}, all = allQs();
+      S.pages.forEach(function (pg, pi) { if (!pg.questions.length) add('f-sp-' + pi + '-title', 'Page ' + (pi + 1) + ' has no questions.'); });
+      all.forEach(function (o, idx) {
+        var q = o.q, id = 'f-sq-' + o.pi + '-' + o.qi, at = 'question ' + (o.qi + 1) + ' on page ' + (o.pi + 1);
+        if (!q.label.trim()) add(id + '-label', 'The ' + at + ' needs its text.');
+        if (!q.id.trim()) add(id + '-id', 'The ' + at + ' needs an id.');
+        else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(q.id)) add(id + '-id', 'Use letters, digits and underscores. Start with a letter.');
+        else if (seen[q.id]) add(id + '-id', '“' + q.id + '” is used twice. Ids must be unique.');
+        seen[q.id] = true;
+        if (q.type === 'single' || q.type === 'multi') {
+          if (q.optionsFrom) {
+            var srcExists = all.slice(0, idx).some(function (x) {
+              return x.q.id === q.optionsFrom && (x.q.type === 'matrix' || x.q.type === 'single' || x.q.type === 'multi');
+            });
+            if (!srcExists) add(id + '-from', '“' + q.optionsFrom + '” must be an earlier matrix, single or multi question in this module.');
+          } else if (lines(q.options).length < 2) {
+            add(id + '-opts', 'The ' + at + ' needs at least 2 choices.');
+          }
+        }
+        if (q.type === 'multi' && q.max !== '' && q.max != null) {
+          if (!(Number(q.max) >= 1)) add(id + '-opts', 'The most they can pick must be 1 or more.');
+          else if (!q.optionsFrom && Number(q.max) > lines(q.options).length) add(id + '-opts', 'The most they can pick must be between 1 and the number of choices.');
+        }
+        if (q.type === 'matrix' && !lines(q.rows).length) add(id + '-rows', 'The ' + at + ' needs at least 1 row.');
+        if ((q.type === 'scale' || q.type === 'matrix') && !(Number(q.points) >= 2 && Number(q.points) <= 11)) add(id + '-low', 'Points must be between 2 and 11.');
+        if (q.showIf && q.showIf.on) {
+          if (!q.showIf.q.trim()) add(id + '-cq', 'The condition on the ' + at + ' needs a question id.');
+          else if (!q.showIf.module) {
+            if (q.showIf.q.indexOf('.') > 0) {
+              var modPart = q.showIf.q.split('.')[0];
+              if (S.requires.indexOf(modPart) < 0) {
+                add(id + '-cq', 'Tick “' + ((MODULE_LIST.filter(function (m) { return m.id === modPart; })[0] || {}).title || modPart) + '” under “Must finish first” so its answer exists.');
+              }
+            } else {
+              var earlier = all.slice(0, idx).some(function (x) { return x.q.id === q.showIf.q; });
+              if (!earlier) add(id + '-cq', '“' + q.showIf.q + '” is not an earlier question in this module.');
+            }
+          }
+          else if (S.requires.indexOf(q.showIf.module) < 0) add(id + '-cq', 'Tick “' + ((MODULE_LIST.filter(function (m) { return m.id === q.showIf.module; })[0] || {}).title || q.showIf.module) + '” under “Must finish first” so its answer exists.');
+        }
+      });
+    } else if (TYPE === 'tree_test') {
+      var T = parseTree(S.outline);
+      if (!T.nodes.length) add('f-outline', 'Add at least one item to the tree.');
+      T.problems.slice(0, 3).forEach(function (p) { add('f-outline', p.msg); });
+      if (!S.tasks.length) add('sec-tasks-h', 'Add at least one task.');
+      S.tasks.forEach(function (t, i) {
+        if (!t.prompt.trim()) add('f-tt-' + i + '-prompt', 'Task ' + (i + 1) + ' needs a prompt.');
+        var good = t.correct.filter(function (c) { return T.nodes.some(function (n) { return n.path === c; }); });
+        if (!good.length) add('f-tt-' + i + '-correct', 'Task ' + (i + 1) + ' needs at least one correct place from the tree.');
+      });
+    } else if (TYPE === 'card_sort') {
+      var cards = lines(S.cards), cats = lines(S.categories);
+      if (cards.length < 2) add('f-cards', 'Add at least 2 cards.');
+      var dupC = cards.filter(function (c, i) { return cards.indexOf(c) !== i; });
+      if (dupC.length) add('f-cards', '“' + dupC[0] + '” is listed twice.');
+      if (S.mode !== 'open') {
+        if (cats.length < 2) add('f-cats', 'Add at least 2 categories, or switch to an open sort.');
+        var dupG = cats.filter(function (c, i) { return cats.indexOf(c) !== i; });
+        if (dupG.length) add('f-cats', '“' + dupG[0] + '” is listed twice.');
+      }
+    } else if (TYPE === 'first_click') {
+      if (!S.tasks.length) add('sec-tasks-h', 'Add at least one task.');
+      S.tasks.forEach(function (t, i) {
+        if (!t.prompt.trim()) add('f-ct-' + i + '-prompt', 'Task ' + (i + 1) + ' needs a prompt.');
+        if (!t.image) add('f-ct-' + i + '-image', 'Task ' + (i + 1) + ' needs an image.');
+        else if (!IMAGE_EXTS.test(t.image)) add('f-ct-' + i + '-image', 'Task ' + (i + 1) + ' image must be an image file (.png, .jpg, .svg, .webp).');
+        if (!(Number(t.w) > 0 && Number(t.h) > 0)) add('f-ct-' + i + '-w', 'The target area needs a width and height above 0.');
+      });
+    }
+  }
+
+  function validate() {
+    var errs = [];
+    function add(id, msg, t) { errs.push({ id: id, msg: msg, tab: t || 'content' }); }
+    if (!S.title.trim()) add('f-title', 'Give the module a title.', 'setup');
+    if (S.minutes !== '' && S.minutes != null && !(Number(S.minutes) >= 1)) add('f-min', 'Minutes must be 1 or more.', 'setup');
+    if (!isAB) typeValidate(add); else {
+      S.variants.forEach(function (v, i) {
+        if (!v.label.trim()) add('f-var-' + i + '-label', 'Variant ' + v.key + ' needs a label.');
+        if (!v.file) add('f-var-' + i + '-file', 'Variant ' + v.key + ' needs an entry file.');
+        else if (!ENTRY_EXTS.test(v.file)) add('f-var-' + i + '-file', 'Variant ' + v.key + ' entry file must be a page, document, or media file.');
+      });
+      S.tasks.forEach(function (t, i) { if (!t.prompt.trim()) add('f-task-' + i + '-prompt', 'Task ' + (i + 1) + ' needs a prompt.'); });
+      var seen = {};
+      ['post', 'final'].forEach(function (l) {
+        S[l].forEach(function (q, i) {
+          if (!q.label.trim()) add('f-' + l + '-' + i + '-label', 'A question needs its text.');
+          if (!q.id.trim()) add('f-' + l + '-' + i + '-id', 'A question needs an id.');
+          else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(q.id)) add('f-' + l + '-' + i + '-id', 'Use letters, digits and underscores. Start with a letter.');
+          else if (seen[q.id]) add('f-' + l + '-' + i + '-id', '“' + q.id + '” is used twice. Ids must be unique.');
+          seen[q.id] = true;
+        });
+      });
+      if (!(Number(S.rule.min) >= 1) || Number(S.rule.min) % 1 !== 0) add('f-rule-min', 'The minimum must be a whole number, 1 or more.');
+      if (!(Number(S.rule.gain) >= 0)) add('f-rule-gain', 'The gain can’t be negative.');
+      if (S.rule.question && !S.post.some(function (q) { return q.id === S.rule.question && q.type === 'scale'; })) add('f-rule-q', 'Pick a rating scale question from “After each variant”.');
+    }
+    errors = errs;
+    document.querySelectorAll('[data-err-for]').forEach(function (p) { p.classList.add('is-hidden'); p.textContent = ''; });
+    document.querySelectorAll('[aria-invalid="true"]').forEach(function (e) { e.removeAttribute('aria-invalid'); });
+    errs.forEach(function (e) {
+      var f = $(e.id), p = document.querySelector('[data-err-for="' + e.id + '"]');
+      if (f) f.setAttribute('aria-invalid', 'true');
+      if (p && !p.textContent) { p.textContent = e.msg; p.classList.remove('is-hidden'); }
+    });
+    var box = $('summary');
+    box.classList.toggle('is-hidden', !errs.length || !showSummary);
+    if (errs.length) {
+      $('sum-h').textContent = errs.length + (errs.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving';
+      $('sum-list').innerHTML = errs.map(function (e) { return '<li class="row"><div class="row-main"><a class="link" href="#' + e.id + '" data-jump="' + e.id + '" data-jtab="' + e.tab + '">' + esc(e.msg) + '</a></div></li>'; }).join('');
+    }
+  }
+
+  function updateBar() {
+    $('sb-dirty').innerHTML = dirty ? '<span class="st st-warn"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Unsaved changes</span>' : 'All changes saved';
+    var e = $('sb-errors');
+    e.classList.toggle('is-hidden', !errors.length);
+    e.innerHTML = '<i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>' + errors.length + (errors.length === 1 ? ' problem' : ' problems');
+    var saveBtn = $('save');
+    if (saveBtn) saveBtn.disabled = !dirty || errors.length > 0 || !canEdit;
+  }
+  function touch() { dirty = true; refreshAll(); }
+
+  var tab = 'content';
+  function render() {
+    var focusId = document.activeElement && document.activeElement.id;
+    var sel = document.activeElement && document.activeElement.selectionStart;
+    $('panel-setup').innerHTML = setupHtml();
+    $('panel-content').innerHTML = contentHtml();
+    $('panel-advanced').innerHTML = advancedHtml();
+    document.querySelectorAll('[data-hint]').forEach(function (el) { refreshHint(Number(el.dataset.hint)); });
+    showTab(tab);
+    refreshAll();
+    initTargetEditors();
+    if (focusId && $(focusId)) {
+      $(focusId).focus();
+      try { if (sel != null) $(focusId).setSelectionRange(sel, sel); } catch (e) {}
+    }
+  }
+  function showTab(t) {
+    tab = t;
+    ['setup', 'content', 'advanced'].forEach(function (n) { $('panel-' + n).classList.toggle('is-hidden', n !== t); });
+    document.querySelectorAll('#tabs .tab').forEach(function (b) {
+      var on = b.dataset.tab === t;
+      b.setAttribute('aria-selected', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    $('outline').classList.toggle('is-hidden', t !== 'content');
+    $('ed').classList.toggle('lg:grid-cols-[minmax(0,1fr)_320px]', t === 'content');
+  }
+
+  function refreshHint(i) {
+    var el = document.querySelector('[data-hint="' + i + '"]'); if (!el) return;
+    var t = S.tasks[i], keys = t.accept.filter(Boolean);
+    el.innerHTML = keys.length
+      ? 'One per line. Compared without spaces, punctuation or capital letters: <span class="font-mono">' + esc(keys.map(norm).join(', ')) + '</span>. Anything you leave empty makes the task graded by hand.'
+      : 'Empty, so this task is <span class="t-strong">graded by hand</span>. Add answers to have it checked automatically.';
+  }
+
+  function refreshAll() {
+    $('mh').textContent = S.title || 'Untitled module';
+    $('crumb-now').textContent = S.title || 'Untitled module';
+    $('mh-id').textContent = mid;
+    $('mh-resp').textContent = started ? started + ' people have started it' : 'no responses yet';
+    updateFlow(); validate(); updateBar();
+    if (TYPE === 'card_sort') refreshCounts();
+  }
+
+  /* First click interactive target editor */
+  function updateTargetBox(container, i) {
+    if (!container) return;
+    var img = container.querySelector('img.target-img');
+    var box = container.querySelector('.target-box');
+    if (!img || !box) return;
+    var t = S.tasks[i];
+    if (!t) return;
+    var x = Number(t.x) || 0, y = Number(t.y) || 0, w = Number(t.w) || 0, h = Number(t.h) || 0;
+    var natW = img.naturalWidth, natH = img.naturalHeight;
+    var badge = box.querySelector('.target-badge');
+    if (badge) badge.textContent = (w ? w : 0) + ' × ' + (h ? h : 0) + ' px';
+
+    if (natW && natH) {
+      box.style.left = ((x / natW) * 100) + '%';
+      box.style.top = ((y / natH) * 100) + '%';
+      box.style.width = ((w / natW) * 100) + '%';
+      box.style.height = ((h / natH) * 100) + '%';
+      box.style.display = (w > 0 && h > 0) ? 'block' : 'none';
+    } else {
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+      box.style.width = w + 'px';
+      box.style.height = h + 'px';
+      box.style.display = (w > 0 && h > 0) ? 'block' : 'none';
+    }
+  }
+
+  function initTargetEditors() {
+    if (TYPE !== 'first_click') return;
+    document.querySelectorAll('.target-editor').forEach(function (editor) {
+      var i = Number(editor.dataset.ti);
+      var img = editor.querySelector('img.target-img');
+      if (img) {
+        if (img.complete && img.naturalWidth) {
+          updateTargetBox(editor, i);
+        } else {
+          img.addEventListener('load', function () { updateTargetBox(editor, i); });
+        }
+      }
+    });
+  }
+
+  var activeDrag = null;
+  var host = $('ed');
+
+  if (host) host.addEventListener('pointerdown', function (e) {
+    if (!canEdit || TYPE !== 'first_click') return;
+    var handle = e.target.closest('.handle');
+    var box = e.target.closest('.target-box');
+    var editor = e.target.closest('.target-editor');
+    if (!editor) return;
+
+    var i = Number(editor.dataset.ti);
+    var t = S.tasks[i];
+    var img = editor.querySelector('img.target-img');
+    if (!t || !img) return;
+
+    var natW = img.naturalWidth || 1;
+    var natH = img.naturalHeight || 1;
+    var rect = img.getBoundingClientRect();
+    var scaleX = natW / (rect.width || 1);
+    var scaleY = natH / (rect.height || 1);
+
+    e.preventDefault();
+
+    if (handle) {
+      activeDrag = {
+        mode: 'resize',
+        handle: handle.dataset.handle,
+        editor: editor,
+        img: img,
+        i: i,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startX: Number(t.x) || 0,
+        startY: Number(t.y) || 0,
+        startW: Number(t.w) || 0,
+        startH: Number(t.h) || 0,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    } else if (box) {
+      activeDrag = {
+        mode: 'move',
+        editor: editor,
+        img: img,
+        i: i,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startX: Number(t.x) || 0,
+        startY: Number(t.y) || 0,
+        startW: Number(t.w) || 0,
+        startH: Number(t.h) || 0,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    } else if (e.target === img || editor.contains(e.target)) {
+      var originX = Math.round(Math.max(0, Math.min(natW, (e.clientX - rect.left) * scaleX)));
+      var originY = Math.round(Math.max(0, Math.min(natH, (e.clientY - rect.top) * scaleY)));
+      t.x = originX;
+      t.y = originY;
+      t.w = 1;
+      t.h = 1;
+      updateTargetBox(editor, i);
+      activeDrag = {
+        mode: 'draw',
+        editor: editor,
+        img: img,
+        i: i,
+        originX: originX,
+        originY: originY,
+        rect: rect,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        natW: natW,
+        natH: natH
+      };
+    }
+  });
+
+  window.addEventListener('pointermove', function (e) {
+    if (!activeDrag) return;
+    var d = activeDrag;
+    var t = S.tasks[d.i];
+    var dx = (e.clientX - d.startClientX) * d.scaleX;
+    var dy = (e.clientY - d.startClientY) * d.scaleY;
+
+    if (d.mode === 'move') {
+      var nx = Math.round(Math.max(0, Math.min(d.natW - d.startW, d.startX + dx)));
+      var ny = Math.round(Math.max(0, Math.min(d.natH - d.startH, d.startY + dy)));
+      t.x = nx;
+      t.y = ny;
+    } else if (d.mode === 'resize') {
+      var h = d.handle;
+      var curX = d.startX, curY = d.startY, curW = d.startW, curH = d.startH;
+      if (h.indexOf('e') >= 0) {
+        curW = Math.max(5, Math.min(d.natW - curX, d.startW + dx));
+      }
+      if (h.indexOf('s') >= 0) {
+        curH = Math.max(5, Math.min(d.natH - curY, d.startH + dy));
+      }
+      if (h.indexOf('w') >= 0) {
+        var proposedX = Math.max(0, Math.min(d.startX + d.startW - 5, d.startX + dx));
+        curW = (d.startX + d.startW) - proposedX;
+        curX = proposedX;
+      }
+      if (h.indexOf('n') >= 0) {
+        var proposedY = Math.max(0, Math.min(d.startY + d.startH - 5, d.startY + dy));
+        curH = (d.startY + d.startH) - proposedY;
+        curY = proposedY;
+      }
+      t.x = Math.round(curX);
+      t.y = Math.round(curY);
+      t.w = Math.round(curW);
+      t.h = Math.round(curH);
+    } else if (d.mode === 'draw') {
+      var curNatX = Math.round(Math.max(0, Math.min(d.natW, (e.clientX - d.rect.left) * d.scaleX)));
+      var curNatY = Math.round(Math.max(0, Math.min(d.natH, (e.clientY - d.rect.top) * d.scaleY)));
+      t.x = Math.min(d.originX, curNatX);
+      t.y = Math.min(d.originY, curNatY);
+      t.w = Math.max(5, Math.abs(curNatX - d.originX));
+      t.h = Math.max(5, Math.abs(curNatY - d.originY));
+    }
+
+    var inpX = $('f-ct-' + d.i + '-x'); if (inpX) inpX.value = t.x;
+    var inpY = $('f-ct-' + d.i + '-y'); if (inpY) inpY.value = t.y;
+    var inpW = $('f-ct-' + d.i + '-w'); if (inpW) inpW.value = t.w;
+    var inpH = $('f-ct-' + d.i + '-h'); if (inpH) inpH.value = t.h;
+
+    updateTargetBox(d.editor, d.i);
+    touch();
+  });
+
+  window.addEventListener('pointerup', function () {
+    if (activeDrag) {
+      activeDrag = null;
+      S.yaml = null;
+      touch();
+    }
+  });
+
+  window.addEventListener('resize', initTargetEditors);
+
+  /* Host Events */
+  if (!host) host = $('ed');
+  host.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.dataset.accept != null) {
+      var i = Number(t.dataset.accept); S.tasks[i].accept = t.value.split('\n').map(function (s) { return s.trim(); }); refreshHint(i);
+      var pill = document.querySelector('[data-sum-pill="' + i + '"]'); if (pill) pill.innerHTML = taskPill(S.tasks[i]);
+      touch(); return;
+    }
+    if (t.dataset.correct != null) {
+      var ti = Number(t.dataset.correct), pth = t.dataset.path, list = S.tasks[ti].correct, ix2 = list.indexOf(pth);
+      if (t.checked && ix2 < 0) list.push(pth); if (!t.checked && ix2 >= 0) list.splice(ix2, 1);
+      S.yaml = null; touch(); return;
+    }
+    if (t.id === 'yaml') { S.yaml = t.value; dirty = true; updateBar(); return; }
+    if (t.dataset.req) { var r = t.dataset.req, ix = S.requires.indexOf(r); if (t.checked && ix < 0) S.requires.push(r); if (!t.checked && ix >= 0) S.requires.splice(ix, 1); touch(); return; }
+    var b = t.dataset.b; if (!b || t.tagName === 'SELECT' || t.type === 'radio') return;
+    var v = t.type === 'checkbox' ? t.checked : (t.dataset.num != null ? (t.value === '' ? '' : Number(t.value)) : t.value);
+    setP(S, b, v);
+    if (b === 'outline') { S.yaml = null; openKeys = openKeysNow(); render(); dirty = true; refreshAll(); return; }
+    var sq = b.match(/^pages\.(\d+)\.questions\.(\d+)\.label$/);
+    if (sq) { var s3 = document.querySelector('[data-sum-sq="' + sq[1] + '.' + sq[2] + '"]'); if (s3) s3.textContent = v || 'Untitled question'; }
+    var tp = b.match(/^tasks\.(\d+)\.prompt$/);
+    if (tp && !isAB) { var s4 = document.querySelector('[data-sum-' + (TYPE === 'tree_test' ? 'tt' : 'ct') + '="' + tp[1] + '"]'); if (s4) s4.textContent = v || 'Untitled task'; }
+    var m = b.match(/^tasks\.(\d+)\.(title|prompt)$/);
+    if (m) { var s1 = document.querySelector('[data-sum-' + (m[2] === 'title' ? 'title' : 'prompt') + '="' + m[1] + '"]'); if (s1) s1.textContent = v || (m[2] === 'title' ? 'Untitled task' : ''); }
+    var q = b.match(/^(post|final)\.(\d+)\.label$/);
+    if (q) { var s2 = document.querySelector('[data-sum-ql="' + q[1] + '.' + q[2] + '"]'); if (s2) s2.textContent = v || 'Untitled question'; }
+    if (b === 'ease' || b === 'preference' || /\.required$/.test(b)) { touch(); return; }
+    var ctMatch = b.match(/^tasks\.(\d+)\.(x|y|w|h)$/);
+    if (ctMatch) {
+      var ti = Number(ctMatch[1]);
+      var editor = document.querySelector('.target-editor[data-ti="' + ti + '"]');
+      if (editor) updateTargetBox(editor, ti);
+    }
+    S.yaml = null; touch();
+  });
+
+  host.addEventListener('change', function (e) {
+    var t = e.target, b = t.dataset.b;
+    if (!b) return;
+    if (t.type === 'radio') { setP(S, b, t.value); S.yaml = null; render(); touch(); return; }
+    if (t.tagName === 'SELECT') {
+      setP(S, b, t.value); S.yaml = null;
+      if (t.hasAttribute('data-rerender')) { openKeys = openKeysNow(); render(); }
+      touch(); return;
+    }
+    if (t.type === 'checkbox' && (b === 'ease' || b === 'preference' || t.hasAttribute('data-rerender'))) { openKeys = openKeysNow(); render(); }
+  });
+
+  function openKeysNow() { var k = {}; document.querySelectorAll('details.acc[open]').forEach(function (d) { k[d.dataset.k] = true; }); return k; }
+  host.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (d.dataset && d.dataset.k) openKeys[d.dataset.k] = d.open;
+    if (d.open && TYPE === 'first_click') {
+      var ed = d.querySelector('.target-editor');
+      if (ed) updateTargetBox(ed, Number(ed.dataset.ti));
+    }
+  }, true);
+
+  function uniqueSid() { var n = 1, id; do { id = 'question_' + n++; } while (allQs().some(function (o) { return o.q.id === id; })); return id; }
+  function move(arr, i, j) { if (j < 0 || j >= arr.length) return; var x = arr.splice(i, 1)[0]; arr.splice(j, 0, x); }
+  function uniqueQid(list) { var n = 1, id; do { id = 'question_' + n++; } while (S.post.concat(S.final).some(function (q) { return q.id === id; })); return id; }
+
+  host.addEventListener('click', function (e) {
+    var j = e.target.closest('[data-jump]');
+    if (j) {
+      e.preventDefault();
+      showTab(j.dataset.jtab);
+      var f = $(j.dataset.jump);
+      if (f) {
+        var d = f.closest('details'); if (d) d.open = true;
+        f.scrollIntoView({ block: 'center' }); f.focus();
+      }
+      return;
+    }
+    var a = e.target.closest('[data-act]'); if (!a) return;
+    var i = Number(a.dataset.i), act = a.dataset.act; openKeys = openKeysNow();
+    if (act === 'var-add') { var k = String.fromCharCode(65 + S.variants.length); S.variants.push({ key: k, label: '', file: '' }); }
+    else if (act === 'var-del') { var gone = S.variants.splice(i, 1)[0]; S.variants.forEach(function (v, x) { v.key = String.fromCharCode(65 + x); }); if (S.baseline === gone.key || !S.variants.some(function (v) { return v.key === S.baseline; })) S.baseline = S.variants[0].key; }
+    else if (act === 'var-prev') {
+      var v = S.variants[i];
+      $('prev-name').textContent = 'Variant ' + v.key + ': ' + (v.label || 'Untitled');
+      $('prev-file').textContent = v.file || 'No entry file chosen';
+      $('prev-iframe').src = v.file ? '{{ url_for("studio.files_raw", slug=project.slug, rel="") }}' + v.file : 'about:blank';
+      $('dlg-prev').showModal();
+      return;
+    }
+    else if (act === 'task-add') { S.tasks.push({ title: '', prompt: '', fieldLabel: 'Your answer', placeholder: '', kind: 'text', options: '', accept: [], probe: '' }); openKeys['task-' + (S.tasks.length - 1)] = true; }
+    else if (act === 'task-del') { S.tasks.splice(i, 1); openKeys = {}; }
+    else if (act === 'task-up') { move(S.tasks, i, i - 1); openKeys = {}; }
+    else if (act === 'task-down') { move(S.tasks, i, i + 1); openKeys = {}; }
+    else if (act === 'q-add') { var l = a.dataset.l; S[l].push({ id: uniqueQid(l), type: 'scale', label: '', required: true, points: 5, low: '', high: '', options: '' }); openKeys[l + '-' + (S[l].length - 1)] = true; }
+    else if (act === 'q-del') { S[a.dataset.l].splice(i, 1); openKeys = {}; }
+    else if (act === 'q-up') { move(S[a.dataset.l], i, i - 1); openKeys = {}; }
+    else if (act === 'q-down') { move(S[a.dataset.l], i, i + 1); openKeys = {}; }
+    else if (act === 'pg-add') { S.pages.push({ title: 'Page ' + (S.pages.length + 1), intro: '', questions: [ { id: uniqueSid(), type: 'single', label: '', hint: '', required: true, points: 5, low: '', high: '', options: '', optionsFrom: '', rows: '', na_label: '', columns: 2, long: true, max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } } ] }); openKeys['sq-' + (S.pages.length - 1) + '-0'] = true; }
+    else if (act === 'pg-del') { S.pages.splice(i, 1); openKeys = {}; }
+    else if (act === 'pg-up') { move(S.pages, i, i - 1); openKeys = {}; }
+    else if (act === 'pg-down') { move(S.pages, i, i + 1); openKeys = {}; }
+    else if (act === 'sq-add') { var pp = Number(a.dataset.p); S.pages[pp].questions.push({ id: uniqueSid(), type: 'single', label: '', hint: '', required: true, points: 5, low: '', high: '', options: '', optionsFrom: '', rows: '', na_label: '', columns: 2, long: true, max: '', showIf: { on: false, module: '', q: '', op: 'equals', value: '' } }); openKeys['sq-' + pp + '-' + (S.pages[pp].questions.length - 1)] = true; }
+    else if (act === 'sq-del') { S.pages[Number(a.dataset.p)].questions.splice(i, 1); openKeys = {}; }
+    else if (act === 'sq-up') { move(S.pages[Number(a.dataset.p)].questions, i, i - 1); openKeys = {}; }
+    else if (act === 'sq-down') { move(S.pages[Number(a.dataset.p)].questions, i, i + 1); openKeys = {}; }
+    else if (act === 'ts-add') { S.tasks.push({ prompt: '', correct: [] }); openKeys['tt-' + (S.tasks.length - 1)] = true; }
+    else if (act === 'ts-del') { S.tasks.splice(i, 1); openKeys = {}; }
+    else if (act === 'ts-up') { move(S.tasks, i, i - 1); openKeys = {}; }
+    else if (act === 'ts-down') { move(S.tasks, i, i + 1); openKeys = {}; }
+    else if (act === 'cs-add') { S.tasks.push({ prompt: '', image: '', x: 0, y: 0, w: 100, h: 40, label: '' }); openKeys['ct-' + (S.tasks.length - 1)] = true; }
+    else if (act === 'cs-del') { S.tasks.splice(i, 1); openKeys = {}; }
+    else if (act === 'cs-up') { move(S.tasks, i, i - 1); openKeys = {}; }
+    else if (act === 'cs-down') { move(S.tasks, i, i + 1); openKeys = {}; }
+    S.yaml = null; render(); touch();
+  });
+
+  document.querySelectorAll('#tabs .tab').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.dataset.tab); });
+  });
+
+  /* Save and Check handlers with backend fetch */
+  function showToast(msg) {
+    var t = $('toast');
+    if (t) {
+      t.textContent = msg;
+      t.classList.remove('is-hidden');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.classList.add('is-hidden'); }, 3000);
+    }
+  }
+
+  var saveBtn = $('save');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function () {
+      if (saveBtn.disabled) return;
+      var yamlContent = S.yaml == null ? toYaml() : S.yaml;
+      var formData = new FormData();
+      formData.append('csrf_token', CSRF_TOKEN);
+      formData.append('content', yamlContent);
+      formData.append('action', 'save');
+      saveBtn.disabled = true;
+      fetch(SAVE_URL, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': CSRF_TOKEN
+        }
+      }).then(function (res) {
+        return res.json();
+      }).then(function (data) {
+        if (data.ok) {
+          INITIAL = clone(S);
+          dirty = false;
+          showSummary = false;
+          refreshAll();
+          showToast('Saved. Live now.');
+        } else {
+          errors = (data.problems || ['Error saving']).map(function (p) { return { id: 'summary', msg: p, tab: 'advanced' }; });
+          showSummary = true;
+          validate();
+          updateBar();
+          showToast('Could not save: ' + (data.problems || []).join('; '));
+        }
+      }).catch(function (err) {
+        showToast('Network error while saving.');
+      }).finally(function () {
+        updateBar();
+      });
+    });
+  }
+
+  var checkBtn = $('check');
+  if (checkBtn) {
+    checkBtn.addEventListener('click', function () {
+      showSummary = true;
+      validate();
+      updateBar();
+      if (errors.length) {
+        showToast(errors.length + (errors.length === 1 ? ' problem stops' : ' problems stop') + ' this from saving.');
+        return;
+      }
+      var yamlContent = S.yaml == null ? toYaml() : S.yaml;
+      var formData = new FormData();
+      formData.append('csrf_token', CSRF_TOKEN);
+      formData.append('content', yamlContent);
+      formData.append('action', 'check');
+      fetch(SAVE_URL, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': CSRF_TOKEN
+        }
+      }).then(function (res) {
+        return res.json();
+      }).then(function (data) {
+        if (data.ok) {
+          showToast('No problems found. Not saved.');
+        } else {
+          errors = (data.problems || []).map(function (p) { return { id: 'summary', msg: p, tab: 'advanced' }; });
+          showSummary = true;
+          validate();
+          updateBar();
+          showToast('Trial check: ' + (data.problems || []).join('; '));
+        }
+      }).catch(function () {
+        showToast('Error running check.');
+      });
+    });
+  }
+
+  var discardBtn = $('discard');
+  if (discardBtn) {
+    discardBtn.addEventListener('click', function () {
+      S = clone(INITIAL);
+      dirty = false;
+      showSummary = false;
+      openKeys = {};
+      render();
+      showToast('Changes discarded.');
+    });
+  }
+
+  var prevClose = $('prev-close');
+  if (prevClose) {
+    prevClose.addEventListener('click', function () { $('dlg-prev').close(); });
+  }
+
+  document.querySelectorAll('#dlg-prev [data-w]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#dlg-prev [data-w]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      $('prev-frame').style.width = b.dataset.w + 'px';
+    });
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  render();
+})();
+</script>
 {% endblock %}

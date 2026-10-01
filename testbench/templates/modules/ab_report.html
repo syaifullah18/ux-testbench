@@ -1,123 +1,320 @@
 {% from "modules/_summary.html" import summary_block %}
-{% set th = 'px-3 py-2 text-left font-semibold text-ink-subtle whitespace-nowrap' %}
-{% set td = 'px-3 py-2 align-top' %}
-{% macro ok(flag) %}{% if flag %}<span class="text-emerald-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>{{ t('admin.rule_met') }}</span>{% else %}<span class="text-red-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>{{ t('admin.rule_not_met') }}</span>{% endif %}{% endmacro %}
-
-<div class="flex flex-wrap gap-2 mb-6 text-[14px]">
-    {% for k in keys %}<a href="{{ ctx.action_url('preview/' ~ k ~ '/') }}" target="_blank" class="min-h-10 inline-flex items-center px-3 rounded-lg border border-line hover:bg-surface-subtle"><i class="fa-solid fa-eye mr-1"></i>{{ k }} · {{ c.variants[k].label }}</a>{% endfor %}
-</div>
-<p class="text-[14px] text-ink-subtle mb-4">{% for k in keys %}{{ k }}: {{ t('admin.n_runs', n=by_variant[k].n) }}{% if not loop.last %} · {% endif %}{% endfor %}. {{ t('admin.ab_note') }}</p>
 
 {% for r in rules %}
-<div class="border {% if r.all_ok and r.enough %}border-emerald-300 bg-emerald-50{% else %}border-line{% endif %} rounded-xl p-5 mb-6">
-    <p class="font-semibold text-ink">{{ t('admin.rule_title', challenger=r.variant, baseline=c.baseline) }}</p>
-    <p class="text-[13px] text-ink-subtle mb-3">{{ t('admin.rule_pairs', n=r.n) }}{% if not r.enough %} {{ t('admin.rule_indicative', min=c.rule.min_participants) }}{% endif %}</p>
-    <table class="w-full text-[14px]"><tbody>
+<section class="panel" aria-labelledby="vd-{{ r.variant }}">
+  <header class="panel-h">
+    <div>
+      <h2 id="vd-{{ r.variant }}">{{ t('admin.rule_title', challenger=r.variant, baseline=c.baseline) }}</h2>
+      <p>{{ t('admin.rule_pairs', n=r.n) }}{% if not r.enough %} {{ t('admin.rule_indicative', min=c.rule.min_participants) }}{% endif %}</p>
+    </div>
+    {% if not r.enough %}
+      <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Indicative</span>
+    {% endif %}
+  </header>
+  <div class="panel-b" style="border-bottom:1px solid var(--line)">
+    <p class="t-panel">
+      {% if r.all_ok and r.enough %}
+        Evidence for {{ c.variants[r.variant].label }} across all rule checks.
+      {% elif not r.enough %}
+        Too few people have finished both variants yet to make a call.
+      {% else %}
+        Not enough evidence to declare {{ c.variants[r.variant].label }} better than {{ c.variants[c.baseline].label }}.
+      {% endif %}
+    </p>
+  </div>
+  <div class="chk-grid chk-head" aria-hidden="true">
+    <span>Check</span>
+    <span>What we measured</span>
+    <span>Difference</span>
+    <span>Verdict</span>
+  </div>
+  <ul class="rows">
     {% for chk in r.checks %}
-        <tr class="border-b border-line last:border-0">
-            <td class="{{ td }}">{{ t('admin.rule_' ~ chk.key, challenger=r.variant, gain=c.rule.min_survey_gain, qs=c.rule.survey_questions|join(', ')) }}</td>
-            <td class="{{ td }} whitespace-nowrap">
-                {% if chk.key == 'faster' %}{{ chk.value }} (p={{ chk.p_value|num(3) }})
-                {% elif chk.key == 'success' %}{{ c.baseline }} {{ chk.a|pct }}, {{ r.variant }} {{ chk.b|pct }}
-                <br><span class="text-[12px] text-ink-subtle">Δ 95% CI: [{% if chk.interval[0] is not none %}{{ chk.interval[0]|pct }}{% else %}-{% endif %}, {% if chk.interval[1] is not none %}{{ chk.interval[1]|pct }}{% else %}-{% endif %}]</span>
-                {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}
-                <br><span class="text-[12px] text-ink-subtle">Δ 95% CI: [{% if chk.interval[0] is not none %}{{ chk.interval[0]|num(2) }}{% else %}-{% endif %}, {% if chk.interval[1] is not none %}{{ chk.interval[1]|num(2) }}{% else %}-{% endif %}]</span>
-                {% endif %}
-            </td>
-            <td class="{{ td }}">
-                {% if chk.verdict == 'evidence for' %}<span class="text-emerald-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>evidence for</span>
-                {% elif chk.verdict == 'evidence against' %}<span class="text-red-700 font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>evidence against</span>
-                {% else %}<span class="text-ink-subtle font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-question mr-1"></i>not enough evidence yet</span>{% endif %}
-            </td>
-        </tr>
+    <li class="chk-grid">
+      <div>
+        <p class="row-title">
+          {% if chk.key == 'faster' %}Faster on {{ c.variants[r.variant].label }}
+          {% elif chk.key == 'success' %}Higher task success
+          {% else %}Higher satisfaction ({{ chk.key }})
+          {% endif %}
+        </p>
+        <p class="t-meta">
+          {% if chk.key == 'faster' %}Total time across all tasks
+          {% elif chk.key == 'success' %}Combined across tasks
+          {% else %}Survey question after each variant
+          {% endif %}
+        </p>
+      </div>
+      <p>
+        {% if chk.key == 'faster' %}{{ chk.value }} (p={{ chk.p_value|num(3) }})
+        {% elif chk.key == 'success' %}{{ c.baseline }} {{ chk.a|pct }}, {{ r.variant }} {{ chk.b|pct }}
+        {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}
+        {% endif %}
+      </p>
+      <div>
+        {% if chk.key == 'faster' %}
+          {{ chk.value }}
+        {% elif chk.key == 'success' %}
+          {% if chk.b is not none and chk.a is not none %}
+            <span class="num t-strong">{{ '%+.0f'|format((chk.b - chk.a) * 100) }}%</span>
+          {% endif %}
+          {% if chk.interval[0] is not none and chk.interval[1] is not none %}
+            <span class="verdict-note block">95% interval [{{ chk.interval[0]|pct }}, {{ chk.interval[1]|pct }}]</span>
+          {% endif %}
+        {% else %}
+          {% if chk.gain is not none %}
+            <span class="num t-strong">{{ '%+.2f'|format(chk.gain) }}</span>
+          {% endif %}
+          {% if chk.interval[0] is not none and chk.interval[1] is not none %}
+            <span class="verdict-note block">95% interval [{{ chk.interval[0]|num(2) }}, {{ chk.interval[1]|num(2) }}]</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div>
+        {% if chk.verdict == 'evidence for' %}
+          <span class="st st-ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Evidence for</span>
+        {% elif chk.verdict == 'evidence against' %}
+          <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Evidence against</span>
+        {% else %}
+          <span class="st st-info"><i class="fa-solid fa-circle-minus" aria-hidden="true"></i>Not enough evidence yet</span>
+        {% endif %}
+      </div>
+    </li>
     {% endfor %}
-    </tbody></table>
-</div>
+  </ul>
+  <p class="panel-f">A check only counts as evidence when its interval clears the line you set.</p>
+</section>
 {% endfor %}
 
-<div class="border border-line rounded-xl overflow-x-auto mb-6">
-    <table class="w-full text-[14px]">
-        <thead><tr class="border-b border-line">
-            <th class="{{ th }}">{{ t('admin.task') }}</th><th class="{{ th }}">{{ t('admin.variant') }}</th><th class="{{ th }}">{{ t('admin.success') }}</th>
-            <th class="{{ th }}">{{ t('admin.unaided') }}</th><th class="{{ th }}">{{ t('admin.median_time') }}</th><th class="{{ th }}">{{ t('admin.clicks') }}</th>
-            <th class="{{ th }}">{{ t('admin.reversals') }}</th>{% if c.ease %}<th class="{{ th }}">{{ t('admin.ease') }}</th>{% endif %}
-            <th class="{{ th }}">{{ t('admin.gave_up') }}</th><th class="{{ th }}">{{ t('admin.first_clicks') }}</th>
-        </tr></thead>
-        <tbody>
-        {% for i in range(c.tasks|length) %}
-            {% for k in keys %}{% set s = by_variant[k].tasks[i] %}
-            <tr class="{% if loop.last %}border-b border-line{% endif %}">
-                {% if loop.first %}<td class="{{ td }} font-semibold text-ink" rowspan="{{ keys|length }}">{{ i + 1 }}. {{ s.task.title }}
-                    {% if s.task.probe %}<p class="text-[12px] font-normal text-ink-subtle mt-1">{{ s.task.probe }}</p>{% endif %}</td>{% endif %}
-                <td class="{{ td }}">{{ k }}</td>
-                <td class="{{ td }}">{{ s.success|pct }}{% if s.ungraded %}<span class="block text-[12px] text-amber-700">{{ t('admin.ungraded', n=s.ungraded) }}</span>{% endif %}</td>
-                <td class="{{ td }}">{{ s.unaided|pct }}</td>
-                <td class="{{ td }}">{{ s.median_ms|secs }}</td>
-                <td class="{{ td }}">{{ s.clicks|num }}</td>
-                <td class="{{ td }}">{{ s.reversals|num }}</td>
-                {% if c.ease %}<td class="{{ td }}">{{ s.ease|num }}</td>{% endif %}
-                <td class="{{ td }}">{{ s.gave_up }}</td>
-                <td class="{{ td }} text-[13px]">{% for label, n in s.first_clicks %}<div>{{ label }} <span class="text-ink-subtle">({{ n }})</span></div>{% else %}-{% endfor %}</td>
+<section class="panel" aria-labelledby="pt-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="pt-h">Task by task</h2>
+      <p>Variants side by side. Median time means half of people were faster.</p>
+    </div>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:760px">
+      <thead>
+        <tr>
+          <th scope="col">Variant</th>
+          <th scope="col">Success</th>
+          <th scope="col">Median time</th>
+          <th scope="col">Ease, 1 to 7</th>
+          <th scope="col">Gave up</th>
+          <th scope="col">Most common first click</th>
+        </tr>
+      </thead>
+      {% for i in range(c.tasks|length) %}
+        {% set tsk = c.tasks[i] %}
+        <tbody class="task-g">
+          <tr>
+            <th colspan="6">
+              {{ tsk.title }}
+              {% if tsk.probe %}<span class="t-meta block" style="font-weight:400">Probe: {{ tsk.probe }}</span>{% endif %}
+            </th>
+          </tr>
+          {% for k in keys %}
+            {% set s = by_variant[k].tasks[i] %}
+            <tr class="sub-r">
+              <td>{{ c.variants[k].label }} ({{ k }})</td>
+              <td class="num">{{ s.success|pct }}</td>
+              <td class="num">{{ s.median_ms|secs }}</td>
+              <td class="num">{{ s.ease|num(1) if s.ease else '-' }}</td>
+              <td class="num">{{ s.gave_up }}</td>
+              <td>
+                {% if s.first_clicks %}
+                  {% for label, n in s.first_clicks %}
+                    “{{ label }}” ({{ n }}){% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                {% else %}-{% endif %}
+              </td>
             </tr>
-            {% endfor %}
-        {% endfor %}
-        <tr class="bg-surface-subtle font-semibold"><td class="{{ td }}">{{ t('admin.total_all_tasks') }}</td><td class="{{ td }}" colspan="9">
-            {% for k in keys %}{{ k }} {{ by_variant[k].median_total|secs }}{% if not loop.last %} · {% endif %}{% endfor %}</td></tr>
+          {% endfor %}
         </tbody>
+      {% endfor %}
+      <tfoot>
+        <tr>
+          <td>Median total, all tasks</td>
+          <td colspan="5">
+            {% for k in keys %}
+              {{ c.variants[k].label }}: <span class="t-strong">{{ by_variant[k].median_total|secs }}</span>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+        </tr>
+      </tfoot>
     </table>
+  </div>
+</section>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="panel" aria-labelledby="dv-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="dv-h">By device</h2>
+        <p>{{ mobile_max }} px or narrower counts as mobile. Groups under 5 people are not read.</p>
+      </div>
+    </header>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Group</th>
+          <th class="text-right">n</th>
+          <th class="text-right">Median</th>
+          <th class="text-right">Success</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dev in ('desktop', 'mobile') %}
+          {% for k in keys %}
+            {% set s = by_device[dev][k] %}
+            <tr>
+              <td>{{ dev|capitalize }} {{ c.variants[k].label }}</td>
+              <td class="num text-right">{{ s.n }}</td>
+              {% if s.n < 5 %}
+                <td colspan="2" class="text-right"><span class="text-muted">Too few to read</span></td>
+              {% else %}
+                <td class="num text-right">{{ s.median_total|secs }}</td>
+                <td class="num text-right">{{ s.success|pct }}</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel" aria-labelledby="od-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="od-h">Order effect</h2>
+        <p>Median total time by which variant came first.</p>
+      </div>
+    </header>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Came first</th>
+          <th class="text-right">n</th>
+          {% for k in keys %}<th class="text-right">{{ k }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in order_effect %}
+          <tr>
+            <td>{{ o.order }}</td>
+            <td class="num text-right">{{ o.n }}</td>
+            {% for k in keys %}<td class="num text-right">{{ o.medians[k]|secs }}</td>{% endfor %}
+          </tr>
+        {% else %}
+          <tr><td colspan="{{ 2 + keys|length }}" class="text-muted">No order data yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
 </div>
 
-<div class="grid lg:grid-cols-3 gap-5 mb-6">
-    <div class="border border-line rounded-xl p-4">
-        <p class="font-semibold text-ink mb-1">{{ t('admin.by_device') }}</p>
-        <p class="text-[12px] text-ink-subtle mb-2">{{ t('admin.by_device_hint', px=mobile_max) }}</p>
-        <table class="w-full text-[14px]"><thead><tr class="text-ink-subtle"><th class="text-left font-semibold py-1"></th><th class="text-left font-semibold px-2">n</th><th class="text-left font-semibold px-2">{{ t('admin.median_total') }}</th><th class="text-left font-semibold px-2">{{ t('admin.success') }}</th></tr></thead><tbody>
-        {% for dev in ('desktop', 'mobile') %}{% for k in keys %}{% set s = by_device[dev][k] %}
-            <tr><td class="py-1">{{ t('admin.' ~ dev) }} {{ k }}</td><td class="px-2">{{ s.n }}</td><td class="px-2">{{ s.median_total|secs }}</td><td class="px-2">{{ s.success|pct }}</td></tr>
-        {% endfor %}{% endfor %}
-        </tbody></table>
+<section class="panel" aria-labelledby="pf-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="pf-h">Preference</h2>
+      <p>Which version they would use.</p>
     </div>
-    <div class="border border-line rounded-xl p-4">
-        <p class="font-semibold text-ink mb-1">{{ t('admin.order_effect') }}</p>
-        <p class="text-[12px] text-ink-subtle mb-2">{{ t('admin.order_effect_hint') }}</p>
-        <table class="w-full text-[14px]"><thead><tr class="text-ink-subtle"><th class="text-left font-semibold py-1">{{ t('admin.order') }}</th><th class="text-left font-semibold px-2">n</th>{% for k in keys %}<th class="text-left font-semibold px-2">{{ k }}</th>{% endfor %}</tr></thead><tbody>
-        {% for o in order_effect %}<tr><td class="py-1">{{ o.order }}</td><td class="px-2">{{ o.n }}</td>{% for k in keys %}<td class="px-2">{{ o.medians[k]|secs }}</td>{% endfor %}</tr>
-        {% else %}<tr><td class="py-1 text-ink-subtle" colspan="9">-</td></tr>{% endfor %}
-        </tbody></table>
-    </div>
-    <div class="border border-line rounded-xl p-4">
-        <p class="font-semibold text-ink mb-2">{{ t('admin.preference') }}</p>
-        <ul class="text-[14px] space-y-1">
-            {% for k in keys %}<li class="flex justify-between gap-3"><span>{{ k }} · {{ c.variants[k].label }}</span><strong>{{ pref.get(k, 0) }}</strong></li>{% endfor %}
-            <li class="flex justify-between gap-3"><span>{{ t('ab.no_preference') }}</span><strong>{{ pref.get('none', 0) }}</strong></li>
-        </ul>
-    </div>
-</div>
+  </header>
+  <ul class="rows">
+    {% for k in keys %}
+      <li class="row">
+        <div class="row-main">{{ c.variants[k].label }} ({{ k }})</div>
+        <span class="num t-strong">{{ pref.get(k, 0) }}</span>
+      </li>
+    {% endfor %}
+    <li class="row">
+      <div class="row-main">{{ t('ab.no_preference') }}</div>
+      <span class="num t-strong">{{ pref.get('none', 0) }}</span>
+    </li>
+  </ul>
+</section>
 
 {% if scale_q %}
-<div class="border border-line rounded-xl overflow-x-auto mb-6">
-    <table class="w-full text-[14px]">
-        <thead><tr class="border-b border-line"><th class="{{ th }}">{{ t('admin.post_survey') }}</th>{% for k in keys %}<th class="{{ th }}">{{ k }}</th>{% endfor %}
-            {% if keys|length > 1 %}{% for k in keys if k != c.baseline %}<th class="{{ th }}">{{ k }} − {{ c.baseline }}</th>{% endfor %}{% endif %}</tr></thead>
-        <tbody>{% for q in scale_q %}
-        <tr class="border-b border-line last:border-0"><td class="{{ td }}">{{ q.label }} <span class="text-ink-subtle text-[12px]">({{ q.id }})</span></td>
-            {% for k in keys %}<td class="{{ td }}">{{ by_variant[k].survey[q.id]|num(2) }}</td>{% endfor %}
-            {% for k in keys if k != c.baseline %}{% set a = by_variant[c.baseline].survey[q.id] %}{% set b = by_variant[k].survey[q.id] %}
-            <td class="{{ td }}">{% if a is not none and b is not none %}{{ '%+.2f'|format(b - a) }}{% else %}-{% endif %}</td>{% endfor %}
-        </tr>{% endfor %}</tbody>
+<section class="panel" aria-labelledby="sv-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="sv-h">Survey after each variant</h2>
+      <p>Average on a 1 to 7 scale.</p>
+    </div>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:640px">
+      <thead>
+        <tr>
+          <th scope="col">Question</th>
+          {% for k in keys %}<th scope="col" class="text-right">{{ c.variants[k].label }}</th>{% endfor %}
+          {% if keys|length > 1 %}
+            {% for k in keys if k != c.baseline %}
+              <th scope="col" class="text-right">Difference ({{ k }} − {{ c.baseline }})</th>
+            {% endfor %}
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in scale_q %}
+          <tr>
+            <td class="t-strong">{{ q.label }}</td>
+            {% for k in keys %}
+              <td class="num text-right">{{ by_variant[k].survey[q.id]|num(1) }}</td>
+            {% endfor %}
+            {% for k in keys if k != c.baseline %}
+              {% set a = by_variant[c.baseline].survey[q.id] %}
+              {% set b = by_variant[k].survey[q.id] %}
+              <td class="num text-right">
+                {% if a is not none and b is not none %}
+                  <span class="num t-strong">{{ '%+.1f'|format(b - a) }}</span>
+                {% else %}-{% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
-</div>
+  </div>
+</section>
 {% endif %}
 
 {% if texts %}
-<details class="border border-line rounded-xl p-4 mb-6">
-    <summary class="font-semibold text-ink cursor-pointer">{{ t('admin.open_answers') }} ({{ texts|length }})</summary>
-    <ul class="mt-3 space-y-3 text-[14px]">{% for who, k, label, text in texts %}
-        <li class="border-l-2 border-line pl-3"><span class="text-ink-subtle text-[12px]">{{ who }} · {{ k }} · {{ label }}</span><br><span class="whitespace-pre-line">{{ text }}</span></li>{% endfor %}</ul>
-</details>
+<section class="panel" aria-labelledby="oa-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="oa-h">In their own words</h2>
+      <p>Sample answers from participants.</p>
+    </div>
+  </header>
+  <details class="acc acc-plain">
+    <summary>
+      <span>
+        <span class="row-title block">Open comments</span>
+        <span class="t-meta block">{{ texts|length }} answers</span>
+      </span>
+      <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
+    </summary>
+    <ul class="rows" style="border-top:1px solid var(--line)">
+      {% for who, k, label, text in texts %}
+        <li class="row">
+          <div class="row-main">
+            <p>“{{ text }}”</p>
+            <p class="t-meta">{{ who }}, {{ c.variants[k].label }}</p>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+</section>
 {% endif %}
 
 {% if final_summary %}
-<h2 class="text-lg font-bold text-ink mb-3">{{ t('ab.final_title') }}</h2>
-<div class="space-y-4">{{ summary_block(final_summary, t) }}</div>
+<section class="panel" aria-labelledby="fs-h">
+  <header class="panel-h">
+    <h2 id="fs-h">{{ t('ab.final_title') }}</h2>
+  </header>
+  <div class="panel-b space-y-4">{{ summary_block(final_summary, t) }}</div>
+</section>
 {% endif %}

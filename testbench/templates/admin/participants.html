@@ -1,33 +1,210 @@
 {% extends "admin/_layout.html" %}
-{% block title %}{{ t('admin.participants') }}{% endblock %}
+{% block title %}Participants · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}results{% endblock %}
+
+{% block extra_head %}
+<style>
+  .side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+  .tbl.tbl-mid td, .tbl.tbl-mid th { vertical-align: middle; }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'results' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
 {% block content %}
-<h1 class="text-2xl font-bold text-ink mb-6">{{ t('admin.participants') }} <span class="text-ink-subtle font-normal text-lg">({{ people|length }})</span></h1>
-<div class="border border-line rounded-xl overflow-x-auto">
-    <table class="w-full text-[14px]">
-        <thead><tr class="border-b border-line text-left text-ink-subtle">
-            <th class="px-3 py-2 font-semibold">{{ t('admin.identity') }}</th>
-            {% for m in project.modules.values() %}<th class="px-3 py-2 font-semibold">{{ m.title }}</th>{% endfor %}
-            <th class="px-3 py-2 font-semibold">{{ t('admin.last_seen') }}</th><th></th>
-        </tr></thead>
-        <tbody>
-        {% for p in people %}{% set ss = sessions.get(p.id, {}) %}
-        <tr class="border-b border-line last:border-0">
-            <td class="px-3 py-2 font-semibold"><a class="text-brand-600 dark:text-brand-400 hover:underline" href="{{ url_for('admin.participant', slug=project.slug, pid=p.id) }}">{{ p.identity }}</a></td>
-            {% for m in project.modules.values() %}{% set s = ss.get(m.id) %}
-            <td class="px-3 py-2">{% if not s %}<span class="text-ink-subtle">-</span>{% elif s.finished_at %}<i class="fa-solid fa-check text-emerald-600" title="{{ t('home.status_done') }}"></i>{% else %}<span class="text-amber-700 text-[13px]">{{ s.step }}</span>{% endif %}</td>
-            {% endfor %}
-            <td class="px-3 py-2 text-[13px] text-ink-subtle whitespace-nowrap">{{ p.last_seen_at[:16].replace('T', ' ') }}</td>
-            <td class="px-3 py-2 text-right">
-                <form method="post" action="{{ url_for('admin.delete_participant', slug=project.slug, pid=p.id) }}" onsubmit="return confirm({{ t('admin.delete_confirm', who=p.identity)|tojson }})">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button class="text-red-700 hover:underline text-[13px]">{{ t('admin.delete') }}</button>
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    {% include "admin/_results_sidebar.html" %}
+  </aside>
+
+  <div class="min-w-0">
+    <section class="panel" aria-labelledby="pl-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="pl-h">Participants</h2>
+          <p>{{ people|length }} signed in. Codes are what they typed or were given, not names.</p>
+        </div>
+      </header>
+
+      {% if people %}
+      <div class="panel-h" style="border-top:0">
+        <div class="flex flex-1 flex-wrap items-center gap-4">
+          <div class="relative w-full max-w-sm">
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <label for="q" class="sr-only-x">Search by code</label>
+            <input id="q" class="input pl-8" type="search" placeholder="Search by code" value="">
+          </div>
+          <div class="seg" role="group" aria-label="Filter">
+            <button type="button" data-f="all" aria-pressed="true">All <span class="num opacity-70">{{ counts.all }}</span></button>
+            <button type="button" data-f="finished" aria-pressed="false">Finished all <span class="num opacity-70">{{ counts.finished }}</span></button>
+            <button type="button" data-f="progress" aria-pressed="false">In progress <span class="num opacity-70">{{ counts.progress }}</span></button>
+            <button type="button" data-f="none" aria-pressed="false">Not finished <span class="num opacity-70">{{ counts.none }}</span></button>
+          </div>
+        </div>
+        <p class="t-meta" id="showing-text">Showing {{ people|length }} of {{ people|length }}</p>
+      </div>
+
+      <div class="overflow-x-auto" id="table-wrap">
+        <table class="tbl" style="min-width:640px" id="participants-table">
+          <thead>
+            <tr>
+              <th scope="col">Participant</th>
+              <th scope="col">Modules finished</th>
+              <th scope="col">Last seen</th>
+              <th scope="col"><span class="sr-only-x">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in people %}
+            <tr data-p-id="{{ p.id }}" data-p-code="{{ p.identity|lower }}" data-p-state="{{ p.state }}">
+              <td>
+                <a class="font-mono t-strong whitespace-nowrap hover:underline" href="{{ url_for('admin.participant', slug=project.slug, pid=p.id) }}">{{ p.identity }}</a>
+              </td>
+              <td>
+                <span class="num t-strong">{{ p.done_count }}</span> of {{ p.total_modules }}
+                <span class="t-meta block">{{ p.stopped_line }}</span>
+              </td>
+              <td class="whitespace-nowrap">{{ p.last_seen_text }}</td>
+              <td class="whitespace-nowrap text-right">
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.participant', slug=project.slug, pid=p.id) }}">Open</a>
+                <form method="post" action="{{ url_for('admin.delete_participant', slug=project.slug, pid=p.id) }}" class="inline-block" onsubmit="return false;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="button" class="btn btn-secondary btn-sm btn-icon" data-del="{{ p.id }}" data-code="{{ p.identity }}" data-modules="{{ p.started_modules_str }}" aria-label="Delete {{ p.identity }}">
+                    <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                  </button>
                 </form>
-            </td>
-        </tr>
-        {% else %}
-        <tr><td class="px-3 py-3 text-ink-subtle" colspan="99">{{ t('admin.no_participants') }}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div id="no-match" class="panel-b hidden">
+        <p class="t-strong">No participants match</p>
+        <p class="t-meta mt-1">Try a different code, or clear the filter.</p>
+      </div>
+      {% else %}
+      <div class="panel-b">
+        <p class="t-strong">No one has entered this study yet</p>
+        <p class="t-meta mt-1">Share the participant link from Launch. People appear here as they sign in.</p>
+        <a class="btn btn-primary mt-4" href="{{ url_for('admin.launch', slug=project.slug) }}">Go to Launch</a>
+      </div>
+      {% endif %}
+    </section>
+  </div>
 </div>
+
+<dialog id="dlg-del" aria-labelledby="dlg-del-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="post" id="del-form" class="p-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2 id="dlg-del-h" class="t-panel">Delete <span class="font-mono" id="del-code"></span>?</h2>
+    <p class="mt-2 text-muted text-sm leading-relaxed" id="del-text"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="dlg-del-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid" id="dlg-del-ok">Delete participant</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function() {
+  var filter = 'all';
+  var term = '';
+  var qInput = document.getElementById('q');
+  var rows = Array.from(document.querySelectorAll('#participants-table tbody tr'));
+  var showingText = document.getElementById('showing-text');
+  var noMatch = document.getElementById('no-match');
+  var tableWrap = document.getElementById('table-wrap');
+  var totalCount = rows.length;
+
+  function update() {
+    var visibleCount = 0;
+    rows.forEach(function(row) {
+      var code = row.dataset.pCode || '';
+      var state = row.dataset.pState || '';
+      var matchesTerm = !term || code.indexOf(term) >= 0;
+      var matchesFilter = (filter === 'all') ||
+        (filter === 'finished' && state === 'all') ||
+        (filter === 'progress' && state === 'progress') ||
+        (filter === 'none' && state === 'none');
+
+      if (matchesTerm && matchesFilter) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    if (showingText) {
+      showingText.textContent = 'Showing ' + visibleCount + ' of ' + totalCount;
+    }
+    if (noMatch && tableWrap) {
+      if (visibleCount === 0 && totalCount > 0) {
+        tableWrap.style.display = 'none';
+        noMatch.classList.remove('hidden');
+      } else {
+        tableWrap.style.display = '';
+        noMatch.classList.add('hidden');
+      }
+    }
+  }
+
+  if (qInput) {
+    qInput.addEventListener('input', function() {
+      term = qInput.value.trim().toLowerCase();
+      update();
+    });
+  }
+
+  document.querySelectorAll('[data-f]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      filter = btn.dataset.f;
+      document.querySelectorAll('[data-f]').forEach(function(b) {
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      });
+      update();
+    });
+  });
+
+  // Delete dialog handling
+  var dlg = document.getElementById('dlg-del');
+  var delCode = document.getElementById('del-code');
+  var delText = document.getElementById('del-text');
+  var delForm = document.getElementById('del-form');
+  var cancelBtn = document.getElementById('dlg-del-cancel');
+
+  document.addEventListener('click', function(e) {
+    var delBtn = e.target.closest('[data-del]');
+    if (delBtn && dlg) {
+      var id = delBtn.dataset.del;
+      var code = delBtn.dataset.code;
+      var modules = delBtn.dataset.modules;
+      delCode.textContent = code;
+      if (modules) {
+        delText.textContent = 'Their answers in ' + modules + ' are deleted with them. This can’t be undone.';
+      } else {
+        delText.textContent = 'They have not started any module. Only the sign-in is removed.';
+      }
+      var parentForm = delBtn.closest('form');
+      delForm.action = parentForm ? parentForm.action : ('{{ url_for("admin.participants", slug=project.slug) }}' + '/../p/' + id + '/delete');
+      dlg.showModal();
+    }
+  });
+
+  if (cancelBtn && dlg) {
+    cancelBtn.addEventListener('click', function() {
+      dlg.close();
+    });
+  }
+})();
+</script>
 {% endblock %}

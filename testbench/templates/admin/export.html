@@ -1,0 +1,111 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Export · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}results{% endblock %}
+
+{% block extra_head %}
+<style>
+  .side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'results' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    {% include "admin/_results_sidebar.html" %}
+  </aside>
+
+  <div class="stack min-w-0" id="content">
+    <section class="panel" aria-labelledby="ex1">
+      <header class="panel-h">
+        <div>
+          <h2 id="ex1">Data</h2>
+          <p>One file per module, or everything in one file. Only finished sessions are included.</p>
+        </div>
+      </header>
+      <ul class="rows">
+        {% for r in mrows %}
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">{{ r.m.title }}</p>
+            <p class="t-meta">{{ r.type }}, {% if r.n %}{{ r.n }} row{{ 's' if r.n != 1 else '' }}, {{ r.cols - 1 }} columns{% else %}no rows yet{% endif %}</p>
+          </div>
+          <div class="row-act" style="width:auto">
+            {% if r.n %}
+            <a href="{{ url_for('admin.module_export', slug=project.slug, mid=r.m.id) }}" class="btn btn-secondary btn-sm">Download CSV</a>
+            {% else %}
+            <button type="button" class="btn btn-secondary btn-sm" aria-disabled="true" disabled>Download CSV</button>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">All modules together</p>
+            <p class="t-meta">{{ comb_rows }} row{{ 's' if comb_rows != 1 else '' }}, one per participant, {{ comb_cols - 1 }} columns</p>
+          </div>
+          <div class="row-act" style="width:auto">
+            {% if comb_rows %}
+            <a href="{{ url_for('admin.project_export', slug=project.slug) }}" class="btn btn-primary btn-sm">Download combined CSV</a>
+            {% else %}
+            <button type="button" class="btn btn-primary btn-sm" aria-disabled="true" disabled>Download combined CSV</button>
+            {% endif %}
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel" aria-labelledby="ex2">
+      <header class="panel-h">
+        <div>
+          <h2 id="ex2">Study design</h2>
+          <p>The setup, without any responses or passcodes. Import it into another Testbench to reuse the study.</p>
+        </div>
+      </header>
+      <div class="row">
+        <div class="row-main">
+          <p class="row-title">Study zip</p>
+          <p class="t-meta">Settings, module files and prototypes. No participant data.</p>
+        </div>
+        <div class="row-act" style="width:auto">
+          <a href="{{ url_for('studio.export_zip', slug=project.slug) }}" class="btn btn-secondary btn-sm" id="zip">Download study zip</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="ex3">
+      <header class="panel-h">
+        <h2 id="ex3">How the files are laid out</h2>
+      </header>
+      <ul class="rows">
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Column names are ids</p>
+            <p class="t-meta">Each question and task id becomes part of a column name, so ids you keep stable keep your columns stable.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">One row per person</p>
+            <p class="t-meta">In the A/B module, each variant and task has its own columns, for example A_date_answer and B_date_time_s.</p>
+          </div>
+        </li>
+        <li class="row">
+          <div class="row-main">
+            <p class="row-title">Opens in spreadsheets</p>
+            <p class="t-meta">UTF-8 with a byte order mark, so accents and non-Latin text show correctly in Excel and Numbers.</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

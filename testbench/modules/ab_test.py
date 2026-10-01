@@ -98,7 +98,8 @@ def paired_survey_check(pairs, base, k, by_variant, survey_questions, min_gain):
         ok = False
     return sb, sk, gain, lo, hi, verdict, ok
 
-from flask import abort, jsonify, request, send_from_directory, session
+import urllib.parse
+from flask import abort, jsonify, render_template, request, send_from_directory, session
 
 from .. import questions as Q
 from .. import storage
@@ -150,6 +151,16 @@ def success_rate(grades):
     return (sum(1 for g in graded if g in ("success", "assisted")) / len(graded)) if graded else None
 
 
+ENTRY_EXT = {
+    ".html", ".htm",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff",
+    ".pdf",
+    ".mp4", ".webm", ".mov", ".ogg",
+    ".mp3", ".wav", ".m4a",
+    ".txt", ".md"
+}
+
+
 class ABTest(ModuleType):
     type_name = "ab_test"
 
@@ -174,6 +185,8 @@ class ABTest(ModuleType):
                 scope.add(f"variants.{key}.file must stay inside the project folder")
             elif path.parent == project_dir:
                 scope.add(f"variants.{key}.file must not sit at the project root")
+            elif path.suffix.lower() not in ENTRY_EXT:
+                scope.add(f"variants.{key}.file must be a page, document, or media file")
             variants[key] = {"label": str(v.get("label") or key), "path": path}
         keys = list(variants)
         baseline = str(raw.get("baseline") or (keys[0] if keys else ""))
@@ -275,7 +288,7 @@ class ABTest(ModuleType):
 
     def final_questions(self, ctx):
         qs = list(self.m.conf["final"])
-        order = ctx.state["order"]
+        order = getattr(ctx, "state", {}).get("order", []) if isinstance(getattr(ctx, "state", None), dict) else []
         if self.m.conf["preference"] and len(order) > 1:
             opts = [(str(i), ctx.t("ab.view_n", n=i)) for i in range(1, len(order) + 1)] + [("none", ctx.t("ab.no_preference"))]
             qs = [{"id": "_preference", "type": "single", "label": ctx.t("ab.preference_q"), "hint": "",
@@ -366,7 +379,29 @@ class ABTest(ModuleType):
         so relative links in a prototype folder keep working."""
         path = self.m.conf["variants"][variant]["path"]
         if not asset:
-            return send_from_directory(path.parent, path.name, mimetype="text/html", max_age=0)
+            if request.args.get("raw"):
+                return send_from_directory(path.parent, path.name, max_age=0)
+            if path.suffix.lower() in {".html", ".htm"}:
+                return send_from_directory(path.parent, path.name, mimetype="text/html", max_age=0)
+            
+            ext = path.suffix.lower()
+            if ext in {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico", ".bmp", ".tif", ".tiff"}:
+                file_type = "image"
+            elif ext in {".pdf"}:
+                file_type = "pdf"
+            elif ext in {".mp4", ".webm", ".mov", ".ogg"}:
+                file_type = "video"
+            elif ext in {".mp3", ".wav", ".m4a"}:
+                file_type = "audio"
+            else:
+                file_type = "document"
+
+            return render_template(
+                "modules/ab_embed.html",
+                filename=path.name,
+                file_url=urllib.parse.quote(path.name),
+                file_type=file_type,
+            )
         from pathlib import Path
         from ..studio import PROTOTYPE_EXT
         if Path(asset).suffix.lower() not in PROTOTYPE_EXT:
@@ -555,8 +590,10 @@ class ABTest(ModuleType):
         views = []
         for n, variant in enumerate(state.get("order", []), start=1):
             rows = self._rows(ctx.conn, session["id"], n)
+            v_conf = self.m.conf.get("variants", {}).get(variant, {})
+            v_label = v_conf.get("label", variant)
             survey = storage.page_answers(ctx.conn, session["id"], f"survey{n}")
-            views.append({"n": n, "variant": variant, "label": self.m.conf["variants"][variant]["label"],
+            views.append({"n": n, "variant": variant, "label": v_label,
                           "viewport_w": next((r["viewport_w"] for r in rows.values() if r["viewport_w"]), None),
                           "tasks": [{"task": t, "row": rows.get(t["id"]),
                                      "answer": storage.loads(rows[t["id"]]["answer"], {}) if t["id"] in rows else {},
@@ -658,13 +695,13 @@ class ABTest(ModuleType):
                     x = rows.get(t["id"])
                     pfx = f"{self.m.id}.task{n}_{t['id']}"
                     cols[f"{pfx}.variant"] = variant
-                    cols[f"{pfx}.time_s"] = round(x["time_ms"] / 1000, 1) if x and x.get("time_ms") is not None else ""
+                    cols[f"{pfx}.time_s"] = round(x["time_ms"] / 1000, 1) if x and x["time_ms"] is not None else ""
                     cols[f"{pfx}.clicks"] = x["clicks"] if x else ""
                     cols[f"{pfx}.scroll_reversals"] = x["scroll_reversals"] if x else ""
                     cols[f"{pfx}.first_click"] = (x["first_click"] or "") if x else ""
                     cols[f"{pfx}.gave_up"] = x["gave_up"] if x else ""
                     cols[f"{pfx}.ease"] = (x["ease"] or "") if x else ""
-                    cols[f"{pfx}.auto_pass"] = ("" if not x or x.get("auto_pass") is None else x["auto_pass"])
+                    cols[f"{pfx}.auto_pass"] = ("" if not x or x["auto_pass"] is None else x["auto_pass"])
                     cols[f"{pfx}.grade"] = (effective_grade(x) or "") if x else ""
                     cols[f"{pfx}.answer"] = (x["answer"] or "") if x else ""
                     

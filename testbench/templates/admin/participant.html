@@ -1,22 +1,205 @@
 {% extends "admin/_layout.html" %}
-{% block title %}{{ person.identity }}{% endblock %}
+{% block title %}{{ person.identity }} · Participants · {{ project.name }}{% endblock %}
+{% block shell %}study{% endblock %}
+{% block tab %}results{% endblock %}
+
+{% block extra_head %}
+<style>
+  .side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+  .grade-changed { background: #FFFBEB; }
+  .tbl.tbl-mid td, .tbl.tbl-mid th { vertical-align: middle; }
+</style>
+{% endblock %}
+
+{% block header %}
+  {% set active_tab = 'results' %}
+  {% include "admin/_study_header.html" %}
+{% endblock %}
+
+{% block main_class %}wrap main{% endblock %}
+
 {% block content %}
-<h1 class="text-2xl font-bold text-ink mb-1">{{ person.identity }}</h1>
-<p class="text-[14px] text-ink-subtle mb-6">{{ t('admin.first_seen') }} {{ person.created_at[:16].replace('T', ' ') }} · {{ t('admin.last_seen') }} {{ person.last_seen_at[:16].replace('T', ' ') }}</p>
-{% if saved %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('admin.saved') }}</div>{% endif %}
-<form method="post" class="space-y-6">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% for b in blocks %}
-    <section class="border border-line rounded-xl overflow-hidden">
-        <div class="px-4 py-3 bg-surface-subtle border-b border-line flex flex-wrap justify-between gap-2">
-            <p class="font-semibold text-ink">{{ b.m.title }}</p>
-            <p class="text-[13px] text-ink-subtle">{% if b.s.finished_at %}{{ t('home.status_done') }} {{ b.s.finished_at[:16].replace('T', ' ') }}{% else %}{{ t('home.status_in_progress') }} · {{ b.s.step }}{% endif %}</p>
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <aside class="lg:sticky lg:top-6 lg:self-start">
+    {% include "admin/_results_sidebar.html" %}
+  </aside>
+
+  <div class="min-w-0 stack">
+    <nav class="crumbs mb-4" aria-label="Breadcrumb">
+      <a href="{{ url_for('admin.results', slug=project.slug) }}">Results</a>
+      <i class="fa-solid fa-chevron-right text-xs text-muted" aria-hidden="true"></i>
+      <a href="{{ url_for('admin.participants', slug=project.slug) }}">Participants</a>
+      <i class="fa-solid fa-chevron-right text-xs text-muted" aria-hidden="true"></i>
+      <span class="t-strong text-ink font-mono" aria-current="page">{{ person.identity }}</span>
+    </nav>
+
+    {% if saved %}
+    <div class="p-3 mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2">
+      <i class="fa-solid fa-check text-emerald-600"></i>Grades and notes saved.
+    </div>
+    {% endif %}
+
+    <section class="panel">
+      <header class="panel-h">
+        <div class="min-w-0">
+          <h2 class="font-mono" style="font-size:18px">{{ person.identity }}</h2>
+          <p>Last seen {{ p_last_seen }}. Finished {{ done_count }} of {{ total_modules }} modules.{% if p_stopped_line %} {{ p_stopped_line }}{% endif %}</p>
         </div>
-        <div class="p-4">{{ b.html or t('admin.no_answers') }}</div>
+        {% if can_edit %}
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-del-participant">Delete participant</button>
+        {% endif %}
+      </header>
     </section>
-    {% else %}
-    <p class="text-ink-subtle">{{ t('admin.no_answers') }}</p>
-    {% endfor %}
-    {% if blocks %}<button class="inline-flex items-center gap-2 text-white bg-brand-600 hover:bg-brand-700 font-semibold rounded-lg px-5 py-2.5"><i class="fa-solid fa-floppy-disk"></i>{{ t('admin.save') }}</button>{% endif %}
-</form>
+
+    <form method="post" id="participant-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <section class="panel" aria-label="Modules">
+        <ul class="rows">
+          {% for b in blocks %}
+          <li>
+            <details class="acc" {% if b.open %}open{% endif %}>
+              <summary>
+                <span class="num t-meta">{{ loop.index }}</span>
+                <span class="min-w-0">
+                  <span class="row-title block">{{ b.m.title }}</span>
+                  <span class="t-meta block">{{ b.type_name }}</span>
+                </span>
+                <span class="sum-pill">
+                  {% if b.state == 'done' %}
+                  <span class="st st-ok"><i class="fa-solid fa-check" aria-hidden="true"></i>Finished</span>
+                  {% elif b.state == 'stopped' %}
+                  <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Stopped</span>
+                  {% else %}
+                  <span class="st st-info"><i class="fa-solid fa-circle-minus" aria-hidden="true"></i>Not started</span>
+                  {% endif %}
+                </span>
+                <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
+              </summary>
+              <div class="acc-b" style="padding-bottom:24px">
+                {% if b.state == 'none' %}
+                <p class="t-meta">This person has not started this module.</p>
+                {% elif b.state == 'stopped' %}
+                <p class="t-meta">Stopped at {{ b.step }}. Answers from unfinished modules are not shown, and reports use finished sessions only.</p>
+                {% else %}
+                {{ b.html|safe }}
+                {% endif %}
+              </div>
+            </details>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      {% if can_edit %}
+      <div class="savebar mt-6" role="region" aria-label="Save grades">
+        <div class="flex flex-wrap items-center gap-4">
+          <span id="sb-dirty" class="t-meta">No changes</span>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" class="btn btn-secondary" id="discard" disabled>Discard</button>
+          <button type="submit" class="btn btn-primary" id="save" disabled>Save grades and notes</button>
+        </div>
+      </div>
+      {% else %}
+      <p class="t-meta mt-4">You have view access. Grades and notes are read only.</p>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<dialog id="dlg-del" aria-labelledby="dlg-del-h" class="rounded-xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-ink/40 max-w-md w-full">
+  <form method="post" action="{{ url_for('admin.delete_participant', slug=project.slug, pid=person.id) }}" class="p-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2 id="dlg-del-h" class="t-panel">Delete <span class="font-mono">{{ person.identity }}</span>?</h2>
+    <p class="mt-2 text-muted text-sm leading-relaxed">
+      {% if started_modules_str %}
+      Their answers in {{ started_modules_str }} are deleted with them. This can’t be undone.
+      {% else %}
+      They have not started any module. Only the sign-in is removed.
+      {% endif %}
+    </p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" id="dlg-del-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger-solid">Delete participant</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function() {
+  var dirty = false;
+  var form = document.getElementById('participant-form');
+  var saveBtn = document.getElementById('save');
+  var discardBtn = document.getElementById('discard');
+  var sbDirty = document.getElementById('sb-dirty');
+  var initialValues = new Map();
+
+  // Snapshot initial values of inputs and selects
+  if (form) {
+    form.querySelectorAll('input, select, textarea').forEach(function(el) {
+      if (el.type !== 'hidden') {
+        initialValues.set(el, el.value);
+      }
+    });
+
+    function setDirty(isDirty) {
+      dirty = isDirty;
+      if (saveBtn) saveBtn.disabled = !dirty;
+      if (discardBtn) discardBtn.disabled = !dirty;
+      if (sbDirty) {
+        sbDirty.innerHTML = dirty
+          ? '<span class="st st-warn"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Unsaved grades or notes</span>'
+          : 'No changes';
+      }
+    }
+
+    form.addEventListener('change', function(e) {
+      setDirty(true);
+    });
+
+    form.addEventListener('input', function(e) {
+      if (e.target.matches('textarea, input[type="text"]')) {
+        setDirty(true);
+      }
+    });
+
+    if (discardBtn) {
+      discardBtn.addEventListener('click', function() {
+        initialValues.forEach(function(val, el) {
+          el.value = val;
+        });
+        setDirty(false);
+      });
+    }
+
+    form.addEventListener('submit', function() {
+      dirty = false;
+    });
+
+    window.addEventListener('beforeunload', function(e) {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+  // Delete dialog handling
+  var delBtn = document.getElementById('btn-del-participant');
+  var dlg = document.getElementById('dlg-del');
+  var cancelBtn = document.getElementById('dlg-del-cancel');
+
+  if (delBtn && dlg) {
+    delBtn.addEventListener('click', function() {
+      dlg.showModal();
+    });
+  }
+  if (cancelBtn && dlg) {
+    cancelBtn.addEventListener('click', function() {
+      dlg.close();
+    });
+  }
+})();
+</script>
 {% endblock %}

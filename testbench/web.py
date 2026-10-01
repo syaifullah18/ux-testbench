@@ -143,7 +143,7 @@ def login(project):
             if not passcodes.source(project, "participant"):
                 errors["passcode"] = t("login.not_configured")
             elif is_rate_limited(request.remote_addr, f"participant:{project.slug}"):
-                errors["passcode"] = "Too many failed attempts. Try again later."
+                errors["passcode"] = t("login.rate_limited")
             elif not passcodes.check(project, "participant", request.form.get("passcode")):
                 record_failed_login(request.remote_addr, f"participant:{project.slug}")
                 errors["passcode"] = t("login.bad_passcode")

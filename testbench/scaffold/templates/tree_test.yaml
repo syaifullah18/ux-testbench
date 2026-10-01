@@ -1,0 +1,39 @@
+# Tree test module. Reference: docs/configuration.md
+type: tree_test
+title: Navigation label test
+instructions: Find where you would look for each item in the menu structure.
+minutes: 8
+
+tree:
+  - id: products
+    label: Products
+    children:
+      - id: catalog
+        label: Catalog
+      - id: new-releases
+        label: New releases
+  - id: support
+    label: Support
+    children:
+      - id: docs
+        label: Documentation
+      - id: contact
+        label: Contact us
+  - id: account
+    label: Account
+    children:
+      - id: settings
+        label: Settings
+      - id: billing
+        label: Billing
+
+tasks:
+  - id: find-billing
+    prompt: Where would you go to update your payment method?
+    accept: ["billing"]
+
+post:
+  - id: ease
+    type: scale
+    label: How easy was it to find these items?
+    labels: [Very difficult, Very easy]

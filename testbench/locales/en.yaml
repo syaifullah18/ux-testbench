@@ -34,6 +34,7 @@ login:
   unknown_code: No session found for that code.
   not_configured: This project is not open yet (no access code configured).
   bad_passcode: The access code does not match.
+  rate_limited: Too many attempts. Try again later.
   need_consent: Tick the consent box to continue.
 home:
   title: Home
@@ -109,6 +110,7 @@ admin:
   passcode: Admin passcode
   open: Open
   bad_passcode: The passcode does not match.
+  rate_limited: Too many attempts. Try again later.
   super_not_configured: SUPERADMIN_PASSCODE is not set, so this page is disabled. Use each project's /<slug>/admin/.
   not_configured: "Admin access is disabled until {env} is set."
   config_error: The latest configuration change is invalid. The previous version is still running.
@@ -299,3 +301,5 @@ auth:
   reset_ok: Your password has been changed successfully.
   wrong_password: Incorrect current password.
   confirm_email_mismatch: The email does not match.
+card_sort:
+  sort: Card Sorting

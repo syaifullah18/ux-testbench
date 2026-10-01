@@ -1,14 +1,75 @@
-{% extends "base.html" %}
-{% from "_macros.html" import input, button %}
-{% block title %}{{ t('admin.login_title') }}{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14 border border-line rounded-2xl p-6 sm:p-8 shadow-sm">
-    <h1 class="text-xl font-bold text-ink mb-1.5 text-center">{{ t('admin.login_title') }}</h1>
-    <p class="text-ink-subtle text-[14px] mb-6 text-center">{{ project.name if project else t('admin.all_projects') }}</p>
-    <form method="post" class="space-y-5">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        {{ input('passcode', t('admin.passcode'), type='password', error=error) }}
-        {{ button(t('admin.open'), 'fa-lock-open', cls='w-full') }}
-    </form>
+{% extends "admin/_layout.html" %}
+{% block title %}{% if project %}Sign in to {{ project.name }}{% else %}{{ t('admin.login_title') if t else 'Admin sign-in' }}{% endif %}{% endblock %}
+{% block shell %}none{% endblock %}
+
+{% block page %}
+<div class="grid min-h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+
+  <!-- Left: what a study goes through. Same sequence as the phase rail inside a study. -->
+  <aside class="bg-ink px-8 py-8 text-white lg:px-12 lg:py-12">
+    <a href="{{ url_for('admin.overview') }}" class="inline-flex items-center gap-3 text-lg font-bold tracking-tight">
+      <svg width="26" height="26" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+      UX Testbench
+    </a>
+    <h1 class="mt-12 max-w-[22ch] text-[32px] font-bold leading-[1.2] tracking-tight">Find out which design people can actually use.</h1>
+    <ol class="mt-12 max-w-md" aria-label="How a study runs">
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Create</p><p class="text-sm text-white/75">Start from a template</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Build</p><p class="text-sm text-white/75">Add modules, upload prototypes</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Launch</p><p class="text-sm text-white/75">Check, set a passcode, go live</p></li>
+      <li class="relative pb-8 pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-white/50"></span><span class="absolute left-[7px] top-6 h-full w-px bg-white/20"></span><p class="t-strong">Collect</p><p class="text-sm text-white/75">Watch responses arrive</p></li>
+      <li class="relative pl-8"><span class="absolute left-0 top-1.5 h-4 w-4 rounded-full bg-white"></span><p class="t-strong">Analyze</p><p class="text-sm text-white/75">Read the verdict and decide</p></li>
+    </ol>
+  </aside>
+
+  <!-- Right: the form -->
+  <main id="main" class="flex items-center justify-center bg-white px-6 py-12">
+    <div class="w-full max-w-[420px]">
+
+      <h2 class="t-page" id="title">{% if project %}Sign in to {{ project.name }}{% else %}{{ t('admin.login_title') if t else 'Admin sign-in' }}{% endif %}</h2>
+      <p class="mt-2 text-muted" id="lede">{% if project %}Enter the passcode for this study.{% else %}{{ t('admin.all_projects') if t else 'All projects' }} &middot; Enter the passcode to open all studies.{% endif %}</p>
+
+      {% if error %}
+      <div id="err" role="alert" class="mt-6 flex gap-3 rounded-lg border border-[#F0C4BF] bg-bad-soft p-4 text-bad">
+        <i class="fa-solid fa-circle-exclamation mt-1" aria-hidden="true"></i><p id="err-text" class="t-strong">{{ error }}</p>
+      </div>
+      {% endif %}
+
+      <form id="form" method="post" class="mt-8 space-y-6" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div>
+          <label class="label" for="passcode" id="passcode-label">Passcode</label>
+          <div class="relative">
+            <input id="passcode" name="passcode" class="input pr-12" type="password" autocomplete="current-password" spellcheck="false" required {% if error %}aria-invalid="true"{% endif %} autofocus>
+            <button type="button" id="peek" class="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded text-muted hover:bg-paper" aria-label="Show passcode" aria-pressed="false"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full">{{ t('admin.open') if t else 'Sign in' }}</button>
+      </form>
+    </div>
+  </main>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var peek = document.getElementById('peek');
+    if (peek) {
+      peek.addEventListener('click', function () {
+        var input = document.getElementById('passcode');
+        if (!input) return;
+        var on = input.type === 'password';
+        input.type = on ? 'text' : 'password';
+        this.setAttribute('aria-pressed', on);
+        this.setAttribute('aria-label', on ? 'Hide passcode' : 'Show passcode');
+        var icon = this.querySelector('i');
+        if (icon) {
+          icon.className = on ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+        }
+      });
+    }
+  })();
+</script>
 {% endblock %}

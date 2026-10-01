@@ -10,6 +10,11 @@ from . import storage
 from .i18n import translator
 
 
+class SuperAdminBool(int):
+    def __call__(self):
+        return bool(self)
+
+
 class Ctx:
     def __init__(self, project, module=None, participant=None, session=None, admin=False):
         self.project = project
@@ -85,7 +90,8 @@ class Ctx:
 
     def _vars(self, kw):
         return {"ctx": self, "project": self.project, "module": self.module, "t": self.t,
-                "participant": self.participant, "progress": self.progress(), "Q": Q, **kw}
+                "participant": self.participant, "progress": self.progress(), "Q": Q,
+                "is_super": is_super(), **kw}
 
     def render(self, template, **kw):
         return render_template(template, **self._vars(kw))
@@ -136,8 +142,6 @@ def set_participant(slug, pid):
 def is_admin(slug):
     import os
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
-        if slug == "example":
-            return True
         from . import auth, users
         user = auth.current_user()
         return users.can(user, slug, "view")
@@ -160,5 +164,7 @@ def is_super():
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
         from . import auth
         user = auth.current_user()
-        return user is not None and user["is_platform_admin"]
-    return "*" in (cookie.get("tb_admin") or [])
+        val = user is not None and bool(user.get("is_platform_admin") if isinstance(user, dict) else getattr(user, "is_platform_admin", False))
+        return SuperAdminBool(1 if val else 0)
+    val = "*" in (cookie.get("tb_admin") or [])
+    return SuperAdminBool(1 if val else 0)

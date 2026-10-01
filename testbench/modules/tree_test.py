@@ -34,7 +34,7 @@ class TreeTest(ModuleType):
                "instructions": str(raw.get("instructions") or "")}
                
         if not isinstance(raw.get("tree"), list) or not raw["tree"]:
-            scope.append("tree_test needs a `tree:` list")
+            scope.add("tree_test needs a `tree:` list")
             return out
             
         out["tree"] = raw["tree"]
@@ -43,36 +43,39 @@ class TreeTest(ModuleType):
         leaf_nodes = {n["id"] for n in out["flat_tree"] if n["is_leaf"]}
         
         if len(valid_nodes) != len(out["flat_tree"]):
-            scope.append("tree node ids must be unique")
+            scope.add("tree node ids must be unique")
 
         if not isinstance(raw.get("tasks"), list) or not raw["tasks"]:
-            scope.append("tree_test needs a `tasks:` list")
+            scope.add("tree_test needs a `tasks:` list")
             return out
             
         for i, t in enumerate(raw["tasks"]):
+            if not isinstance(t, dict):
+                scope.add(f"tasks[{i}] must be a mapping")
+                continue
             tid = str(t.get("id") or "")
             if not tid or not re.fullmatch(r"[a-z0-9_-]+", tid):
-                scope.append(f"tasks[{i}] needs a valid `id:` (alphanumeric/dash/underscore)")
+                scope.add(f"tasks[{i}] needs a valid `id:` (alphanumeric/dash/underscore)")
             if not t.get("prompt"):
-                scope.append(f"tasks[{i}] needs a `prompt:`")
+                scope.add(f"tasks[{i}] needs a `prompt:`")
                 
             accept = [str(x) for x in (t.get("accept") or [])]
             if not accept:
-                scope.append(f"tasks[{i}] needs an `accept:` list of correct node ids")
+                scope.add(f"tasks[{i}] needs an `accept:` list of correct node ids")
             for node_id in accept:
                 if node_id not in valid_nodes:
-                    scope.append(f"tasks[{i}].accept: node '{node_id}' does not exist in the tree")
+                    scope.add(f"tasks[{i}].accept: node '{node_id}' does not exist in the tree")
                 elif node_id not in leaf_nodes:
-                    scope.append(f"tasks[{i}].accept: node '{node_id}' is not a leaf node (has children)")
+                    scope.add(f"tasks[{i}].accept: node '{node_id}' is not a leaf node (has children)")
                     
-            out["tasks"].append({"id": tid, "prompt": str(t["prompt"]), "accept": accept})
+            out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "accept": accept})
 
         out["post"] = Q.normalize(raw.get("post", []), scope, "post")
         out["final"] = Q.normalize(raw.get("final", []), scope, "final")
         
         ids = [t["id"] for t in out["tasks"]] + [q["id"] for q in out["post"]] + [q["id"] for q in out["final"]]
         if len(ids) != len(set(ids)):
-            scope.append("all task ids and question ids must be unique across the module")
+            scope.add("all task ids and question ids must be unique across the module")
         return out
 
     def check_refs(self, scope):

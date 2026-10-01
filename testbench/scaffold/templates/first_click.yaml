@@ -1,0 +1,17 @@
+# First-click test module. Reference: docs/configuration.md
+type: first_click
+title: First-click test
+description: Test where participants click first on a screenshot.
+minutes: 5
+
+tasks:
+  - id: click-home
+    prompt: Where would you click to return to the home screen?
+    image: prototypes/homepage.png
+    target: { x: 20, y: 15, width: 140, height: 40 }
+
+post:
+  - id: confidence
+    type: scale
+    label: How confident are you that your first click was correct?
+    labels: [Not confident, Very confident]

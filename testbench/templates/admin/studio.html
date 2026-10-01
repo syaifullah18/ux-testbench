@@ -15,9 +15,7 @@
     </div>
 </div>
 
-{% if created %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ t('studio.created') }}</div>{% endif %}
-{% if notice %}<div class="p-3 mb-5 rounded-lg bg-emerald-50 text-emerald-800 text-[14px]">{{ notice }}</div>{% endif %}
-{% if error %}<div class="p-3 mb-5 rounded-lg bg-red-50 border border-red-300 text-red-800 text-[14px]" role="alert">{{ error }}</div>{% endif %}
+
 {% if not project.editable %}
 <div class="p-4 mb-6 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[14px]">
     {{ t('studio.read_only_hint', dir=project.dir) }}

@@ -1,0 +1,20 @@
+<nav class="panel side" aria-label="Results" id="side">
+  <a href="{{ url_for('admin.results', slug=project.slug) }}" {% if active_page == 'summary' %}aria-current="page"{% endif %}>
+    <span>Summary</span>
+  </a>
+  <div class="grp">Modules</div>
+  {% for m in modules_list %}
+    <a href="{{ url_for('admin.results', slug=project.slug, m=m.id) }}" {% if active_page == 'module' and cur_module and cur_module.id == m.id %}aria-current="page"{% endif %}>
+      <span>{{ m.title }}</span>
+      <span class="count">{{ m.finished }}</span>
+    </a>
+  {% endfor %}
+  <hr>
+  <a href="{{ url_for('admin.participants', slug=project.slug) }}" {% if active_page == 'participants' %}aria-current="page"{% endif %}>
+    <span>Participants</span>
+    <span class="count">{{ n_participants }}</span>
+  </a>
+  <a href="{{ url_for('admin.export_view', slug=project.slug) }}" {% if active_page == 'export' %}aria-current="page"{% endif %}>
+    <span>Export</span>
+  </a>
+</nav>

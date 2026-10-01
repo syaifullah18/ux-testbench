@@ -34,6 +34,7 @@ login:
   unknown_code: Tidak ada sesi dengan kode tersebut.
   not_configured: Proyek ini belum dibuka (kode akses belum diatur).
   bad_passcode: Kode akses tidak cocok.
+  rate_limited: Terlalu banyak percobaan. Coba lagi nanti.
   need_consent: Centang persetujuan untuk melanjutkan.
 home:
   title: Beranda
@@ -109,6 +110,7 @@ admin:
   passcode: Kode akses admin
   open: Buka
   bad_passcode: Kode akses tidak cocok.
+  rate_limited: Terlalu banyak percobaan. Coba lagi nanti.
   super_not_configured: SUPERADMIN_PASSCODE belum diatur, jadi halaman ini nonaktif. Gunakan /<slug>/admin/ tiap proyek.
   not_configured: "Akses admin nonaktif sampai {env} diatur."
   config_error: Perubahan konfigurasi terakhir tidak valid. Versi sebelumnya masih berjalan.
@@ -279,3 +281,25 @@ studio:
   no_project_yaml: Zip tidak berisi project.yaml di akarnya.
   bad_slug: "Nama URL memakai huruf kecil, angka, dan tanda hubung, dan tidak boleh admin, api, health, atau static."
   slug_taken: "Proyek '{slug}' sudah ada."
+auth:
+  invalid_email: Masukkan alamat email yang valid.
+  name_required: Beri tahu kami nama Anda.
+  password_too_short: Gunakan minimal 10 karakter.
+  passwords_mismatch: Kata sandi tidak cocok.
+  password_common: Kata sandi terlalu umum. Pilih kata sandi yang lebih aman.
+  rate_limited: Terlalu banyak percobaan. Coba lagi nanti.
+  signup_check_email: Periksa email Anda untuk tautan verifikasi.
+  verify_failed_title: Verifikasi gagal
+  verify_failed: Tautan tidak valid atau telah kedaluwarsa.
+  verify_ok_title: Email terverifikasi
+  verify_ok: Akun Anda sudah siap.
+  login_failed: Email atau kata sandi salah.
+  account_disabled: Akun ini telah dinonaktifkan.
+  reset_failed_title: Reset gagal
+  reset_failed: Tautan tidak valid atau telah kedaluwarsa. Minta tautan baru.
+  reset_ok_title: Kata sandi direset
+  reset_ok: Kata sandi Anda berhasil diubah.
+  wrong_password: Kata sandi saat ini salah.
+  confirm_email_mismatch: Email tidak cocok.
+card_sort:
+  sort: Sortir Kartu

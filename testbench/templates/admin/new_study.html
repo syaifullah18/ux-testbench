@@ -1,0 +1,578 @@
+{% extends "admin/_layout.html" %}
+{% block title %}New study{% endblock %}
+{% block tab %}studies{% endblock %}
+
+{% block extra_head %}
+<style>
+  .step[hidden] { display: none; }
+  .step h2:focus { outline: none; }
+  .wiz { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) { .wiz:not(.one) { grid-template-columns: minmax(0, 1fr) 360px; } }
+  .wiz.one > aside { display: none; }
+  .sep { border-top: 1px solid var(--line); }
+</style>
+{% endblock %}
+
+{% block header %}
+{% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
+{% set studies_url = url_for('public.dashboard') if is_public else url_for('admin.overview') %}
+<div class="page-head">
+  <div class="wrap">
+    <a href="{{ studies_url }}" class="inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-ink">
+      <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>All studies
+    </a>
+    <h1 class="t-page mt-4">New study</h1>
+    <ol class="steps" id="steps" aria-label="Progress">
+      <li data-i="1" class="now"><button type="button" aria-current="step"><span class="n">Step 1 of 4</span>Start</button></li>
+      <li data-i="2"><button type="button" disabled><span class="n">Step 2 of 4</span>Name and link</button></li>
+      <li data-i="3"><button type="button" disabled><span class="n">Step 3 of 4</span>Participants</button></li>
+      <li data-i="4"><button type="button" disabled><span class="n">Step 4 of 4</span>Look and review</button></li>
+    </ol>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% set form_action = url_for('public.new_project') if config.get('TESTBENCH_MODE') == 'public' else url_for('studio.new_project') %}
+<form id="form" method="post" action="{{ form_action }}" enctype="multipart/form-data" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token is defined else '' }}">
+  <fieldset id="fs" class="min-w-0">
+    <div class="wiz one" id="wiz">
+      <div class="stack min-w-0">
+
+        <!-- Step 1: Start -->
+        <section class="step panel" data-step="1" aria-labelledby="h1">
+          <header class="panel-h">
+            <div>
+              <h2 id="h1" tabindex="-1">Choose a start</h2>
+              <p>Each template adds a working starter you can change later. Only the link is permanent.</p>
+            </div>
+          </header>
+          <div class="rows" role="radiogroup" aria-label="Template">
+            <label class="opt">
+              <input type="radio" name="source" value="ab" checked data-name="Compare two designs" data-modules="An A/B test and 1 survey question">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Compare two designs <span class="ml-2 text-sm text-ok">Recommended</span></span>
+                <span class="opt-desc">A/B test. Participants try two prototypes on the same tasks. You get a verdict on which is faster, more successful and easier to use. Includes two sample prototypes, one task, one rating question and a decision rule.</span>
+              </span>
+              <span class="opt-meta">About 12 min</span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="survey" data-name="Find pain points" data-modules="1 survey">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Find pain points</span>
+                <span class="opt-desc">Survey. Rate steps, pick priorities, describe what got in the way.</span>
+              </span>
+              <span class="opt-meta">About 6 min</span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="tree" data-name="Test navigation labels" data-modules="1 tree test">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Test navigation labels</span>
+                <span class="opt-desc">Tree test. Can people find things in your menu structure?</span>
+              </span>
+              <span class="opt-meta">About 8 min</span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="sort" data-name="Group content" data-modules="1 card sort">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Group content</span>
+                <span class="opt-desc">Card sort. See how people group your items and name the groups.</span>
+              </span>
+              <span class="opt-meta">About 10 min</span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="click" data-name="Test where people click" data-modules="1 first-click test">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Test where people click</span>
+                <span class="opt-desc">First click. Show a screenshot and ask where they would click first.</span>
+              </span>
+              <span class="opt-meta">About 5 min</span>
+            </label>
+
+            <div class="opt-group">Or start from something that exists</div>
+
+            <label class="opt">
+              <input type="radio" name="source" value="blank" data-name="Blank study" data-modules="1 feedback question">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Blank</span>
+                <span class="opt-desc">One feedback question. Add modules yourself.</span>
+              </span>
+              <span class="opt-meta"></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="example" data-name="Copy of the example" data-modules="4 modules from the City Library study">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Copy the example</span>
+                <span class="opt-desc">The City Library study with 4 modules.</span>
+              </span>
+              <span class="opt-meta"></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="source" value="import" data-name="Imported study" data-modules="Whatever is in your zip">
+              <span class="radio"></span>
+              <span>
+                <span class="opt-title">Import a zip</span>
+                <span class="opt-desc">Design only. Responses and passcodes are never imported.</span>
+              </span>
+              <span class="opt-meta"></span>
+            </label>
+            <div id="import-box" class="panel-b is-hidden">
+              <label class="label" for="zip">Study zip</label>
+              <input id="zip" name="archive" type="file" accept=".zip" class="block w-full file:mr-4 file:rounded-md file:border file:border-line-strong file:bg-white file:px-4 file:py-2 file:font-semibold">
+              <p class="help">Needs a <span class="font-mono text-sm">project.yaml</span> at the root or inside one folder. Up to 2000 files and 200 MB once unpacked.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 2: Name and link -->
+        <section class="step panel" data-step="2" aria-labelledby="h2" hidden>
+          <header class="panel-h">
+            <div>
+              <h2 id="h2" tabindex="-1">Name it and pick its link</h2>
+              <p>Participants see the name. The link is what you send them.</p>
+            </div>
+          </header>
+          <div class="panel-b">
+            <div class="field">
+              <label class="label" for="name">Study name <span class="font-normal text-muted">(required)</span></label>
+              <input id="name" name="name" class="input" autocomplete="off" placeholder="Checkout redesign" maxlength="80">
+            </div>
+
+            <div class="field">
+              <label class="label" for="slug">Link <span class="font-normal text-muted">(required)</span></label>
+              <div class="flex">
+                <span class="grid flex-none place-items-center rounded-l-md border border-r-0 border-line-strong bg-paper px-3 font-mono text-sm text-muted">
+                  {{ request.host }}/{% if config.get('TESTBENCH_MODE') == 'public' %}s/{% endif %}
+                </span>
+                <input id="slug" name="slug" class="input rounded-l-none font-mono" autocomplete="off" spellcheck="false" maxlength="40" placeholder="checkout-redesign" aria-describedby="slug-msg" required>
+              </div>
+              <p id="slug-msg" class="help" role="status">
+                <i class="fa-solid fa-lock mr-2 text-xs" aria-hidden="true"></i>The link is permanent. Once you create the study, it can’t change.
+              </p>
+            </div>
+
+            <div class="field">
+              <label class="label" for="lang">Language for participants</label>
+              <select id="lang" name="locale" class="input">
+                {% for l in locales %}
+                <option value="{{ l }}" {% if l == 'en' %}selected{% endif %}>
+                  {% if l == 'en' %}English{% elif l == 'id' %}Bahasa Indonesia{% else %}{{ l }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+              <p class="help">Buttons and messages participants see.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 3: Participants & Access -->
+        <section class="step stack" data-step="3" hidden>
+          <div class="panel" role="group" aria-labelledby="h3">
+            <header class="panel-h">
+              <div>
+                <h2 id="h3" tabindex="-1">How do participants identify themselves?</h2>
+                <p>This decides what you store about each person.</p>
+              </div>
+            </header>
+            <div class="rows">
+              <label class="opt">
+                <input type="radio" name="identity" value="code" checked>
+                <span class="radio"></span>
+                <span>
+                  <span class="opt-title">I hand out codes</span>
+                  <span class="opt-desc">For moderated sessions. You decide each code, so nothing personal is stored.</span>
+                </span>
+                <span></span>
+              </label>
+              <label class="opt">
+                <input type="radio" name="identity" value="email">
+                <span class="radio"></span>
+                <span>
+                  <span class="opt-title">They use their work email</span>
+                  <span class="opt-desc">For internal staff. Their email address is stored with their answers.</span>
+                </span>
+                <span></span>
+              </label>
+              <label class="opt">
+                <input type="radio" name="identity" value="anonymous">
+                <span class="radio"></span>
+                <span>
+                  <span class="opt-title">Anonymous, with a resume code</span>
+                  <span class="opt-desc">For open surveys. The app gives each person a code like K7Q2-9FXA so they can come back.</span>
+                </span>
+                <span></span>
+              </label>
+
+              <div id="id-code" class="panel-b">
+                <div class="field">
+                  <label class="label" for="pattern">Code pattern</label>
+                  <input id="pattern" name="pattern" class="input font-mono" value="^P\d{2}$" spellcheck="false">
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-preset="^P\d{2}$">P01 to P99</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-preset="^[A-Za-z0-9]{2,20}$">2 to 20 letters and digits</button>
+                  </div>
+                  <p class="help">A code must match this to be accepted.</p>
+                </div>
+                <div class="field grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <label class="label" for="hint">Hint under the code field <span class="font-normal text-muted">(optional)</span></label>
+                    <input id="hint" name="hint" class="input" placeholder="The code your moderator gave you">
+                  </div>
+                  <div>
+                    <label class="label" for="try">Test a code</label>
+                    <input id="try" class="input font-mono" placeholder="P07" spellcheck="false" aria-describedby="try-msg">
+                    <p id="try-msg" class="help" role="status">Type a sample to check it.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div id="id-email" class="panel-b is-hidden">
+                <label class="label" for="domains">Allowed email domains <span class="font-normal text-muted">(optional)</span></label>
+                <input id="domains" name="domains" class="input" placeholder="company.com, partner.org">
+                <p class="help">Separate with commas. Leave empty to allow any email address.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="group" aria-labelledby="h3b">
+            <header class="panel-h"><h2 id="h3b">Who may enter?</h2></header>
+            <div class="rows">
+              <label class="opt">
+                <input type="radio" name="access" value="passcode" checked>
+                <span class="radio"></span>
+                <span>
+                  <span class="opt-title">Passcode <span class="ml-2 text-sm text-ok">Recommended</span></span>
+                  <span class="opt-desc">Participants type a shared passcode. You set it on the Launch page before going live.</span>
+                </span>
+                <span></span>
+              </label>
+              <label class="opt">
+                <input type="radio" name="access" value="open">
+                <span class="radio"></span>
+                <span>
+                  <span class="opt-title">Open</span>
+                  <span class="opt-desc">Anyone with the link can take part.</span>
+                </span>
+                <span></span>
+              </label>
+              <p id="open-warn" class="panel-b is-hidden t-strong text-warn">
+                <i class="fa-solid fa-triangle-exclamation mr-2" aria-hidden="true"></i>Anyone who finds or is sent the link can add responses. Use this for public surveys only.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 4: Look and review -->
+        <section class="step stack" data-step="4" hidden>
+          <div class="panel" role="group" aria-labelledby="h4">
+            <header class="panel-h">
+              <div>
+                <h2 id="h4" tabindex="-1">Pick a brand color</h2>
+                <p>It tints the buttons and links that participants and your team see.</p>
+              </div>
+            </header>
+            <div class="panel-b">
+              <label class="label" for="hex">Color</label>
+              <div class="flex flex-wrap items-center gap-4">
+                <input id="picker" type="color" value="#2563EB" class="h-10 w-14 cursor-pointer rounded-md border border-line-strong bg-white p-1" aria-label="Pick a brand color">
+                <input id="hex" name="brand" class="input w-36 font-mono" value="#2563EB" maxlength="7" spellcheck="false">
+                <div class="flex gap-2" role="group" aria-label="Suggested colors" id="swatches">
+                  <button type="button" class="h-8 w-8 rounded-md border-2 border-white shadow-[0_0_0_1px_#CDD2DA]" style="background:#0F766E" data-c="#0F766E" aria-label="Teal"></button>
+                  <button type="button" class="h-8 w-8 rounded-md border-2 border-white shadow-[0_0_0_1px_#CDD2DA]" style="background:#2563EB" data-c="#2563EB" aria-label="Blue"></button>
+                  <button type="button" class="h-8 w-8 rounded-md border-2 border-white shadow-[0_0_0_1px_#CDD2DA]" style="background:#C2410C" data-c="#C2410C" aria-label="Orange"></button>
+                  <button type="button" class="h-8 w-8 rounded-md border-2 border-white shadow-[0_0_0_1px_#CDD2DA]" style="background:#7C3AED" data-c="#7C3AED" aria-label="Violet"></button>
+                </div>
+              </div>
+              <p id="contrast" class="help" role="status"></p>
+            </div>
+          </div>
+
+          <div class="panel" role="group" aria-labelledby="h4b">
+            <header class="panel-h">
+              <div>
+                <h2 id="h4b">Review</h2>
+                <p>Check the summary, then create the study.</p>
+              </div>
+            </header>
+            <dl class="rows">
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Start</dt>
+                  <dd class="t-strong" id="rv-start"></dd>
+                  <dd class="t-meta" id="rv-mod"></dd>
+                </div>
+                <div class="row-act"><button type="button" class="btn btn-secondary btn-sm" data-goto="1">Change</button></div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Name</dt>
+                  <dd class="t-strong" id="rv-name"></dd>
+                </div>
+                <div class="row-act"><button type="button" class="btn btn-secondary btn-sm" data-goto="2">Change</button></div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Participant link</dt>
+                  <dd class="break-all font-mono text-sm" id="rv-link"></dd>
+                </div>
+                <div class="row-act"><button type="button" class="btn btn-secondary btn-sm" data-goto="2">Change</button></div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Identify with</dt>
+                  <dd class="t-strong" id="rv-id"></dd>
+                </div>
+                <div class="row-act"><button type="button" class="btn btn-secondary btn-sm" data-goto="3">Change</button></div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Access</dt>
+                  <dd class="t-strong" id="rv-acc"></dd>
+                </div>
+                <div class="row-act"><button type="button" class="btn btn-secondary btn-sm" data-goto="3">Change</button></div>
+              </div>
+              <div class="row">
+                <div class="row-main">
+                  <dt class="t-meta">Status after creating</dt>
+                  <dd class="mt-1"><span class="st st-draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i>Draft</span></dd>
+                  <dd class="t-meta mt-2">You land on the study Overview. Participants can't enter until you go live.</dd>
+                </div>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right column: Persistent preview on steps 2 to 4 -->
+      <aside class="lg:sticky lg:top-6 lg:self-start" aria-labelledby="pv-h">
+        <div class="panel">
+          <header class="panel-h"><h2 id="pv-h">What participants see</h2></header>
+          <div class="panel-b">
+            <p class="t-panel" id="pv-name">Your study name</p>
+            <p class="t-strong mt-4" id="pv-label">Participant code</p>
+            <div class="mt-2 h-10 rounded-md border border-line-strong"></div>
+            <div class="btn btn-primary mt-4 w-full" aria-hidden="true">Continue</div>
+            <p class="sep mt-6 pt-4 font-mono text-sm" id="pv-link">
+              <span class="block text-muted" id="pv-host">{{ request.host }}/{% if config.get('TESTBENCH_MODE') == 'public' %}s/{% endif %}</span>
+              <span class="block break-all t-strong" id="pv-slug">…</span>
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </fieldset>
+
+  <!-- Wizard bottom navigation -->
+  <div class="mt-6 flex items-center justify-between gap-4">
+    <div>
+      <button type="button" id="back" class="btn btn-secondary">Back</button>
+      <a href="{{ studies_url }}" id="cancel" class="btn btn-secondary">Cancel</a>
+    </div>
+    <div class="flex items-center gap-4">
+      <p class="t-meta text-right" id="next-help" role="status"></p>
+      <button type="button" id="next" class="btn btn-primary">Next</button>
+      <button type="submit" id="create" class="btn btn-primary is-hidden">Create study</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var UTB = window.UTB || {};
+    var $ = function (id) { return document.getElementById(id); };
+    var RESERVED = ['admin', 'static', 'api', 'health', 'login', 'signup', 'logout', 'app', 'auth', 'invite', 's'];
+    var TAKEN = {{ taken_slugs|tojson if taken_slugs is defined else '[]' }};
+    var LAST = 4, cur = 1, reached = 1;
+
+    // Start choice from URL query parameter
+    var params = new URLSearchParams(location.search);
+    var start = params.get('start') || params.get('source');
+    var map = { template: 'ab', ab: 'ab', survey: 'survey', tree: 'tree', sort: 'sort', click: 'click', blank: 'blank', example: 'example', import: 'import', duplicate: 'example' };
+    if (start && map[start]) {
+      var r = document.querySelector('input[name=source][value=' + map[start] + ']');
+      if (r) r.checked = true;
+    }
+
+    function radio(n) { return document.querySelector('input[name=' + n + ']:checked'); }
+
+    // Slug validation and auto-generation
+    var slugTouched = false;
+    function slugify(s) {
+      return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    }
+    function slugState() {
+      var v = $('slug').value.trim().toLowerCase(), m = $('slug-msg'), ok = false, html;
+      $('slug').removeAttribute('aria-invalid');
+      if (!v) {
+        html = '<i class="fa-solid fa-lock mr-2 text-xs" aria-hidden="true"></i>The link is permanent. Once you create the study, it can’t change.';
+      } else if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(v)) {
+        html = '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>Use lowercase letters, digits and hyphens. Start with a letter or digit.</span>';
+      } else if (RESERVED.indexOf(v) >= 0) {
+        html = '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>“' + v + '” is reserved by the app. Try another.</span>';
+      } else if (TAKEN.indexOf(v) >= 0) {
+        html = '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>“' + v + '” is already taken. Try “' + v + '-2”.</span>';
+      } else {
+        ok = true;
+        html = '<span class="t-strong text-ok"><i class="fa-solid fa-circle-check mr-2" aria-hidden="true"></i>Available. Permanent once created.</span>';
+      }
+      if (v && !ok) $('slug').setAttribute('aria-invalid', 'true');
+      m.innerHTML = html;
+      return ok;
+    }
+
+    $('name').addEventListener('input', function () {
+      if (!slugTouched) $('slug').value = slugify(this.value);
+      refresh();
+    });
+    $('slug').addEventListener('input', function () {
+      slugTouched = true;
+      this.value = this.value.toLowerCase();
+      refresh();
+    });
+
+    // Identity code tester
+    var IDTEXT = { code: 'Codes you hand out', email: 'Work email', anonymous: 'Anonymous, resume code' };
+    var PVLABEL = { code: 'Participant code', email: 'Work email', anonymous: 'Continue anonymously. You get a resume code.' };
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        $('pattern').value = b.dataset.preset;
+        tryCode();
+      });
+    });
+    function tryCode() {
+      var v = $('try').value, m = $('try-msg');
+      if (!v) { m.textContent = 'Type a sample to check it.'; return; }
+      var re;
+      try { re = new RegExp($('pattern').value); } catch (e) {
+        m.innerHTML = '<span class="t-strong text-bad">That pattern isn’t valid.</span>';
+        return;
+      }
+      m.innerHTML = re.test(v)
+        ? '<span class="t-strong text-ok"><i class="fa-solid fa-circle-check mr-2" aria-hidden="true"></i>Accepted</span>'
+        : '<span class="t-strong text-bad"><i class="fa-solid fa-circle-xmark mr-2" aria-hidden="true"></i>Not accepted</span>';
+    }
+    $('try').addEventListener('input', tryCode);
+    $('pattern').addEventListener('input', tryCode);
+
+    // Brand color
+    function setColor(hex) {
+      if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+      if (UTB.setBrand) UTB.setBrand(hex);
+      $('picker').value = hex.toLowerCase();
+      var c = UTB.contrast ? UTB.contrast(hex, '#FFFFFF') : 4.5;
+      $('contrast').innerHTML = c >= 4.5
+        ? '<i class="fa-solid fa-circle-check mr-2 text-ok" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1. Good for links and buttons.'
+        : '<i class="fa-solid fa-triangle-exclamation mr-2 text-warn" aria-hidden="true"></i>Contrast against white is ' + c.toFixed(1) + ' to 1, below 4.5. Button text will switch to dark so it stays readable.';
+    }
+    $('picker').addEventListener('input', function () {
+      $('hex').value = this.value.toUpperCase();
+      setColor(this.value);
+    });
+    $('hex').addEventListener('input', function () { setColor(this.value); });
+    document.querySelectorAll('#swatches [data-c]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        $('hex').value = b.dataset.c;
+        setColor(b.dataset.c);
+      });
+    });
+    setColor('#2563EB');
+
+    // Validation
+    function valid(step) {
+      if (step === 2) return !!$('name').value.trim() && slugState();
+      return true;
+    }
+    var HELP = { 2: 'Add a name and an available link to continue.' };
+
+    function summary() {
+      var st = radio('source'), id = radio('identity').value, acc = radio('access').value;
+      var host = $('pv-host').textContent.trim();
+      var link = host + ($('slug').value || '…');
+      $('rv-start').textContent = st.dataset.name;
+      $('rv-mod').textContent = 'Contains ' + st.dataset.modules.charAt(0).toLowerCase() + st.dataset.modules.slice(1);
+      $('rv-name').textContent = $('name').value.trim() || 'Not set';
+      $('rv-link').textContent = link;
+      $('pv-slug').textContent = $('slug').value || '…';
+      $('rv-id').textContent = IDTEXT[id];
+      $('rv-acc').textContent = acc === 'passcode' ? 'Passcode, set on Launch' : 'Open to anyone with the link';
+      $('pv-name').textContent = $('name').value.trim() || 'Your study name';
+      $('pv-label').textContent = PVLABEL[id];
+    }
+
+    function refresh() {
+      var id = radio('identity').value, acc = radio('access').value;
+      $('id-code').classList.toggle('is-hidden', id !== 'code');
+      $('id-email').classList.toggle('is-hidden', id !== 'email');
+      $('open-warn').classList.toggle('is-hidden', acc !== 'open');
+      $('import-box').classList.toggle('is-hidden', radio('source').value !== 'import');
+      summary();
+      var ok = valid(cur);
+      $('next').disabled = !ok;
+      $('next-help').textContent = !ok && HELP[cur] ? HELP[cur] : '';
+    }
+
+    function go(n, quiet) {
+      cur = n;
+      reached = Math.max(reached, n);
+      document.querySelectorAll('.step').forEach(function (s) {
+        s.hidden = Number(s.dataset.step) !== n;
+      });
+      $('wiz').classList.toggle('one', n === 1);
+      document.querySelectorAll('#steps li').forEach(function (li) {
+        var i = Number(li.dataset.i), b = li.querySelector('button');
+        li.className = i < n ? 'done' : i === n ? 'now' : '';
+        if (i === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+        b.disabled = i > reached;
+      });
+      $('back').classList.toggle('is-hidden', n === 1);
+      $('cancel').classList.toggle('is-hidden', n !== 1);
+      $('next').classList.toggle('is-hidden', n === LAST);
+      $('create').classList.toggle('is-hidden', n !== LAST);
+      refresh();
+      if (!quiet) {
+        var h = $('h' + n);
+        window.scrollTo({ top: 0 });
+        if (h) h.focus({ preventScroll: true });
+      }
+    }
+
+    $('next').addEventListener('click', function () {
+      if (valid(cur) && cur < LAST) go(cur + 1);
+    });
+    $('back').addEventListener('click', function () {
+      if (cur > 1) go(cur - 1);
+    });
+    document.querySelectorAll('#steps li button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var i = Number(b.parentNode.dataset.i);
+        if (i <= reached && (i < cur || valid(cur))) go(i);
+      });
+    });
+    document.querySelectorAll('[data-goto]').forEach(function (b) {
+      b.addEventListener('click', function () { go(Number(b.dataset.goto)); });
+    });
+    document.querySelectorAll('input[type=radio]').forEach(function (r) {
+      r.addEventListener('change', refresh);
+    });
+
+    $('form').addEventListener('submit', function (e) {
+      if (cur < LAST) {
+        e.preventDefault();
+        if (valid(cur)) go(cur + 1);
+      }
+    });
+
+    go(1, true);
+  })();
+</script>
+{% endblock %}

@@ -1,197 +1,357 @@
 # UX Testbench
 
-> Run user research for many products from one small app: discovery surveys and moderated A/B tests of static prototypes, managed from the browser.
+<!-- [REQUIRED] -->
+> Multi-method user research platform hosting concurrent usability studies, dynamic surveys, interactive prototypes, and statistically honest evaluation.
 
-![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+<!-- [REQUIRED] -->
+![Language](https://img.shields.io/badge/language-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)
+![Framework](https://img.shields.io/badge/framework-Flask-000000?style=flat-square&logo=flask&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-179%2B%20passing-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
 ---
 
-## Why
+## Why UX Testbench
 
-Product teams usually have more improvement ideas than they can build. A common research sequence helps filter them:
+Product and design teams usually have more improvement hypotheses than engineering bandwidth to build them. A disciplined, sequential user research workflow helps filter them early:
 
-1. **Discover.** Ask users where they get stuck before choosing solutions.
-2. **Filter.** Turn the top pain points into prototypes and test them against the current design, before development.
-3. **Refine.** Re-run the same tasks on the built version.
+```
+1. Discover (Pain Points) ──▶ 2. Filter (A/B Prototypes) ──▶ 3. Refine (Live Builds)
+```
 
-UX Testbench covers steps 1 and 2, and step 3 whenever the built version can be served as HTML. One deployment hosts any number of projects. Each project has its own URL, home screen, passcodes, branding, language and database.
+1. **Discover:** Ask users where they get stuck and map mental models before committing to solutions.
+2. **Filter:** Transform top pain points into interactive prototypes or design mockups, benchmarking them against the baseline before writing production code.
+3. **Refine:** Re-run the identical tasks on the built product to verify that usability gains survive development.
 
-## How it is used
+Most commercial user research platforms force teams into rigid single-method tests, charge exorbitant per-seat or per-participant fees, and apply misleading statistical tests (like standard $t$-tests) to tiny sample sizes ($n = 5\text{--}15$), creating false confidence. 
 
-| Who | Where | What they do |
-| --- | --- | --- |
-| Research lead | `/admin/` (superadmin) | Creates, imports, duplicates and deletes projects |
-| UI/UX researcher | `/<project>/admin/studio/` | Edits questions and tasks, uploads prototypes, sets passcodes, exports the project |
-| UI/UX researcher | `/<project>/admin/` | Reads results per module, grades tasks, downloads CSV |
-| Participant | `/<project>/` | Signs in, sees a home screen of activities, completes them |
-
-Nothing needs a code change or a redeploy. Every edit in the Studio is validated against the whole project before it is saved, so a typo cannot break a live study. The previous version of each file is kept and can be restored.
-
-### Participants
-
-After signing in, participants land on a **home screen** listing every activity (module) they are allowed to take, with its status (not started, in progress, done, or locked until a required module is finished) and an estimated duration. Each module is a linear flow. Progress is saved after every step, so participants can leave and resume.
-
-Two module types are included:
-
-| Type | What it does |
-| --- | --- |
-| `survey` | One or more pages of questions: single choice, multiple choice, scale, matrix and text. Questions can be shown conditionally, even based on answers in another module (for example, a different set of journey stages per role from a profile survey). |
-| `ab_test` | Within-subject test of two or more static HTML prototypes. The same timed tasks run on every variant, in counterbalanced order, followed by a survey per variant and an optional preference question. It records time on task, clicks, click path, first click, scroll reversals, viewport width, answers checked against an answer key, and ease (SEQ 1 to 7). |
-
-### Researchers
-
-Each project's admin shows:
-
-- A report per module, with aggregates for every question type. For A/B tests: success rate, median time, first clicks, splits by device and by order, and a configurable **decision rule** comparing each challenger with the baseline.
-- A per-participant page to grade observational tasks and add observer notes.
-- CSV export per module.
-- Participant deletion and a project-wide reset. Other projects are never touched.
+**UX Testbench** provides a unified, self-hostable workspace where one single deployment manages unlimited concurrent research studies. Each study operates in complete isolation with its own URL, passcodes, branding, language, and database.
 
 ---
 
-## Quick start
+<!-- [GUIDED] -->
+## Features
 
-> [View the Live Demo](https://example.com/demo) | [Watch 10-second overview](#)
+### Multi-Method Research Suite
+Five native testing methodologies built directly into the core engine:
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env              # set SECRET_KEY and SUPERADMIN_PASSCODE
-python -m testbench demo          # seeds synthetic participant data for the example project
-python -m testbench run --debug   # http://127.0.0.1:5000/admin/
-```
+- **A/B Prototype Testing (`ab_test`)**: Run within-subject comparative tests across interactive HTML prototypes or responsive media assets (mockup images, PDFs, audio, video). Features automated task timers, counterbalanced variant rotation (cyclic Latin square, code parity, or random), click path recording, scroll reversals, viewport width tracking, answer key validation, and System Ease Questionnaires (SEQ 1–7).
+- **First Click Testing (`first_click`)**: Evaluate initial interface orientation and navigation instinct. Includes an interactive visual canvas where researchers draw target zones directly on interface screenshots with 8 resize handles, real-time coordinate synchronization, and percentage-based responsive scaling.
+- **Card Sorting (`card_sort`)**: Uncover mental models and taxonomic groupings. Supports Open, Closed, and Hybrid card sorts with smooth drag-and-drop participant organization, custom category creation, and similarity matrix analytics.
+- **Tree Testing (`tree_test`)**: Validate information architecture and menu hierarchies without visual design distractions. Parsed through clean two-space indented hierarchy syntax with directness, time-on-task, and success path scoring.
+- **Dynamic Surveys (`survey`)**: Design pre-task screeners or deep post-study evaluations with single choice, multi-select, rating scales, matrix grids, and free text. Features dynamic conditional branching (`show_if`) and cross-module answer piping (`options_from`).
 
-1. Open `/admin/` and enter the superadmin passcode.
-2. Under **New project**, start from a blank project or from a copy of the bundled [example](projects/example/), a fictional library portal with a profile survey, a journey survey and an A/B test.
-3. In the project's **Studio**, set the participant and admin passcodes, add modules, and upload prototypes.
-4. Share `/<project>/` and the participant passcode.
+### Human-Centered Researcher Studio
+- **5-Stage Study Lifecycle**: Seamlessly guides researchers through **Overview** (real-time participant funnels and 14-day activity sparklines), **Build** (visual module sequence builder with drag-and-drop reordering and prototype asset management), **Launch** (automated pre-flight readiness validation, shareable links, and instant QR codes), **Results** (scannable metric dashboards, session drilldowns, and observer grading), and **Settings & Data** (access controls and isolated data management).
+- **Zero-Friction Prototype Ingestion**: Upload prototype ZIP archives or drop raw assets directly into the browser. Automatic ZIP extraction, entry-file validation, and file tree management keep assets organized.
+- **Hot Validation**: Every change made in the Studio is validated in real time against the study's schema before saving, ensuring live studies cannot be broken by typos.
 
-## Where projects live
+### Statistically Honest Evaluation
+- **Non-Parametric Sign Test**: Replaces deceptive $t$-tests with a two-tailed Sign Test that evaluates whether Variant B outperformed Variant A while discarding extreme outlier runtimes.
+- **Bootstrapped 95% Confidence Intervals**: Simulates thousands of resampling iterations to calculate realistic confidence bounds on task durations and satisfaction scores without assuming normal distribution.
+- **Transparent 3-State Verdicts**: Delivers explicit, mathematically grounded outcomes:
+  - `Clear Winner`: Statistically significant gain meeting your configured threshold.
+  - `No Meaningful Difference`: Confirmed parity or sub-threshold difference.
+  - `Not Enough Data`: Overlapping confidence intervals warning you when sample sizes are too noisy to make a call.
 
-| Location | In git | Editable in the Studio | Use for |
-| --- | --- | --- | --- |
-| `projects/example/` | yes | no (duplicate it first) | The public demo and reference |
-| `DATA_DIR/projects/` (default `instance/projects/`) | no | yes | Every real study |
-| Extra `PROJECTS_DIRS` | your choice | no | Studies you keep in a separate private repository |
-
-Real studies therefore never end up in this repository. To keep a study under version control privately, export it as a zip from the Studio, or keep it in a private repository listed in `PROJECTS_DIRS`.
-
-## Configuration
-
-A project is a folder holding `project.yaml` plus one YAML file per module. The Studio edits these same files, so both routes stay interchangeable. The Studio editor includes a syntax cheat sheet; [docs/configuration.md](docs/configuration.md) has the full reference. The essentials:
-
-| Setting | Options |
-| --- | --- |
-| `identity.mode` | `code` (codes you hand out, matched against `pattern`), `email` (optionally limited to `domains`), `anonymous` (the app issues a resume code) |
-| `access` | `passcode` (the project stays closed until a passcode is set) or `open` |
-| `locale` | UI language: `en`, `id`. Add more under `testbench/locales/`. |
-| module `requires` | Modules that must be finished first. |
-| module `audience` | `identity_pattern` (regex on the participant code) and/or `when` (a condition on another module's answer). |
-| `ab_test.order` | `rotate` (cyclic Latin square), `code_parity` (by the number in the participant code), `random`, `fixed` |
-
-The command line offers the same basics for people who prefer files:
-
-```bash
-python -m testbench check                 # validate every project
-python -m testbench new my-study          # create DATA_DIR/projects/my-study
-```
-
-### Environment
-
-| Variable | Purpose |
-| --- | --- |
-| `SECRET_KEY` | Session signing key. Set it, or sessions reset on every restart. |
-| `SUPERADMIN_PASSCODE` | Opens `/admin/` and every project's Studio and results. |
-| `DATA_DIR` | Databases, the passcode store and Studio projects. Default `instance`. Back it up. |
-| `PROJECTS_DIRS` | Read-only project folders, joined with `:` (`;` on Windows). Default `projects`. |
-| `<SLUG>_PASSCODE`, `<SLUG>_ADMIN_PASSCODE` | Optional. Overrides the Studio passcode, for deployments managed as code. |
-| `MAX_UPLOAD_MB` | Upload limit. Default 50. |
-| `SESSION_COOKIE_SECURE` | Set to `1` behind HTTPS. |
+### Enterprise Security & Architecture
+- **Dual-Domain Isolation**: Strictly segregates researcher-uploaded prototype execution (`USERCONTENT_DOMAIN`) from authenticated session cookies (`APP_DOMAIN`), preventing malicious prototype scripts from accessing administrative credentials.
+- **Role-Scoped Navigation**: Enforces strict privilege boundaries. Study Admins are locked exclusively to their assigned project with global navigation stripped away, while Super Admins maintain platform diagnostics.
+- **Flexible Participant Access**: Authenticate participants via pre-issued access codes (`code`), corporate email domains (`email`), or self-service anonymous sessions (`anonymous`).
 
 ---
 
-## Deployment
+## Researcher Workflow & Lifecycle
 
-It's a standard Flask app (`testbench:create_app()`):
+Every study in UX Testbench follows a structured 5-stage lifecycle:
 
+```
+Overview  ──▶  Build  ──▶  Launch  ──▶  Results  ──▶  Settings & Data
+(Health)      (Modules)  (Pre-flight)  (Analytics)    (Access & Safety)
+```
+
+| Stage | Path | Key Capabilities |
+|---|---|---|
+| **1. Overview** | `/<slug>/admin/` | Visual pulse of study health: participant recruitment funnels, completion percentages, 14-day activity sparklines, and status tracker (`Draft` → `Pilot` → `Live` → `Analysis` → `Complete`). |
+| **2. Build** | `/<slug>/admin/build/` | Drag-and-drop module sequence builder, visual module creation modal, accordion editor, and prototype asset browser (`/prototypes/`) with ZIP extraction. |
+| **3. Launch** | `/<slug>/admin/launch/` | Pre-flight validation checklist (validates passcodes, modules, and prototype links), live/draft/closed toggle, shareable study URLs, and mobile QR code generator. |
+| **4. Results** | `/<slug>/admin/results/` | Scannable metric cards, completion funnels, individual participant response logs (`/participants/`), observer grading notes, and filtered CSV exports (`/export/`). |
+| **5. Settings & Data** | `/<slug>/admin/settings/` | Study passcodes, participant identity modes, language settings, and isolated safety actions (participant reset, study deletion) that never touch other studies. |
+
+---
+
+## User Roles & Access Control
+
+| Role | Primary Entrypoint | Capabilities & Scoping |
+|---|---|---|
+| **Platform Super Admin** | `/admin/` (or `/app/admin/`) | Manages all studies, creates/clones/imports projects, monitors instance health and disk quotas at `/admin/instance/`, and accesses global documentation at `/admin/help/`. |
+| **Study Admin / Researcher** | `/<slug>/admin/` | Scoped strictly to their assigned project. Can edit modules, upload prototypes, monitor live participants, grade qualitative responses, and export data. Global navigation is hidden. |
+| **Participant** | `/<slug>/` (or `/s/<slug>/`) | Enters via access code, corporate email, or anonymous link. Lands on a personalized home screen listing available activities, durations, and dependencies. Progress saves after each step. |
+
+---
+
+<!-- [REQUIRED] -->
+## Getting Started
+
+### Prerequisites
+
+- **Python**: Version `3.10` or higher
+- **Git**: For version control and cloning
+- **Docker & Docker Compose** *(Optional)*: Recommended for production hosting with automatic HTTPS
+
+### Local Installation
+
+**1. Clone the repository**
+```bash
+git clone https://github.com/syaifullah18/ux-testbench.git
+cd ux-testbench
+```
+
+**2. Create and activate a virtual environment**
+```bash
+# On Linux/macOS:
+python3 -m venv .venv
+source .venv/bin/activate
+
+# On Windows (PowerShell):
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+**3. Install dependencies**
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+**4. Configure environment variables**
+```bash
+cp .env.example .env
+```
+Open `.env` and set your initial administrative credentials:
+```ini
+SECRET_KEY=generate_a_random_32_byte_hex_string
+SUPERADMIN_PASSCODE=change_this_to_a_secure_passcode
+```
+
+**5. Seed demonstration data (optional)**
+Populate the bundled example study with synthetic participants, sessions, and task results:
+```bash
+python -m testbench demo --n 14
+```
+
+**6. Start the development server**
+```bash
+python -m testbench run --debug
+```
+Open your browser at <http://127.0.0.1:5000/admin/> and log in with your `SUPERADMIN_PASSCODE`.
+
+---
+
+<!-- [REQUIRED] -->
+## Usage & CLI Reference
+
+UX Testbench includes a built-in CLI for project scaffolding, validation, operational maintenance, and test automation:
+
+| Command | Description |
+|---|---|
+| `python -m testbench run [--host HOST] [--port PORT] [--debug]` | Starts the local web server (defaults to `127.0.0.1:5000`). |
+| `python -m testbench check` | Validates YAML schemas, dependencies, and prototype links across all projects. |
+| `python -m testbench new <slug> [--name NAME]` | Scaffolds a new study folder from template in `instance/projects/<slug>/`. |
+| `python -m testbench demo [-n N]` | Seeds $N$ synthetic participants into the example study (default 30). |
+| `python -m testbench create-admin <email>` | Creates a platform administrator account with email verification (public mode). |
+| `python -m testbench claim <slug> <email>` | Assigns an owner to an existing project in public mode. |
+| `python -m testbench retention [--ip-days N] [--close-after M]` | Maintenance cron job: prunes stale IPs, flushes spent tokens, and lists expired studies. |
+| `pytest -q` | Executes the complete automated test suite (179+ tests). |
+
+### Example CLI Workflows
+
+```bash
+# Validate all study configurations
+python -m testbench check
+
+# Scaffold a new mobile usability test
+python -m testbench new checkout-v2 --name "Mobile Checkout Redesign"
+
+# Run automated tests
+pytest -q
+```
+
+---
+
+## Operating Modes & Production Deployment
+
+UX Testbench supports two operational architectures from a single codebase:
+
+### 1. Internal / Single-Tenant Mode (Default)
+Ideal for in-house UX teams and corporate research labs. One operator, study passcodes, no user registration required.
+
+Run locally or with Gunicorn behind a reverse proxy:
 ```bash
 pip install gunicorn
-gunicorn -w 2 -b 0.0.0.0:8000 "testbench:create_app()"
+gunicorn -w 2 -b 127.0.0.1:8000 "testbench:create_app()"
 ```
 
-- Put it behind HTTPS and set `SESSION_COOKIE_SECURE=1`.
-- Persist and back up `DATA_DIR`. It holds all studies and all responses.
-- SQLite fits research-sized traffic (dozens of concurrent participants).
-- Participant pages load Tailwind, fonts and icons from public CDNs, so participants need internet access. Set `LOCAL_ASSETS=1` and run `./scripts/build-assets.sh` to serve them from your own instance instead, which also means no participant IP address reaches a third party.
-- `scripts/backup.sh` copies every SQLite file with `sqlite3 .backup` and tars the Studio's projects folder. Cron it nightly.
-- `/health` returns JSON and a 503 when the configuration is broken, the data directory is unwritable, or the disk is nearly full.
+### 2. Public Multi-Tenant SaaS Mode (`TESTBENCH_MODE=public`)
+Converts the application into a multi-tenant platform with self-service signups, team memberships (Owner, Editor, Viewer), invitation workflows, usage quotas, abuse reports, and platform administration.
 
-### As a public service
-
-Two modes share one codebase. Unset, `TESTBENCH_MODE` keeps the behaviour above: one operator, a
-passcode per study, no accounts. With `TESTBENCH_MODE=public` the app becomes a service people can
-sign up for themselves:
-
-- researcher accounts with email verification, password reset and per-study roles (owner, editor, viewer), so a teammate is invited by email instead of being handed a shared passcode;
-- a landing page at `/`, a dashboard at `/app/`, studies at `/s/<slug>/`, and platform administration at `/app/admin/`;
-- quotas, abuse reports, the ability to take a study offline, and an audit log;
-- `SIGNUP_MODE=invite` for a private beta, `open` once you are ready, `closed` to stop.
-
+Deploy with Docker Compose and Caddy (handles automated SSL and dual-domain routing):
 ```bash
-docker compose up -d          # app + Caddy for automatic HTTPS + nightly backups
-docker compose exec app python -m testbench create-admin you@example.org
+# Configure production domains in .env
+TESTBENCH_MODE=public
+APP_DOMAIN=testbench.yourdomain.com
+USERCONTENT_DOMAIN=testbench-usercontent.yourdomain.com
+ACME_EMAIL=ops@yourdomain.com
+
+# Start the stack
+docker compose up -d
+
+# Create initial platform admin
+docker compose exec app python -m testbench create-admin admin@yourdomain.com
 ```
 
-Participants still need no account in either mode. Read **[docs/operations.md](docs/operations.md)**
-before running a public instance: it covers the two domains a public deployment needs, every
-environment variable, the nightly jobs, moderation, and what must be true before opening sign-ups.
-
-## Security and privacy
-
-- **Passcodes.** Passcodes set in the Studio are stored as salted hashes. Projects without a passcode stay closed, unless `access: open`.
-- **Uploads.** Uploads are limited to web file types, zip archives are checked for path traversal and size, and deleting a file still used by a module is refused.
-- **Prototypes run with the app's permissions.** Uploaded prototypes are served from the same origin as the app, so the task runner can measure interactions inside them. Their scripts can therefore do anything a logged-in page can. Only give Studio access (superadmin or project admin) to people you would trust to deploy code.
-- **What is collected.** No names are collected unless a project asks for them. A/B tests record time, clicks, labels of clicked elements, scroll direction changes and viewport width inside the prototype. Text typed into a prototype is never recorded.
-- **Consent and deletion.** Tell participants what is recorded through the `consent` text. Delete a project's data from its admin, or delete the project with its data from the Studio, when the study ends.
-- **In public mode**, treat every account as untrusted toward the others. Prototype scripts sharing the app's origin is then a real problem, not an accepted trade-off: serve them from a separate domain, as `docker-compose.yml` and `Caddyfile` are set up to do. `python -m testbench retention` clears stored IP addresses and spent tokens, and lists studies whose data is old enough to delete.
+Read **[docs/operations.md](docs/operations.md)** for complete operational runbooks, backup configurations, and DNS instructions.
 
 ---
 
-## Extending
+## Project Structure & Storage Architecture
 
-Module types live in [testbench/modules/](testbench/modules/). Subclass `ModuleType` from [base.py](testbench/modules/base.py) and implement:
+Studies live inside decoupled directories on the filesystem. Each study consists of a `project.yaml` root descriptor and individual module YAML definitions:
 
-| Method | Purpose |
-| --- | --- |
-| `validate(raw, scope)` | Normalise the YAML. Report problems with `scope.add()`. |
-| `steps(state)` and `handle(ctx, step)` | The participant flow. Return `ADVANCE` when a step is complete. |
-| `on_start(ctx)` | Initial per-participant state, for example a variant order. |
-| `action(ctx, path)` | Extra participant routes, such as APIs or served assets. |
-| `report`, `detail`, `save_detail`, `export` | Admin views and CSV. |
-
-Register the class in `testbench/modules/__init__.py`, and add a starter file under `testbench/scaffold/templates/<type>.yaml` so the Studio can offer it.
-
-## Development
-
-```bash
-pip install -r requirements-dev.txt
-python -m pytest -q
+```
+projects/
+└── example/                     # Bundled read-only reference study
+    ├── project.yaml             # Study metadata, identity mode, and theme
+    ├── modules/
+    │   ├── profile.yaml         # Survey screener
+    │   ├── info-arch.yaml       # Tree testing navigation hierarchy
+    │   ├── events-ab.yaml       # A/B prototype testing module
+    │   └── journey.yaml         # Post-task journey survey
+    └── prototypes/              # HTML prototypes, CSS, JS, and image assets
 ```
 
-| Path | Contents |
-| --- | --- |
-| [testbench/config.py](testbench/config.py) | Project loading, validation, hot reload |
-| [testbench/studio.py](testbench/studio.py) | Studio: create, import, edit, upload, export, delete |
-| [testbench/web.py](testbench/web.py), [admin.py](testbench/admin.py) | Participant and admin routes |
-| [testbench/passcodes.py](testbench/passcodes.py) | Hashed passcode store |
-| [testbench/storage.py](testbench/storage.py) | Per-project SQLite schema |
-| [testbench/questions.py](testbench/questions.py) | Question engine |
-| [testbench/modules/](testbench/modules/) | Module types |
-| [testbench/static/task-runner.js](testbench/static/task-runner.js) | A/B task panel and prototype instrumentation |
-| [tests/](tests/) | Config, full example flow, isolation, Studio |
+### Storage Locations
 
+| Location | Tracked in Git | Editable in Studio | Purpose |
+|---|---|---|---|
+| `projects/example/` | Yes | Read-only (duplicate first) | Public demonstration, onboarding, and reference. |
+| `DATA_DIR/projects/` *(default `instance/projects/`)* | No | Yes | Active studies created via Studio or CLI. |
+| Extra `PROJECTS_DIRS` | Configurable | Read-only | Studies maintained in separate private Git repositories. |
+
+Each study maintains its own SQLite database (`<slug>.db` in `DATA_DIR`), guaranteeing complete data isolation. Deleting or resetting one study never affects another.
+
+---
+
+## Configuration Reference
+
+A study is defined by `project.yaml`. The Studio provides a built-in visual editor; raw file editing is fully supported. See **[docs/configuration.md](docs/configuration.md)** for the complete schema.
+
+### Core `project.yaml` Settings
+
+| Setting | Type | Description |
+|---|---|---|
+| `name` | string | Display name of the study. |
+| `status` | string | Study lifecycle phase: `draft`, `pilot`, `live`, `analysis`, or `closed`. |
+| `identity.mode` | string | `code` (pre-issued alphanumeric codes), `email` (optionally restricted to `domains`), or `anonymous` (auto-issued resume code). |
+| `access` | string | `passcode` (protected by study password) or `open` (direct access). |
+| `locale` | string | Interface language (`en`, `id`). Expandable under `testbench/locales/`. |
+| `brand.primary` | hex color | Brand accent color applied to participant header and buttons (e.g. `#151A23`). |
+| `module.requires` | list | Prerequisite module IDs that must be completed before this module unlocks. |
+| `module.audience` | object | Audience filters using `identity_pattern` (regex) or `when` (conditional logic). |
+| `ab_test.order` | string | Variant rotation: `rotate` (cyclic Latin square), `code_parity`, `random`, or `fixed`. |
+
+### Environment Variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SECRET_KEY` | Auto-generated | Flask session cookie signing key. Must be fixed in production. |
+| `SUPERADMIN_PASSCODE` | None | Master passcode unlocking `/admin/` and all project dashboards. |
+| `DATA_DIR` | `instance` | Filesystem path storing SQLite databases, uploaded prototypes, and Studio files. |
+| `PROJECTS_DIRS` | `projects` | Read-only project directory paths joined with `:` (`;` on Windows). |
+| `TESTBENCH_MODE` | `internal` | Set to `public` to enable user accounts, quotas, and team invitations. |
+| `APP_DOMAIN` | None | Primary hostname serving the application and authenticated cookies. |
+| `USERCONTENT_DOMAIN` | None | Isolated registrable domain serving untrusted prototype JavaScript. |
+| `MAX_UPLOAD_MB` | `50` | Maximum file size for prototype ZIP archives and asset uploads. |
+| `LOCAL_ASSETS` | `0` | Set to `1` to serve CSS, fonts, and icons locally without third-party CDN requests. |
+| `SESSION_COOKIE_SECURE`| `0` | Set to `1` to enforce HTTPS-only cookies in production. |
+
+---
+
+## Security, Privacy & Isolation
+
+- **Dual-Domain Sandboxing**: Prototypes run on `USERCONTENT_DOMAIN` while the administrative dashboard runs on `APP_DOMAIN`. Because cookies are bound to the registrable domain, prototype scripts cannot access session cookies or administrative endpoints.
+- **Upload Hardening**: File uploads are restricted to web asset extensions (`.html`, `.css`, `.js`, `.png`, `.jpg`, `.pdf`, `.mp4`, etc.). ZIP archives are sanitized against directory traversal attacks (`../`), and deleting files actively referenced by modules is blocked.
+- **Passcode Hashing**: Study and administrator passcodes are hashed using salted cryptographic algorithms before storage.
+- **Participant Privacy**: No personally identifiable information (PII) is recorded unless explicitly requested in a survey question. A/B testing tracks interactions, click paths, element labels, and scroll reversals, but never records text typed into input fields.
+- **Automated Data Retention**: The `python -m testbench retention` command clears participant IP addresses and expired tokens, identifying closed studies eligible for archival.
+
+---
+
+## Extending UX Testbench
+
+Custom research modules can be created by subclassing `ModuleType` in `testbench/modules/base.py`:
+
+```python
+from testbench.modules.base import ModuleType, ADVANCE
+
+class CustomModule(ModuleType):
+    def validate(self, raw, scope):
+        """Validate module YAML configuration and report errors via scope.add()."""
+        ...
+
+    def steps(self, state):
+        """Define the sequence of participant steps."""
+        ...
+
+    def handle(self, ctx, step):
+        """Process participant HTTP requests and return ADVANCE upon completion."""
+        ...
+
+    def report(self, ctx):
+        """Render researcher analytics and visual dashboards."""
+        ...
+
+    def export(self, ctx):
+        """Yield structured rows for CSV export."""
+        ...
+```
+
+Register the module class in `testbench/modules/__init__.py` and provide a starter template under `testbench/scaffold/templates/`.
+
+---
+
+## Repository Map
+
+| Directory / File | Description |
+|---|---|
+| `testbench/` | Core application package and application factory (`create_app`). |
+| ├── `admin.py` | Admin routes: Overview, Build, Launch, Results, Settings, and Instance. |
+| ├── `studio.py` | Visual Studio backend: YAML serialization, module builder, asset manager. |
+| ├── `web.py` | Participant testing flow, module router, and session state manager. |
+| ├── `modules/` | Implementations of `ab_test`, `first_click`, `card_sort`, `tree_test`, and `survey`. |
+| ├── `questions.py` | Dynamic survey engine, conditional branching, and response piping. |
+| ├── `storage.py` | Per-study SQLite schema, participant session tracking, and queries. |
+| ├── `context.py` | Template context injection, role checking (`is_super`, `is_admin`, `can_edit`). |
+| ├── `static/` | CSS design tokens, task runner (`task-runner.js`), QR code generator. |
+| └── `templates/` | Jinja2 templates for admin studio, participant views, and module embeds. |
+| `projects/` | Read-only bundled reference studies (`projects/example/`). |
+| `docs/` | In-depth technical documentation (`configuration.md`, `operations.md`, `statistics.md`). |
+| `scripts/` | Automation utilities (`seed_demo.py`, `backup.sh`, `build-assets.sh`). |
+| `tests/` | Comprehensive test suite (unit tests, integration flows, and security tests). |
+
+---
+
+<!-- [EXTENSIBLE] -->
+## Documentation & Architecture
+
+- **[docs/configuration.md](docs/configuration.md)** — Complete reference for `project.yaml`, access modes, and module syntax.
+- **[docs/operations.md](docs/operations.md)** — Production operations runbook, Docker Compose orchestration, and dual-domain security architecture.
+- **[docs/statistics.md](docs/statistics.md)** — Mathematical foundation for the Sign Test, 95% bootstrap confidence intervals, and three-state verdicts.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Code style conventions, development workflow, and testing requirements.
+
+---
+
+<!-- [OPTIONAL] -->
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

@@ -131,32 +131,34 @@ def dashboard():
     if not user:
         return redirect(url_for("auth.login", next=request.path))
 
-    memberships = users.user_projects(user["id"])
+    memberships = {m["project_slug"]: m["role"] for m in users.user_projects(user["id"])}
     reg = registry()
-    cards = []
-    total_participants = 0
+    from . import admin as admin_mod
+    studies = []
     slugs_seen = set()
 
-    for m in memberships:
-        slug = m["project_slug"]
+    for slug, role in memberships.items():
         slugs_seen.add(slug)
         p = reg.get(slug)
         if p:
-            n_parts, last_seen = _project_stats(slug)
-            total_participants += n_parts
-            cards.append({"project": p, "role": m["role"], "participants": n_parts, "last_seen": last_seen})
+            studies.append(admin_mod.get_study_card(p, role=role))
 
     if user["is_platform_admin"]:
         for p in reg.projects.values():
             if p.slug not in slugs_seen:
-                n_parts, last_seen = _project_stats(p.slug)
-                cards.append({"project": p, "role": "admin", "participants": n_parts, "last_seen": last_seen})
+                studies.append(admin_mod.get_study_card(p, role="admin"))
 
-    live_count = sum(1 for c in cards if getattr(c["project"], "status", None) == "live")
+    total_participants = sum(s["participants"] for s in studies)
+    counts = {
+        "all": len(studies),
+        "draft": sum(1 for s in studies if s["status"] == "draft"),
+        "live": sum(1 for s in studies if s["status"] == "live"),
+        "closed": sum(1 for s in studies if s["status"] == "closed")
+    }
 
-    return render_template("public/dashboard.html", user=user, projects=cards,
-                           total_participants=total_participants, live_count=live_count,
-                           t=translator("en"))
+    return render_template("admin/overview.html", user=user, studies=studies,
+                           total_participants=total_participants, counts=counts, max_studies=10,
+                           is_super=lambda: bool(user["is_platform_admin"]), t=translator("en"))
 
 
 @bp.route("/app/new", methods=["GET", "POST"])
@@ -174,12 +176,36 @@ def new_project():
 
     from .i18n import available
     if request.method == "GET":
-        return render_template("public/new_project.html", user=user, locales=available(), t=translator("en"))
+        duplicate_from = (request.args.get("from") or "").strip() or None
+        if duplicate_from and duplicate_from != "example":
+            if registry().get(duplicate_from) is None:
+                flash(f"Project '{duplicate_from}' not found.", "error")
+                return redirect(url_for("public.dashboard"))
+            if not users.can(user, duplicate_from, "view"):
+                flash(f"You do not have permission to copy project '{duplicate_from}'.", "error")
+                return redirect(url_for("public.dashboard"))
+        taken = [p.slug for p in registry().projects.values()]
+        return render_template("admin/new_study.html", user=user, locales=available(), taken_slugs=taken, t=translator("en"))
 
     slug = request.form.get("slug", "").strip().lower()
     name = request.form.get("name", "").strip() or slug
     locale = request.form.get("locale", "en")
-    source = request.form.get("source", "blank")
+    source = request.form.get("source", "ab")
+    mode = request.form.get("identity", "code")
+    access = "open" if request.form.get("access") == "open" else "passcode"
+    brand = request.form.get("brand", "#2563EB")
+    pattern = request.form.get("pattern", "^P\\d{2}$")
+    domains = request.form.get("domains", "")
+    upload = request.files.get("archive")
+    duplicate_from = (request.args.get("from") or request.form.get("from") or "").strip() or None
+
+    if duplicate_from and duplicate_from != "example":
+        if registry().get(duplicate_from) is None:
+            flash(f"Source project '{duplicate_from}' not found.", "error")
+            return redirect(url_for("public.new_project"))
+        if not users.can(user, duplicate_from, "view"):
+            flash(f"You do not have permission to copy project '{duplicate_from}'.", "error")
+            return redirect(url_for("public.new_project"))
 
     if not SLUG_RE.match(slug) or slug in RESERVED_SLUGS:
         flash("Slug must be 1-40 lowercase letters, digits and hyphens, and not reserved.", "error")
@@ -192,30 +218,15 @@ def new_project():
     try:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dst = Path(tmp) / slug
-            if source == "import":
-                upload = request.files.get("archive")
-                if not upload or not upload.filename:
-                    flash("Please select a valid ZIP archive.", "error")
-                    return redirect(url_for("public.new_project"))
-                tmp_dst.mkdir()
-                studio.extract_zip(upload.stream, tmp_dst, studio.PROJECT_EXT, strip_single_root=True)
-            elif source == "example":
-                example_p = registry().get("example")
-                if example_p:
-                    shutil.copytree(example_p.dir, tmp_dst, ignore=shutil.ignore_patterns(".history", "*.db*"))
-                    data = studio.read_project_yaml(tmp_dst)
-                    data["name"] = name
-                    data["status"] = "draft"
-                    data["listed"] = False
-                    data["access"] = "passcode"
-                    (tmp_dst / "project.yaml").write_text(studio.dump_yaml(data), encoding="utf-8")
-                else:
-                    source = "blank"
-            if source == "blank":
-                (tmp_dst / "modules").mkdir(parents=True)
-                yaml_txt = f"name: {name}\nstatus: draft\nlisted: false\nlocale: {locale}\naccess: passcode\nidentity:\n  mode: code\nmodules:\n  - feedback\n"
-                (tmp_dst / "project.yaml").write_text(yaml_txt, encoding="utf-8")
-                shutil.copy(studio.SCAFFOLD / "modules" / "feedback.yaml", tmp_dst / "modules" / "feedback.yaml")
+            scaffold_errs = studio.build_project_scaffold(
+                tmp_dst, slug, name, source, locale,
+                mode if mode in ("code", "email", "anonymous") else "code",
+                access, brand=brand, pattern=pattern, domains=domains,
+                upload=upload, duplicate_from=duplicate_from
+            )
+            if scaffold_errs:
+                flash("; ".join(scaffold_errs[:3]), "error")
+                return redirect(url_for("public.new_project"))
 
             problems = studio.install(tmp_dst, slug)
             if problems:
@@ -226,10 +237,9 @@ def new_project():
         moderation.audit("project.create", user_id=user["id"], actor=user["email"],
                          project_slug=slug, detail={"source": source}, ip=request.remote_addr)
         registry().refresh(force=True)
-        flash(f"Project '{name}' created successfully!", "success")
-        return redirect(url_for("studio.home", slug=slug))
+        return redirect(url_for("admin.dashboard", slug=slug, created=1))
     except Exception as exc:
-        flash(f"Creation failed: {exc}", "error")
+        flash(f"Could not create project: {exc}", "error")
         return redirect(url_for("public.new_project"))
 
 

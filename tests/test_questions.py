@@ -76,3 +76,16 @@ def test_flatten():
     assert cols["q2"] == "val2|val3"
     assert cols["q3[r1]"] == 4
     assert cols["q3[r2]"] == "na"
+
+
+def test_survey_validate():
+    from testbench.modules.survey import Survey
+    from types import SimpleNamespace
+    s = Survey(SimpleNamespace(conf={}, project=None, id="survey"))
+    scope = Problems()
+    val = s.validate({"pages": [None, "string_page", {"title": "Page 1", "questions": [{"id": "q1", "type": "text"}]}]}, scope)
+    assert any("pages[0] must be a mapping" in err for err in scope)
+    assert any("pages[1] must be a mapping" in err for err in scope)
+    assert len(val["pages"]) == 1
+    assert val["pages"][0]["title"] == "Page 1"
+
