@@ -149,6 +149,12 @@ def create_app(overrides=None):
     app.register_blueprint(admin.bp)   # before web, so /admin/ is never taken as a project slug
     app.register_blueprint(studio.bp)
     app.register_blueprint(web.bp)
+
+    @app.route("/favicon.ico")
+    def favicon():
+        """Browsers ask for /favicon.ico on their own, whatever the page links to. Without this
+        the request falls through to the study-slug route and every tab logs a 404."""
+        return app.send_static_file("favicon.ico")
     if app.config["TESTBENCH_MODE"] == "public":
         # Every admin page answers at both /app/p/<slug>/… and /<slug>/admin/…, and url_for builds
         # the first rule registered, which is the /<slug>/admin/ one. A public instance links to its

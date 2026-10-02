@@ -54,6 +54,12 @@
     })();
 </script>
 
+{#- The app's mark. The SVG recolours itself for a dark browser tab; the .ico is for browsers
+    that predate SVG icons, and the PNG is what iOS puts on a home screen. -#}
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="32x32">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
 {% if config.LOCAL_ASSETS %}
 {#- Every asset served from this instance, so a participant's browser contacts nobody else and
     their IP address reaches no third party. Build them with scripts/build-assets.sh. -#}
