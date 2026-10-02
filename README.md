@@ -10,6 +10,8 @@
 ![Tests](https://img.shields.io/badge/tests-179%2B%20passing-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
+![UX Testbench walkthrough: building a study, a participant doing an A/B task on a prototype, the A/B verdict report, and a first-click heatmap](testbench/static/img/demo.gif)
+
 ---
 
 ## Why UX Testbench
@@ -137,7 +139,7 @@ SUPERADMIN_PASSCODE=change_this_to_a_secure_passcode
 **5. Seed demonstration data (optional)**
 Populate the bundled example study with synthetic participants, sessions, and task results:
 ```bash
-python -m testbench demo --n 14
+python -m testbench demo -n 14
 ```
 
 **6. Start the development server**

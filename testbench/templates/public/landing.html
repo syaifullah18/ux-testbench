@@ -192,6 +192,33 @@
     </div>
 </section>
 
+{#- ------------------------------------------------------------------- demo -#}
+{#- The walkthrough is the real app recorded end to end, so a visitor deciding whether to clone it
+    sees the actual screens rather than a mock. Visitors who ask for reduced motion get one still
+    frame of the A/B report instead of a 34-second animation they cannot pause. -#}
+<section id="demo" class="scroll-mt-24 px-6 pb-20 sm:pb-28">
+    <div class="mx-auto max-w-5xl">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">See it in action</p>
+            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                From a study plan to a verdict in four screens.
+            </h2>
+            <p class="mt-4 text-pretty text-lg leading-relaxed text-ink-muted">
+                Build a study, watch a participant work through a task on a prototype, read the A/B
+                verdict, then see where people clicked first.
+            </p>
+        </div>
+        <div class="mt-10 overflow-hidden rounded-2xl border border-line bg-card shadow-xl shadow-slate-900/5 dark:shadow-black/40">
+            <picture>
+                <source srcset="{{ url_for('static', filename='img/demo-still.png') }}" media="(prefers-reduced-motion: reduce)">
+                <img src="{{ url_for('static', filename='img/demo.gif') }}" width="960" height="664" loading="lazy" decoding="async"
+                     class="block h-auto w-full"
+                     alt="UX Testbench walkthrough: building a study, a participant doing an A/B task on a prototype, the A/B verdict report, and a first-click heatmap">
+            </picture>
+        </div>
+    </div>
+</section>
+
 {#- ---------------------------------------------------------------- methods -#}
 <section id="methods" class="scroll-mt-24 border-y border-line bg-surface-subtle px-6 py-20 sm:py-28">
     <div class="mx-auto max-w-7xl">
