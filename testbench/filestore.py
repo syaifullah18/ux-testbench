@@ -51,6 +51,15 @@ class S3Store:
             raise RuntimeError("STORAGE_BACKEND=s3 needs S3_BUCKET")
         self.prefix = (cfg.get("S3_PREFIX") or "testbench").strip("/")
         endpoint = cfg.get("S3_ENDPOINT_URL") or None
+        if endpoint:
+            from urllib.parse import urlsplit
+            parts = urlsplit(endpoint)
+            if parts.path.strip("/"):
+                # The R2 dashboard shows the endpoint with the bucket appended; boto3 adds the
+                # bucket itself, so keep only scheme and host.
+                log.warning("S3_ENDPOINT_URL has a path (%s); using %s://%s", parts.path,
+                            parts.scheme, parts.netloc)
+                endpoint = f"{parts.scheme}://{parts.netloc}"
         style = cfg.get("S3_ADDRESSING_STYLE") or ("path" if endpoint else "auto")
         self.client = boto3.client(
             "s3", endpoint_url=endpoint, region_name=cfg.get("S3_REGION") or "us-east-1",
