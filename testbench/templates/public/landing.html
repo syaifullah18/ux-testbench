@@ -254,7 +254,7 @@
             </p>
             <ul class="mt-7 space-y-4">
                 {% for icon, title, body in [
-                    ('fa-database', 'One database per study', 'Archiving a study is copying a file; deleting one leaves nothing behind.'),
+                    ('fa-database', 'One database per study', 'Its own SQLite file, or its own PostgreSQL schema. Deleting a study leaves nothing behind.'),
                     ('fa-ban', 'No third-party requests', 'With LOCAL_ASSETS=1, participant pages load nothing from a CDN.'),
                     ('fa-scale-balanced', 'MIT licensed', 'Self-host it forever, for free. No seat count, no feature held back.')] %}
                 <li class="flex gap-4">
@@ -306,7 +306,7 @@
                 ('What do participants need?',
                  'Only the study link. It works on a phone, needs no account and no install, and participants can stop and resume later.'),
                 ('Where is the data stored?',
-                 'On your own server. Every study gets its own SQLite file, and with LOCAL_ASSETS=1 participant pages contact no third party at all.'),
+                 'On your own server. By default every study gets its own SQLite file; set DATABASE_URL to use PostgreSQL instead, and STORAGE_BACKEND=s3 to keep prototypes and exports in S3, Cloudflare R2 or MinIO. With LOCAL_ASSETS=1 participant pages contact no third party at all.'),
                 ('How many participants do I need?',
                  'Fewer than you might think for a direction, more than most tools admit for a decision. The report says "not enough evidence yet" until the sign test has enough paired participants to back a verdict.'),
                 ('How can I contribute?',
@@ -395,7 +395,7 @@
 
         <div class="mt-12 flex flex-col items-center justify-between gap-3 border-t border-line pt-6 text-xs text-ink-subtle sm:flex-row">
             <p>© 2026 UX Testbench. Released under the MIT licence.</p>
-            <p>Built with Flask, SQLite and Tailwind CSS.</p>
+            <p>Built with Flask, SQLite or PostgreSQL, and Tailwind CSS.</p>
         </div>
     </div>
 </footer>
