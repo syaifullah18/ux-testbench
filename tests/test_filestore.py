@@ -157,3 +157,51 @@ def test_local_storage_is_the_default_and_needs_no_bucket(projects_dir, make_app
     with app.app_context():
         assert filestore.store() is None
         assert filestore.sync_study("anything", Path("/nonexistent")) == (0, 0)
+
+
+# ---------------------------------------------------------------- exports
+
+def follow_presigned(location):
+    """Fetch a presigned URL the way a browser would, without the app."""
+    import urllib.request
+    with urllib.request.urlopen(location) as r:
+        return r.read(), r.headers.get("Content-Disposition", "")
+
+
+def test_a_study_export_is_handed_out_as_an_expiring_link(bucket, projects_dir, make_app):
+    import zipfile
+    from urllib.parse import parse_qs, urlparse
+    app = make_app(projects_dir, SUPERADMIN_PASSCODE="root")
+    c = superadmin(app)
+    new_study(c)
+    r = c.get("/checkout/admin/studio/export.zip")
+    assert r.status_code == 303
+    query = parse_qs(urlparse(r.location).query)
+    assert query["X-Amz-Expires"] == [str(filestore.EXPORT_LINK_SECONDS)]
+    body, disposition = follow_presigned(r.location)
+    assert 'filename="checkout.zip"' in disposition
+    assert "checkout/project.yaml" in zipfile.ZipFile(io.BytesIO(body)).namelist()
+    assert any(k.startswith("testbench/exports/checkout/") for k in keys(bucket, "testbench/exports/"))
+
+
+def test_csv_exports_go_through_the_bucket_too(bucket, projects_dir, make_app):
+    app = make_app(projects_dir, EXAMPLE_ADMIN_PASSCODE="adm")
+    c = app.test_client()
+    c.post("/example/admin/", data={"passcode": "adm"})
+    for url, name in [("/example/admin/export.csv", "example_combined.csv"),
+                      ("/example/admin/m/profile/export.csv", "example-profile.csv")]:
+        r = c.get(url)
+        assert r.status_code == 303, url
+        body, disposition = follow_presigned(r.location)
+        assert f'filename="{name}"' in disposition
+        assert body.decode("utf-8-sig").splitlines()[0]      # a header row arrived
+
+
+def test_local_exports_are_unchanged(projects_dir, make_app, monkeypatch):
+    monkeypatch.delenv("STORAGE_BACKEND", raising=False)
+    app = make_app(projects_dir, EXAMPLE_ADMIN_PASSCODE="adm")
+    c = app.test_client()
+    c.post("/example/admin/", data={"passcode": "adm"})
+    r = c.get("/example/admin/export.csv")
+    assert r.status_code == 200 and r.mimetype == "text/csv"
+    assert r.headers["Content-Disposition"] == "attachment; filename=example_combined.csv"

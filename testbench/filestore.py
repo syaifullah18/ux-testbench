@@ -30,7 +30,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from flask import current_app, redirect, request, send_file
+from flask import Response, current_app, redirect, request
 
 log = logging.getLogger(__name__)
 
@@ -245,11 +245,11 @@ def export_response(data, filename, mimetype, slug):
     redirect to a presigned link that expires in EXPORT_LINK_SECONDS, so a large file is served
     by the bucket instead of holding an app worker."""
     st = store()
+    body = data.read() if hasattr(data, "read") else data
     if st is None:
-        import io
-        buf = data if hasattr(data, "read") else io.BytesIO(data if isinstance(data, bytes) else data.encode("utf-8"))
-        return send_file(buf, mimetype=mimetype, as_attachment=True, download_name=filename)
-    body = data.read() if hasattr(data, "read") else (data if isinstance(data, bytes) else data.encode("utf-8"))
+        return Response(body, mimetype=mimetype, headers={"Content-Disposition": f"attachment; filename={filename}"})
+    if isinstance(body, str):
+        body = body.encode("utf-8")
     key = st.export_key(slug, filename)
     st.put_bytes(body, key, mimetype)
     return redirect(st.temporary_url(key, filename=filename), code=303)

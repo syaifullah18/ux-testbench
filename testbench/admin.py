@@ -5,9 +5,9 @@ import io
 import os
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
 
-from . import passcodes, storage
+from . import filestore, passcodes, storage
 from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import translator
 from .web import get_project, registry
@@ -693,8 +693,7 @@ def module_export(slug, mid):
     writer = csv.writer(buf)
     writer.writerow(header)
     writer.writerows(rows)
-    return Response(buf.getvalue(), mimetype="text/csv",
-                    headers={"Content-Disposition": f"attachment; filename={slug}-{mid}.csv"})
+    return filestore.export_response(buf.getvalue(), f"{slug}-{mid}.csv", "text/csv", slug)
 
 
 @bp.route("/app/p/<slug>/m/<mid>/x/<path:path>")
@@ -794,7 +793,7 @@ def project_export(slug):
         for h in headers[3:]:
             row.append(p_cols.get(h, ""))
         writer.writerow(row)
-    return Response(out.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={slug}_combined.csv"})
+    return filestore.export_response(out.getvalue(), f"{slug}_combined.csv", "text/csv", slug)
 
 
 @bp.route("/app/p/<slug>/participants")
