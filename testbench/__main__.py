@@ -52,6 +52,21 @@ def cmd_demo(args):
     return 0
 
 
+def cmd_migrate_to_postgres(args):
+    """Copy every SQLite database in DATA_DIR into the PostgreSQL database in DATABASE_URL."""
+    from . import create_app, migrate
+    app = create_app()
+    with app.app_context():
+        results = migrate.sqlite_to_postgres(args.data_dir or app.config["DATA_DIR"], dry_run=args.dry_run)
+    failed = [k for k, v in results.items() if v.startswith("failed")]
+    if failed:
+        print(f"{len(failed)} database(s) failed: {', '.join(failed)}. The SQLite files are untouched.")
+        return 1
+    if not args.dry_run and results:
+        print("Done. Check the app, then keep the SQLite files as a backup until you are sure.")
+    return 0
+
+
 def cmd_retention(args):
     """Housekeeping a public instance should run nightly: clear old IP addresses, drop spent
     one-time tokens, and warn or delete studies that closed long ago."""
@@ -159,9 +174,15 @@ def main(argv=None):
     rt.add_argument("--close-after", type=int, default=12,
                     help="report closed studies with no activity for this many months (default 12)")
     
+    mg = sub.add_parser("migrate-to-postgres",
+                        help="copy every SQLite database in DATA_DIR into DATABASE_URL (PostgreSQL)")
+    mg.add_argument("--data-dir", help="where the .db files are (default: DATA_DIR)")
+    mg.add_argument("--dry-run", action="store_true", help="list what would be copied, write nothing")
+
     args = parser.parse_args(argv)
     cmds = {"run": cmd_run, "check": cmd_check, "new": cmd_new, "demo": cmd_demo,
-            "create-admin": cmd_create_admin, "claim": cmd_claim, "retention": cmd_retention}
+            "create-admin": cmd_create_admin, "claim": cmd_claim, "retention": cmd_retention,
+            "migrate-to-postgres": cmd_migrate_to_postgres}
     return cmds[args.cmd](args)
 
 
