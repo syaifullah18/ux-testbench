@@ -5,7 +5,7 @@
 
 <!-- [REQUIRED] -->
 ![Language](https://img.shields.io/badge/language-Python-3776AB?style=flat-square&logo=python&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat-square)
 ![Framework](https://img.shields.io/badge/framework-Flask-000000?style=flat-square&logo=flask&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-179%2B%20passing-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
