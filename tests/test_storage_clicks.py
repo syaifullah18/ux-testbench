@@ -5,6 +5,7 @@ import sqlite3
 import pytest
 
 from testbench import storage
+from .conftest import sqlite_only
 
 
 @pytest.fixture
@@ -38,6 +39,7 @@ def point(seq, x=10, y=20, **kw):
     return {"seq": seq, "x": x, "y": y, "doc_w": 100, "doc_h": 200, **kw}
 
 
+@sqlite_only
 def test_an_existing_v1_database_gains_the_table_on_open(app):
     with app.app_context():
         path = storage.db_path("example")

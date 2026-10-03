@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, abort, g, render_template, request, session
 
-from . import passcodes, storage, users
+from . import db
 from .config import Registry, project_dirs, studio_dir
 from .modules import MODULE_TYPES
 
@@ -24,6 +24,10 @@ def create_app(overrides=None):
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY") or "",
         DATA_DIR=os.environ.get("DATA_DIR", str(Path.cwd() / "instance")),
+        # Unset: SQLite files in DATA_DIR. postgres://… : PostgreSQL, one schema per study.
+        DATABASE_URL=os.environ.get("DATABASE_URL") or None,
+        DB_POOL_MAX=int(os.environ.get("DB_POOL_MAX", 5)),
+        DB_SCHEMA_PREFIX=os.environ.get("DB_SCHEMA_PREFIX", ""),
         PROJECTS_DIRS=None,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -56,9 +60,7 @@ def create_app(overrides=None):
     def refresh_projects():
         app.extensions["testbench"].refresh()
 
-    app.teardown_appcontext(storage.close_all)
-    app.teardown_appcontext(passcodes.close)
-    app.teardown_appcontext(users.close_users_db)
+    app.teardown_appcontext(db.close_all)   # every study and platform connection
     app.jinja_env.filters["secs"] = fmt_seconds
     app.jinja_env.filters["pct"] = lambda v: "-" if v is None else f"{round(v * 100)}%"
     app.jinja_env.filters["num"] = lambda v, d=1: "-" if v is None else f"{v:.{d}f}"

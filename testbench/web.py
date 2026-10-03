@@ -5,7 +5,7 @@ from pathlib import Path
 
 from flask import Blueprint, abort, current_app, redirect, render_template, request, url_for
 
-from . import limits, moderation, passcodes, storage
+from . import db, limits, moderation, passcodes, storage
 from .context import Ctx, audience_ok, module_status, participant_id, set_participant
 from .i18n import translator
 from .modules.base import ADVANCE
@@ -73,7 +73,10 @@ def health():
         checks["data_dir_writable"] = False
         checks["disk_ok"] = False
         checks["error"] = str(exc)
-    ok = checks["config_ok"] and checks.get("data_dir_writable") and checks.get("disk_ok")
+    checks["database"] = "postgres" if db.is_postgres() else "sqlite"
+    checks["database_ok"] = db.ping()
+    ok = (checks["config_ok"] and checks.get("data_dir_writable") and checks.get("disk_ok")
+          and checks["database_ok"])
     return ({"ok": ok, **checks}, 200 if ok else 503)
 
 
@@ -162,8 +165,8 @@ def login(project):
             row = conn.execute("SELECT id FROM participants WHERE identity = ?", (identity,)).fetchone()
             if row is None:
                 ts = storage.now_iso()
-                pid = conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES (?, ?, ?)",
-                                   (identity, ts, ts)).lastrowid
+                pid = db.insert(conn, "INSERT INTO participants (identity, created_at, last_seen_at) "
+                                "VALUES (?, ?, ?)", (identity, ts, ts))
                 conn.commit()
             else:
                 pid = row["id"]

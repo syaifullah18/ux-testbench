@@ -1,16 +1,15 @@
-"""Researcher accounts stored in _system.db.
+"""Researcher accounts, stored in the platform database (`_system.db`, or the `testbench`
+schema on PostgreSQL; see db.py).
 
 Tables: users, auth_tokens, sessions_auth, memberships.
-Participant data stays in per-project SQLite files and is unaffected.
+Participant data stays in the per-project databases and is unaffected.
 """
 import hashlib
 import hmac
 import secrets
-import sqlite3
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-from flask import current_app, g
+from . import db
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # ---- common passwords (short list, checked on sign-up) ----
@@ -81,27 +80,19 @@ def _hash_token(raw_token):
     return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
+def system_schema():
+    from .moderation import PLATFORM_SCHEMA     # imported here: moderation reads this module
+    from .passcodes import PASSCODES_SCHEMA
+    return AUTH_SCHEMA + PLATFORM_SCHEMA + PASSCODES_SCHEMA
+
+
 def system_db():
-    """Connection to _system.db, cached per request."""
-    if "tb_users_db" not in g:
-        path = Path(current_app.config["DATA_DIR"]) / "_system.db"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")   # readers never block the writer
-        conn.execute("PRAGMA busy_timeout = 5000")  # wait instead of failing under concurrency
-        from .moderation import PLATFORM_SCHEMA     # imported here: moderation reads this module
-        conn.executescript(AUTH_SCHEMA + PLATFORM_SCHEMA)
-        conn.commit()
-        g.tb_users_db = conn
-    return g.tb_users_db
+    """Connection to the platform database, cached per request."""
+    return db.connect(db.SYSTEM, system_schema())
 
 
 def close_users_db(_exc=None):
-    conn = g.pop("tb_users_db", None)
-    if conn is not None:
-        conn.close()
+    db.close_all(_exc)
 
 
 # ---------------------------------------------------------------- users
@@ -125,11 +116,11 @@ def create_user(email, name, password):
         problems.append("email_taken")
         return None, problems
     pw_hash = generate_password_hash(password)
-    cur = conn.execute(
-        "INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)",
+    user_id = db.insert(
+        conn, "INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)",
         (email, name, pw_hash, _now()))
     conn.commit()
-    return cur.lastrowid, []
+    return user_id, []
 
 
 def get_user(user_id):
@@ -346,12 +337,12 @@ def create_invitation(slug, email, role, invited_by, hours=168):
     conn = system_db()
     conn.execute("DELETE FROM invitations WHERE project_slug = ? AND email = ? AND accepted_at IS NULL",
                  (slug, email.strip().lower()))
-    cur = conn.execute(
-        "INSERT INTO invitations (project_slug, email, role, token_hash, invited_by, expires_at) "
+    invitation_id = db.insert(
+        conn, "INSERT INTO invitations (project_slug, email, role, token_hash, invited_by, expires_at) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         (slug, email.strip().lower(), role, _hash_token(raw), invited_by, expires))
     conn.commit()
-    return cur.lastrowid, raw
+    return invitation_id, raw
 
 
 def get_invitation(raw_token):

@@ -1,12 +1,9 @@
 """Project passcodes. An environment variable wins when set (useful for deployments managed as
-code); otherwise the passcode set in the Studio is used, stored only as a salted hash in
-DATA_DIR/_system.db. A project with neither stays closed."""
+code); otherwise the passcode set in the Studio is used, stored only as a salted hash in the
+platform database. A project with neither stays closed."""
 import hmac
 import os
-import sqlite3
-from pathlib import Path
 
-from flask import current_app, g
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .storage import now_iso
@@ -14,23 +11,19 @@ from .storage import now_iso
 KINDS = ("participant", "admin")
 
 
+PASSCODES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS passcodes (slug TEXT NOT NULL, kind TEXT NOT NULL,
+    hash TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (slug, kind));
+"""
+
+
 def _db():
-    if "tb_system" not in g:
-        path = Path(current_app.config["DATA_DIR"]) / "_system.db"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("CREATE TABLE IF NOT EXISTS passcodes (slug TEXT NOT NULL, kind TEXT NOT NULL, "
-                     "hash TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (slug, kind))")
-        conn.commit()
-        g.tb_system = conn
-    return g.tb_system
+    from . import users
+    return users.system_db()
 
 
 def close(_exc=None):
-    conn = g.pop("tb_system", None)
-    if conn is not None:
-        conn.close()
+    pass   # the platform connection is closed with all the others, in db.close_all()
 
 
 def env_name(project, kind):

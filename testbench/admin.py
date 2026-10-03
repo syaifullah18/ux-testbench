@@ -171,7 +171,7 @@ def build_study_dashboard_data(ctx, project):
         "finished_all": finished_all
     }
     
-    daily_rows = ctx.conn.execute("SELECT date(created_at) as d, COUNT(*) as c FROM participants GROUP BY d ORDER BY d DESC LIMIT 14").fetchall()
+    daily_rows = ctx.conn.execute("SELECT substr(created_at, 1, 10) AS d, COUNT(*) AS c FROM participants GROUP BY d ORDER BY d DESC LIMIT 14").fetchall()
     daily_signups = [{"date": r["d"], "count": r["c"]} for r in daily_rows]
     daily_signups.reverse()
     max_signups = max([d["count"] for d in daily_signups] + [1])

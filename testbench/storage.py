@@ -1,12 +1,11 @@
-"""One SQLite file per project, so projects never share rows and one can be archived or
-deleted without touching the others. Module types store answers as JSON keyed by the ids in
-their YAML, which keeps the schema the same for every study."""
+"""One database per project (a SQLite file, or a PostgreSQL schema; see db.py), so projects
+never share rows and one can be archived or deleted without touching the others. Module types
+store answers as JSON keyed by the ids in their YAML, which keeps the schema the same for every
+study."""
 import json
-import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 
-from flask import current_app, g
+from . import db
 
 SCHEMA_VERSION = 2
 CLICKS_MAX = 300           # clicks kept per session and surface; mirrors ab_test's CLICK_PATH_MAX
@@ -108,34 +107,27 @@ def loads(text, default=None):
 
 
 def db_path(slug):
-    return Path(current_app.config["DATA_DIR"]) / f"{slug}.db"
+    """The SQLite file for a project. Meaningless on PostgreSQL; see db.study_exists()."""
+    return db.sqlite_path(slug)
 
 
 def connect(slug):
     """Connection for one project, cached for the request."""
-    conns = g.setdefault("tb_conns", {})
-    if slug not in conns:
-        path = db_path(slug)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 5000")
-        conn.executescript(SCHEMA)
-        # Every table is additive, so executescript() above has already brought an older file up
-        # to date; this only records that it now matches what the code expects.
+    fresh = slug not in db._cache()
+    conn = db.connect(slug, SCHEMA)
+    if fresh:
+        # Every table is additive, so the schema script has already brought an older database
+        # up to date; this only records that it now matches what the code expects.
         conn.execute("INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE "
-                     "SET value = excluded.value WHERE CAST(value AS INTEGER) < CAST(excluded.value AS INTEGER)",
+                     "SET value = excluded.value "
+                     "WHERE CAST(meta.value AS INTEGER) < CAST(excluded.value AS INTEGER)",
                      (str(SCHEMA_VERSION),))
         conn.commit()
-        conns[slug] = conn
-    return conns[slug]
+    return conn
 
 
 def close_all(_exc=None):
-    for conn in g.pop("tb_conns", {}).values():
-        conn.close()
+    db.close_all(_exc)
 
 
 def reset(slug):
@@ -244,13 +236,17 @@ def save_clicks(conn, session_id, surface, points, replace=False):
     if replace:
         conn.execute("DELETE FROM clicks WHERE session_id = ? AND surface = ?", (session_id, surface))
     ts = now_iso()
-    before = conn.total_changes
-    conn.executemany(
-        "INSERT INTO clicks (session_id, surface, seq, x, y, doc_w, doc_h, viewport_w, viewport_h, t_ms, dead, "
-        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(session_id, surface, seq) DO NOTHING",
-        [(session_id, surface, r["seq"], r["x"], r["y"], r["doc_w"], r["doc_h"], r["viewport_w"], r["viewport_h"],
-          r["t_ms"], r["dead"], ts) for r in rows])
-    return conn.total_changes - before
+    # One statement per row rather than executemany: rowcount after executemany differs between
+    # drivers, and the count of rows actually inserted (not skipped as replays) is the result.
+    added = 0
+    for r in rows:
+        added += conn.execute(
+            "INSERT INTO clicks (session_id, surface, seq, x, y, doc_w, doc_h, viewport_w, viewport_h, t_ms, "
+            "dead, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(session_id, surface, seq) DO NOTHING",
+            (session_id, surface, r["seq"], r["x"], r["y"], r["doc_w"], r["doc_h"], r["viewport_w"],
+             r["viewport_h"], r["t_ms"], r["dead"], ts)).rowcount
+    return added
 
 
 def bulk_clicks(conn, session_ids, surface=None):
