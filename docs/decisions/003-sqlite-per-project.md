@@ -14,3 +14,6 @@ Each project receives its own dedicated SQLite database file (e.g. `DATA_DIR/slu
 - Managing multiple database connections across the application.
 - No easy way to run cross-project aggregate queries (though UX research rarely requires this).
 - Backup mechanisms must handle a folder of `.db` files rather than a single database dump.
+
+**Amended by ADR 005**  
+SQLite stays the default. With `DATABASE_URL` set, each study gets its own PostgreSQL schema instead of its own file, which keeps the same isolation.
