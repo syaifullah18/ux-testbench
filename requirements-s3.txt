@@ -1,0 +1,2 @@
+# Only needed when STORAGE_BACKEND=s3 (AWS S3, Cloudflare R2 or MinIO).
+boto3>=1.34

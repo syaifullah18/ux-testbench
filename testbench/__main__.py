@@ -67,6 +67,33 @@ def cmd_migrate_to_postgres(args):
     return 0
 
 
+def cmd_migrate_files_to_s3(_args):
+    """Upload every Studio study folder to the bucket, then check each object against the disk."""
+    from pathlib import Path
+    from . import create_app, filestore
+    from .config import studio_dir
+    app = create_app()
+    if not filestore.enabled(app):
+        print("Set STORAGE_BACKEND=s3 and the S3_* settings first.")
+        return 1
+    with app.app_context():
+        studio = studio_dir(app.config["DATA_DIR"])
+        d0, u0 = app.extensions.get("tb_restored", (0, 0))   # create_app() already ran one pass
+        down, up = filestore.restore(studio)
+        down, up = down + d0, up + u0
+        st = filestore.store()
+        remote = st.list(f"{st.prefix}/studies/")
+        missing = [f"{s.name}/{rel}" for s in Path(studio).iterdir() if s.is_dir() and not s.name.startswith(".")
+                   for rel, path in filestore._local_files(s).items()
+                   if remote.get(f"{st.prefix}/studies/{s.name}/{rel}") != filestore._md5(path)]
+    print(f"Uploaded {up} file(s); downloaded {down} the disk was missing. {len(remote)} object(s) in the bucket.")
+    if missing:
+        print(f"{len(missing)} file(s) do not match the bucket: " + ", ".join(missing[:10]))
+        return 1
+    print("Every study file is in the bucket and matches the disk. The local copies are kept.")
+    return 0
+
+
 def cmd_retention(args):
     """Housekeeping a public instance should run nightly: clear old IP addresses, drop spent
     one-time tokens, and warn or delete studies that closed long ago."""
@@ -179,10 +206,14 @@ def main(argv=None):
     mg.add_argument("--data-dir", help="where the .db files are (default: DATA_DIR)")
     mg.add_argument("--dry-run", action="store_true", help="list what would be copied, write nothing")
 
+    sub.add_parser("migrate-files-to-s3",
+                   help="upload every Studio study folder to the bucket and verify it (STORAGE_BACKEND=s3)")
+
     args = parser.parse_args(argv)
     cmds = {"run": cmd_run, "check": cmd_check, "new": cmd_new, "demo": cmd_demo,
             "create-admin": cmd_create_admin, "claim": cmd_claim, "retention": cmd_retention,
-            "migrate-to-postgres": cmd_migrate_to_postgres}
+            "migrate-to-postgres": cmd_migrate_to_postgres,
+            "migrate-files-to-s3": cmd_migrate_files_to_s3}
     return cmds[args.cmd](args)
 
 

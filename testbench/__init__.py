@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, abort, g, render_template, request, session
 
-from . import db
+from . import db, filestore
 from .config import Registry, project_dirs, studio_dir
 from .modules import MODULE_TYPES
 
@@ -28,6 +28,16 @@ def create_app(overrides=None):
         DATABASE_URL=os.environ.get("DATABASE_URL") or None,
         DB_POOL_MAX=int(os.environ.get("DB_POOL_MAX", 5)),
         DB_SCHEMA_PREFIX=os.environ.get("DB_SCHEMA_PREFIX", ""),
+        # local: study folders and exports on disk. s3: the bucket keeps the durable copy (S3,
+        # Cloudflare R2 or MinIO, chosen by S3_ENDPOINT_URL); see filestore.py.
+        STORAGE_BACKEND=os.environ.get("STORAGE_BACKEND", "local"),
+        S3_BUCKET=os.environ.get("S3_BUCKET", ""),
+        S3_ENDPOINT_URL=os.environ.get("S3_ENDPOINT_URL") or None,
+        S3_REGION=os.environ.get("S3_REGION", ""),
+        S3_ACCESS_KEY_ID=os.environ.get("S3_ACCESS_KEY_ID", ""),
+        S3_SECRET_ACCESS_KEY=os.environ.get("S3_SECRET_ACCESS_KEY", ""),
+        S3_PREFIX=os.environ.get("S3_PREFIX", "testbench"),
+        S3_ADDRESSING_STYLE=os.environ.get("S3_ADDRESSING_STYLE", ""),
         PROJECTS_DIRS=None,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -54,6 +64,10 @@ def create_app(overrides=None):
         studio = studio_dir(data_dir)
         studio.mkdir(parents=True, exist_ok=True)
         dirs = [Path(d) for d in app.config["PROJECTS_DIRS"]] + [studio]
+    if filestore.enabled(app):
+        # Before the projects load, so a container on an empty volume starts with every study.
+        app.extensions["tb_restored"] = filestore.restore(studio_dir(data_dir), app, log_=log.info)
+        app.after_request(filestore.after_request)
     app.extensions["testbench"] = Registry(MODULE_TYPES, dirs)
 
     @app.before_request
