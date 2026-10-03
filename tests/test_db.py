@@ -121,3 +121,18 @@ def test_sqlite_files_sit_in_data_dir(app, tmp_path):
     with app.app_context():
         storage.connect("example")
         assert (tmp_path / "data" / "example.db").exists()
+
+
+def test_one_request_can_open_more_studies_than_the_pool_holds(projects_dir, make_app):
+    """The admin overview opens every study. On PostgreSQL they share one pooled connection, so
+    an instance with more studies than DB_POOL_MAX does not stall waiting for the pool."""
+    app = make_app(projects_dir, DB_POOL_MAX="2")
+    with app.app_context():
+        for i in range(8):
+            conn = storage.connect(f"many-{i}")
+            conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES (?, ?, ?)",
+                         (f"S{i}", "t", "t"))
+        # Each study still sees only its own row after all the switching.
+        for i in range(8):
+            rows = storage.connect(f"many-{i}").execute("SELECT identity FROM participants").fetchall()
+            assert [r[0] for r in rows] == [f"S{i}"]

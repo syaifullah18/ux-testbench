@@ -15,6 +15,7 @@ write, and several callers deliberately swallow a failed statement (rate limitin
 in a PostgreSQL transaction that failure would poison every later statement on the connection.
 `commit()` and `rollback()` are kept as no-ops so call sites do not change.
 """
+import atexit
 import re
 import sqlite3
 from pathlib import Path
@@ -103,6 +104,13 @@ def _pool():
     return pool
 
 
+@atexit.register
+def _close_pools():
+    for pool in _POOLS.values():
+        pool.close()
+    _POOLS.clear()
+
+
 class Row(tuple):
     """A row readable by column name and by position, like sqlite3.Row."""
     __slots__ = ()
@@ -172,12 +180,58 @@ def postgres_ddl(script):
     return script
 
 
+class _Session:
+    """The one pooled PostgreSQL connection a request uses, whichever studies it touches.
+
+    Pages such as the admin overview open every study in turn. Giving each study its own pooled
+    connection, held until the request ends, would exhaust a small pool on an instance with more
+    studies than the pool has connections. Instead every study's connection object shares this
+    one, and switches `search_path` to its own schema before each statement when it is not
+    already there.
+    """
+
+    def __init__(self, pool):
+        self.pool = pool
+        self.raw = pool.getconn()
+        self.raw.row_factory = _row_factory
+        self.schema = None
+        self.ensured = set()
+
+    def use(self, schema):
+        if self.schema != schema:
+            if schema not in self.ensured:
+                self.raw.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote(schema)}")
+                self.ensured.add(schema)
+            self.raw.execute(f"SET search_path TO {_quote(schema)}")
+            self.schema = schema
+        return self.raw
+
+    def release(self):
+        if self.raw is not None:
+            try:
+                self.raw.execute("RESET search_path")
+            finally:
+                self.pool.putconn(self.raw)
+                self.raw = None
+
+
+def _session():
+    session = g.get("tb_pg")
+    if session is None or session.raw is None:
+        session = g.tb_pg = _Session(_pool())
+    return session
+
+
 class PostgresConnection:
-    """The slice of the sqlite3.Connection interface this code base uses."""
+    """The slice of the sqlite3.Connection interface this code base uses, for one schema."""
     dialect = "postgres"
 
-    def __init__(self, raw, pool, schema):
-        self.raw, self._pool, self.schema = raw, pool, schema
+    def __init__(self, session, schema):
+        self._session, self.schema = session, schema
+
+    @property
+    def raw(self):
+        return self._session.use(self.schema)
 
     def execute(self, sql, params=()):
         return self.raw.execute(translate(sql, bool(params)), _adapt(params))
@@ -198,21 +252,20 @@ class PostgresConnection:
     def rollback(self):
         pass
 
+    # `with conn:` commits or rolls back in sqlite3 and leaves the connection open; with
+    # autocommit there is nothing to do either way.
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
     def close(self):
-        if self.raw is not None:
-            self.raw.execute("RESET search_path")
-            self._pool.putconn(self.raw)
-            self.raw = None
+        pass   # the shared connection goes back to the pool in close_all()
 
 
 def _open_postgres(slug):
-    pool = _pool()
-    raw = pool.getconn()
-    raw.row_factory = _row_factory
-    schema = schema_name(slug)
-    raw.execute(f"CREATE SCHEMA IF NOT EXISTS {_quote(schema)}")
-    raw.execute(f"SET search_path TO {_quote(schema)}")
-    return PostgresConnection(raw, pool, schema)
+    return PostgresConnection(_session(), schema_name(slug))
 
 
 # ---------------------------------------------------------------- connections
@@ -242,6 +295,9 @@ def close_all(_exc=None):
             conn.close()
         except Exception:
             pass
+    session = g.pop("tb_pg", None)
+    if session is not None:
+        session.release()
 
 
 def forget(slug):
@@ -255,8 +311,13 @@ def drop_study(slug):
     """Remove a study's database entirely. The next connect() starts it empty."""
     forget(slug)
     if is_postgres():
-        with _pool().connection() as raw:
-            raw.execute(f"DROP SCHEMA IF EXISTS {_quote(schema_name(slug))} CASCADE")
+        session = _session()
+        schema = schema_name(slug)
+        session.raw.execute(f"DROP SCHEMA IF EXISTS {_quote(schema)} CASCADE")
+        session.ensured.discard(schema)
+        if session.schema == schema:
+            session.raw.execute("RESET search_path")
+            session.schema = None
         return
     path = sqlite_path(slug)
     for suffix in ("", "-wal", "-shm"):
@@ -267,9 +328,8 @@ def drop_study(slug):
 
 def study_exists(slug):
     if is_postgres():
-        with _pool().connection() as raw:
-            return raw.execute("SELECT 1 FROM pg_namespace WHERE nspname = %s",
-                               (schema_name(slug),)).fetchone() is not None
+        return _session().raw.execute("SELECT 1 FROM pg_namespace WHERE nspname = %s",
+                                      (schema_name(slug),)).fetchone() is not None
     return sqlite_path(slug).exists()
 
 

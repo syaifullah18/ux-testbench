@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from .conftest import MINI_AB, PROTO, write_project
+from testbench import db
 
 
 def two_projects(base):
@@ -28,10 +29,14 @@ def test_logins_passcodes_and_data_are_separate(tmp_path, make_app):
     assert c.get("/beta/admin/participants").status_code == 302  # alpha admin is not beta admin
     assert c.post("/beta/admin/", data={"passcode": "aa"}).status_code == 200  # wrong project's code refused
 
-    # Participant data lives in one file per project, so only the project that was used has one.
-    # _system.db is the shared file for hashed passcodes, accounts and moderation, never answers.
-    data = Path(app.config["DATA_DIR"])
-    assert sorted(p.name for p in data.glob("*.db") if p.name != "_system.db") == ["alpha.db"]
+    # Participant data lives in one database per project (a file, or a PostgreSQL schema), so only
+    # the project that was used has one. The platform database holds hashed passcodes, accounts
+    # and moderation, never answers.
+    with app.app_context():
+        assert db.study_exists("alpha") and not db.study_exists("beta")
+    if not db.is_postgres(app):
+        data = Path(app.config["DATA_DIR"])
+        assert sorted(p.name for p in data.glob("*.db") if p.name != "_system.db") == ["alpha.db"]
 
 
 def test_audience_hides_module_and_blocks_direct_access(tmp_path, make_app):

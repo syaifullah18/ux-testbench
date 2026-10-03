@@ -136,8 +136,8 @@ def test_card_sort_report_and_export(tmp_path):
             mctx = Ctx(project, module=mod, admin=True)
 
             # Insert sample participant and session
-            mctx.conn.execute("INSERT OR REPLACE INTO participants (id, identity, created_at, last_seen_at) VALUES (999, 'P99', '2026-01-01', '2026-01-01')")
-            mctx.conn.execute("INSERT OR REPLACE INTO sessions (id, participant_id, module_id, step, state, started_at, finished_at) VALUES (999, 999, 'sort1', 'done', '{}', '2026-01-01T10:00:00', '2026-01-01T10:05:00')")
+            mctx.conn.execute("INSERT INTO participants (id, identity, created_at, last_seen_at) VALUES (999, 'P99', '2026-01-01', '2026-01-01') ON CONFLICT (id) DO NOTHING")
+            mctx.conn.execute("INSERT INTO sessions (id, participant_id, module_id, step, state, started_at, finished_at) VALUES (999, 999, 'sort1', 'done', '{}', '2026-01-01T10:00:00', '2026-01-01T10:05:00') ON CONFLICT (id) DO NOTHING")
             storage.save_page(mctx.conn, 999, "sort", {"c1": "Cat A", "c2": "New Group"})
             mctx.conn.commit()
 
