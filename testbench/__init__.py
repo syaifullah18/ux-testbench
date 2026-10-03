@@ -66,7 +66,12 @@ def create_app(overrides=None):
         dirs = [Path(d) for d in app.config["PROJECTS_DIRS"]] + [studio]
     if filestore.enabled(app):
         # Before the projects load, so a container on an empty volume starts with every study.
-        app.extensions["tb_restored"] = filestore.restore(studio_dir(data_dir), app, log_=log.info)
+        # A bucket that cannot be reached must not keep the app down: start from the local copy.
+        try:
+            app.extensions["tb_restored"] = filestore.restore(studio_dir(data_dir), app, log_=log.info)
+        except Exception:
+            log.exception("object storage: restore failed; starting from the local copy only")
+            app.extensions["tb_restored"] = (0, 0)
         app.after_request(filestore.after_request)
     app.extensions["testbench"] = Registry(MODULE_TYPES, dirs)
 
