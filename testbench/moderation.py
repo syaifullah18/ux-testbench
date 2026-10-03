@@ -17,6 +17,8 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 
+from . import db
+
 PLATFORM_SCHEMA = """
 CREATE TABLE IF NOT EXISTS reports (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,11 +79,11 @@ def _now():
 
 def add_report(project_slug, reason, contact="", ip=None):
     conn = _db()
-    cur = conn.execute(
-        "INSERT INTO reports (at, project_slug, reason, contact, ip) VALUES (?, ?, ?, ?, ?)",
+    report_id = db.insert(
+        conn, "INSERT INTO reports (at, project_slug, reason, contact, ip) VALUES (?, ?, ?, ?, ?)",
         (_now(), (project_slug or "")[:64], (reason or "")[:4000], (contact or "")[:256], ip))
     conn.commit()
-    return cur.lastrowid
+    return report_id
 
 
 def list_reports(status=None, limit=200):

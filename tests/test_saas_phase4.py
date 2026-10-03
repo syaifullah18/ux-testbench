@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from testbench import rate_limit
+from .conftest import sqlite_only
 
 
 def test_security_headers_and_request_id(projects_dir, make_app):
@@ -96,6 +97,7 @@ def test_rate_limit_falls_back_to_memory_without_an_app(projects_dir, make_app):
     rate_limit.clear("10.0.0.3", "signup")
 
 
+@sqlite_only
 def test_sqlite_runs_in_wal_mode(projects_dir, make_app):
     from testbench import storage, users
     app = make_app(projects_dir)

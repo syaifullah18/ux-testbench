@@ -19,10 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, send_file,
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request,
                    send_from_directory, session as cookie, url_for)
 
-from . import limits, passcodes, storage
+from . import db, filestore, limits, passcodes, storage
 from .config import SLUG_RE, ID_RE, RESERVED_SLUGS, Problems, env_prefix, load_project
 from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import available as available_locales, translator
@@ -1429,8 +1429,7 @@ def export_zip(slug):
             rel = p.relative_to(project.dir)
             if p.is_file() and not any(part.startswith(".") for part in rel.parts):
                 zf.write(p, f"{slug}/{rel.as_posix()}")
-    buf.seek(0)
-    return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{slug}.zip")
+    return filestore.export_response(buf.getvalue(), f"{slug}.zip", "application/zip", slug)
 
 
 @bp.post("/app/p/<slug>/studio/delete")
@@ -1449,9 +1448,7 @@ def delete_project(slug):
     name = project.name
     shutil.rmtree(target)
     if request.form.get("with_data"):
-        storage.close_all()
-        storage_path = Path(current_app.config["DATA_DIR"]) / f"{slug}.db"
-        storage_path.unlink(missing_ok=True)
+        db.drop_study(slug)
         passcodes.clear(slug)
     reload()
     msg = f"Study “{name}” has been deleted."

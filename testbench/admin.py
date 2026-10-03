@@ -5,9 +5,9 @@ import io
 import os
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
 
-from . import passcodes, storage
+from . import filestore, passcodes, storage
 from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import translator
 from .web import get_project, registry
@@ -171,7 +171,7 @@ def build_study_dashboard_data(ctx, project):
         "finished_all": finished_all
     }
     
-    daily_rows = ctx.conn.execute("SELECT date(created_at) as d, COUNT(*) as c FROM participants GROUP BY d ORDER BY d DESC LIMIT 14").fetchall()
+    daily_rows = ctx.conn.execute("SELECT substr(created_at, 1, 10) AS d, COUNT(*) AS c FROM participants GROUP BY d ORDER BY d DESC LIMIT 14").fetchall()
     daily_signups = [{"date": r["d"], "count": r["c"]} for r in daily_rows]
     daily_signups.reverse()
     max_signups = max([d["count"] for d in daily_signups] + [1])
@@ -693,8 +693,7 @@ def module_export(slug, mid):
     writer = csv.writer(buf)
     writer.writerow(header)
     writer.writerows(rows)
-    return Response(buf.getvalue(), mimetype="text/csv",
-                    headers={"Content-Disposition": f"attachment; filename={slug}-{mid}.csv"})
+    return filestore.export_response(buf.getvalue(), f"{slug}-{mid}.csv", "text/csv", slug)
 
 
 @bp.route("/app/p/<slug>/m/<mid>/x/<path:path>")
@@ -794,7 +793,7 @@ def project_export(slug):
         for h in headers[3:]:
             row.append(p_cols.get(h, ""))
         writer.writerow(row)
-    return Response(out.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment; filename={slug}_combined.csv"})
+    return filestore.export_response(out.getvalue(), f"{slug}_combined.csv", "text/csv", slug)
 
 
 @bp.route("/app/p/<slug>/participants")

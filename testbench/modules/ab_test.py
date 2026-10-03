@@ -102,7 +102,7 @@ import urllib.parse
 from flask import abort, jsonify, render_template, request, send_from_directory, session
 
 from .. import questions as Q
-from .. import storage
+from .. import db, storage
 from ..heatmap import MOBILE_MAX_W
 from .base import ADVANCE, ModuleType
 
@@ -418,13 +418,18 @@ class ABTest(ModuleType):
         conn.execute(
             "INSERT INTO task_results (session_id, position, variant, task_id, time_ms, clicks, scroll_reversals, "
             "first_click, click_path, viewport_w, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            # Target columns are qualified with the table name: PostgreSQL calls a bare `time_ms`
+            # ambiguous next to `excluded.time_ms`, and SQLite accepts either form.
             "ON CONFLICT(session_id, position, task_id) DO UPDATE SET "
-            "time_ms = MAX(time_ms, excluded.time_ms), clicks = MAX(clicks, excluded.clicks), "
-            "scroll_reversals = MAX(scroll_reversals, excluded.scroll_reversals), "
-            "first_click = COALESCE(first_click, excluded.first_click), "
-            "click_path = CASE WHEN length(COALESCE(excluded.click_path, '')) > length(COALESCE(click_path, '')) "
-            "THEN excluded.click_path ELSE click_path END, "
-            "viewport_w = COALESCE(viewport_w, excluded.viewport_w), updated_at = excluded.updated_at",
+            f"time_ms = {db.greatest(conn, 'task_results.time_ms', 'excluded.time_ms')}, "
+            f"clicks = {db.greatest(conn, 'task_results.clicks', 'excluded.clicks')}, "
+            f"scroll_reversals = {db.greatest(conn, 'task_results.scroll_reversals', 'excluded.scroll_reversals')}, "
+            "first_click = COALESCE(task_results.first_click, excluded.first_click), "
+            "click_path = CASE WHEN length(COALESCE(excluded.click_path, '')) "
+            "> length(COALESCE(task_results.click_path, '')) "
+            "THEN excluded.click_path ELSE task_results.click_path END, "
+            "viewport_w = COALESCE(task_results.viewport_w, excluded.viewport_w), "
+            "updated_at = excluded.updated_at",
             (session_id, position, variant, task_id, to_int(m.get("time_ms"), hi=3_600_000),
              to_int(m.get("clicks"), hi=100_000), to_int(m.get("scroll_reversals"), hi=100_000),
              path[0] if path else None, storage.dumps(path) if path else None,

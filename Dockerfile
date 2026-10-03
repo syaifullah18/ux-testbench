@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt gunicorn
+# PostgreSQL and object storage drivers are included so one image runs any configuration; they
+# load only when DATABASE_URL or STORAGE_BACKEND=s3 asks for them.
+COPY requirements.txt requirements-postgres.txt requirements-s3.txt ./
+RUN pip install -r requirements.txt -r requirements-postgres.txt -r requirements-s3.txt gunicorn
 
 COPY testbench/ ./testbench/
 COPY projects/example/ ./projects/example/

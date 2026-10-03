@@ -1,5 +1,7 @@
+import os
 import re
 import shutil
+import uuid
 from pathlib import Path
 
 import pytest
@@ -35,6 +37,23 @@ MINI_AB = {
     "post_survey": [{"id": "easy", "type": "scale", "label": "Easy?"}],
     "decision_rule": {"min_participants": 2, "survey_questions": ["easy"]},
 }
+
+
+# The suite runs on SQLite by default. With TEST_DATABASE_URL=postgresql://… it runs the same
+# tests on PostgreSQL: every app built during one test gets that database and a schema prefix
+# unique to the test, which is the PostgreSQL equivalent of each test's own tmp_path.
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+on_postgres = pytest.mark.skipif(not TEST_DATABASE_URL, reason="needs TEST_DATABASE_URL")
+sqlite_only = pytest.mark.skipif(bool(TEST_DATABASE_URL), reason="about SQLite files")
+
+
+@pytest.fixture(autouse=True)
+def _database_backend(monkeypatch):
+    if TEST_DATABASE_URL:
+        monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
+        monkeypatch.setenv("DB_SCHEMA_PREFIX", f"t{uuid.uuid4().hex[:10]}_")
+    else:
+        monkeypatch.delenv("DATABASE_URL", raising=False)
 
 
 @pytest.fixture

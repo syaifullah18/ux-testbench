@@ -1,1 +1,5 @@
 pytest>=8.0
+# For the PostgreSQL and object-storage tests (skipped without them):
+-r requirements-postgres.txt
+-r requirements-s3.txt
+moto[server]>=5

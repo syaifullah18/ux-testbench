@@ -2,7 +2,7 @@ import random
 import uuid
 import json
 
-from . import storage
+from . import db, storage
 
 
 def seed_example(n_participants):
@@ -20,15 +20,13 @@ def seed_example(n_participants):
             ts = storage.now_iso()
             
             # 1. Participant
-            conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES (?, ?, ?)",
+            pid = db.insert(conn, "INSERT INTO participants (identity, created_at, last_seen_at) VALUES (?, ?, ?)",
                          (identity, ts, ts))
-            pid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             
             # 2. Profile
             role = random.choice(roles)
-            conn.execute("INSERT INTO sessions (participant_id, module_id, step, started_at, finished_at) VALUES (?, ?, ?, ?, ?)",
+            sid_profile = db.insert(conn, "INSERT INTO sessions (participant_id, module_id, step, started_at, finished_at) VALUES (?, ?, ?, ?, ?)",
                          (pid, "profile", "final", ts, ts))
-            sid_profile = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             ans_profile = {
                 "role": role,
                 "frequency": random.choice(["Weekly", "Monthly", "Never"]),
@@ -38,9 +36,8 @@ def seed_example(n_participants):
             storage.save_page(conn, sid_profile, "page1", ans_profile)
             
             # 3. Journey
-            conn.execute("INSERT INTO sessions (participant_id, module_id, step, started_at, finished_at) VALUES (?, ?, ?, ?, ?)",
+            sid_journey = db.insert(conn, "INSERT INTO sessions (participant_id, module_id, step, started_at, finished_at) VALUES (?, ?, ?, ?, ?)",
                          (pid, "journey", "final", ts, ts))
-            sid_journey = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             ans_j1 = {}
             if role in ("member", "visitor"):
                 ans_j1["member_steps"] = {"find_event": random.choice([1, 5]), "search_catalog": 1}
@@ -54,9 +51,8 @@ def seed_example(n_participants):
             
             # 4. events-ab
             order = ["A", "B"] if random.random() < 0.5 else ["B", "A"]
-            conn.execute("INSERT INTO sessions (participant_id, module_id, step, state, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?)",
+            sid_ab = db.insert(conn, "INSERT INTO sessions (participant_id, module_id, step, state, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?)",
                          (pid, "events-ab", "final", storage.dumps({"order": order}), ts, ts))
-            sid_ab = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             
             for n, variant in enumerate(order, start=1):
                 # Tasks

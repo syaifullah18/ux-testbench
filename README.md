@@ -164,6 +164,8 @@ UX Testbench includes a built-in CLI for project scaffolding, validation, operat
 | `python -m testbench create-admin <email>` | Creates a platform administrator account with email verification (public mode). |
 | `python -m testbench claim <slug> <email>` | Assigns an owner to an existing project in public mode. |
 | `python -m testbench retention [--ip-days N] [--close-after M]` | Maintenance cron job: prunes stale IPs, flushes spent tokens, and lists expired studies. |
+| `python -m testbench migrate-to-postgres [--dry-run]` | Copies every SQLite database in `DATA_DIR` into `DATABASE_URL`, keeping ids and checking row counts. |
+| `python -m testbench migrate-files-to-s3` | Uploads every Studio study folder to the bucket and verifies each object. |
 | `pytest -q` | Executes the complete automated test suite (179+ tests). |
 
 ### Example CLI Workflows
@@ -242,6 +244,11 @@ projects/
 
 Each study maintains its own SQLite database (`<slug>.db` in `DATA_DIR`), guaranteeing complete data isolation. Deleting or resetting one study never affects another.
 
+For a hosted instance, two optional backends replace the local disk without changing anything else (see [ADR 005](docs/decisions/005-postgres-and-object-storage.md) and [docs/operations.md](docs/operations.md#postgresql-and-object-storage)):
+
+- **PostgreSQL** (`DATABASE_URL`): each study gets its own schema instead of its own file, with the same isolation.
+- **Object storage** (`STORAGE_BACKEND=s3`): AWS S3, Cloudflare R2 or MinIO keeps the durable copy of every Studio study and serves exports as expiring links. A container on an empty volume restores every study from the bucket at start.
+
 ---
 
 ## Configuration Reference
@@ -270,6 +277,8 @@ A study is defined by `project.yaml`. The Studio provides a built-in visual edit
 | `SUPERADMIN_PASSCODE` | None | Master passcode unlocking `/admin/` and all project dashboards. |
 | `DATA_DIR` | `instance` | Filesystem path storing SQLite databases, uploaded prototypes, and Studio files. |
 | `PROJECTS_DIRS` | `projects` | Read-only project directory paths joined with `:` (`;` on Windows). |
+| `DATABASE_URL` | None | `postgresql://…` stores each study in its own PostgreSQL schema instead of a SQLite file. |
+| `STORAGE_BACKEND` | `local` | `s3` keeps studies and exports in a bucket; configure with `S3_BUCKET`, `S3_ENDPOINT_URL`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`. |
 | `TESTBENCH_MODE` | `internal` | Set to `public` to enable user accounts, quotas, and team invitations. |
 | `APP_DOMAIN` | None | Primary hostname serving the application and authenticated cookies. |
 | `USERCONTENT_DOMAIN` | None | Isolated registrable domain serving untrusted prototype JavaScript. |
@@ -332,7 +341,9 @@ Register the module class in `testbench/modules/__init__.py` and provide a start
 | ├── `web.py` | Participant testing flow, module router, and session state manager. |
 | ├── `modules/` | Implementations of `ab_test`, `first_click`, `card_sort`, `tree_test`, and `survey`. |
 | ├── `questions.py` | Dynamic survey engine, conditional branching, and response piping. |
-| ├── `storage.py` | Per-study SQLite schema, participant session tracking, and queries. |
+| ├── `storage.py` | Per-study schema, participant session tracking, and queries. |
+| ├── `db.py` | Database connections for SQLite (default) and PostgreSQL (one schema per study). |
+| ├── `filestore.py` | Optional object storage (S3, R2, MinIO) for study folders and exports. |
 | ├── `context.py` | Template context injection, role checking (`is_super`, `is_admin`, `can_edit`). |
 | ├── `static/` | CSS design tokens, task runner (`task-runner.js`), QR code generator. |
 | └── `templates/` | Jinja2 templates for admin studio, participant views, and module embeds. |

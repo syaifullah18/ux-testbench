@@ -3,6 +3,8 @@ import io
 import zipfile
 from pathlib import Path
 
+from testbench import db, users
+
 
 def superadmin(app):
     c = app.test_client()
@@ -34,8 +36,11 @@ def test_create_edit_and_run_a_project_without_touching_files(projects_dir, make
     assert "error=" in c.post("/checkout/admin/studio/passcodes", data={"participant": "123"}).location  # too short
     c.post("/checkout/admin/studio/passcodes", data={"participant": "secret1", "admin": "admin12"})
     assert c.post("/checkout/", data={"identity": "P01", "passcode": "secret1", "consent": "1"}).status_code == 302
-    db = (Path(app.config["DATA_DIR"]) / "_system.db").read_bytes()
-    assert b"secret1" not in db  # stored hashed
+    with app.app_context():                          # stored hashed, on either backend
+        hashes = [r["hash"] for r in users.system_db().execute("SELECT hash FROM passcodes").fetchall()]
+        assert hashes and not any("secret1" in h for h in hashes)
+    if not db.is_postgres(app):
+        assert b"secret1" not in (Path(app.config["DATA_DIR"]) / "_system.db").read_bytes()
 
     # An invalid edit is rejected and the live file is untouched.
     rel = "modules/feedback.yaml"

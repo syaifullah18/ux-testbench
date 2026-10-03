@@ -57,6 +57,12 @@ Point both domains' DNS at the host before starting Caddy, or certificate issuan
 | `SIGNUP_MODE` | `open` | `open`, `invite` (private beta) or `closed` |
 | `SECRET_KEY` | random | Signs session cookies. A new value logs everyone out. |
 | `DATA_DIR` | `./instance` | SQLite files and the Studio's projects folder |
+| `DATABASE_URL` | unset | `postgresql://…` stores each study in its own PostgreSQL schema instead of a SQLite file. See [PostgreSQL and object storage](#postgresql-and-object-storage). |
+| `DB_POOL_MAX` | 5 | Connections per app worker. A request uses one, however many studies it touches. |
+| `STORAGE_BACKEND` | `local` | `s3` keeps the durable copy of every Studio study, and exports, in a bucket |
+| `S3_BUCKET`, `S3_ENDPOINT_URL`, `S3_REGION` | unset | The bucket. Leave `S3_ENDPOINT_URL` unset for AWS; set it for Cloudflare R2 or MinIO. |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | unset | Credentials with read, write, list and delete on the bucket |
+| `S3_PREFIX` | `testbench` | Key prefix, so one bucket can hold several instances |
 | `LOCAL_ASSETS` | off | `1` serves CSS, fonts and icons from this instance, so participant pages make no third-party requests |
 | `SMTP_URL`, `MAIL_FROM` | unset | Without `SMTP_URL`, emails are written to the log instead of sent. Verification and invitations then do not work for real users. |
 | `SESSION_COOKIE_SECURE` | off | Forced on in public mode |
@@ -84,6 +90,57 @@ Compose, put both in cron.
 
 Restoring: stop the app, copy the `.db` files back into `DATA_DIR`, untar `projects.tar.gz`, start
 it again. Test a restore before you need one — an untested backup is a guess.
+
+`scripts/backup.sh` copies SQLite files. On PostgreSQL, back up the database with the platform's
+own backups or `pg_dump`; with object storage, the bucket already holds every study folder.
+
+## PostgreSQL and object storage
+
+Both are optional and independent: SQLite and local files remain the default, and either can be
+switched on without the other. Install `requirements-postgres.txt` and `requirements-s3.txt`
+(the Docker image already includes both).
+
+**PostgreSQL.** Set `DATABASE_URL`. Each study gets its own schema (`study_<slug>`) and the
+platform tables a `testbench` schema; the app creates them on first use, so the database user
+needs `CREATE` on the database. Studies stay isolated the way separate files were: a study's
+queries run with only its own schema on the `search_path`.
+
+**Object storage.** Set `STORAGE_BACKEND=s3` and the `S3_*` variables. The bucket becomes the
+durable copy of every study made in the Studio, YAML, prototypes and uploads, and the local
+`DATA_DIR/projects` folder a working copy of it. Every change in the Studio is mirrored to the
+bucket; at start, the app downloads whatever the volume is missing, so a container on an empty
+volume comes back with every study. Prototypes are still served from the local copy, on the
+app's own domain. Exports are written under `<S3_PREFIX>/exports/` and handed out as links that
+expire after 15 minutes; add a lifecycle rule that deletes that prefix after a day.
+
+Run **one app replica**, or give every replica the same `DATA_DIR` volume: a replica sees an
+edit made on another one only after it restarts.
+
+**Moving an existing instance**, with the app stopped:
+
+```bash
+# 1. Database: copies every .db file in DATA_DIR into PostgreSQL. Ids are kept, row counts are
+#    checked, and the SQLite files are left untouched. --dry-run lists what would be copied.
+DATABASE_URL=postgresql://… python -m testbench migrate-to-postgres
+
+# 2. Files: uploads every Studio study folder and checks each object against the disk.
+STORAGE_BACKEND=s3 S3_BUCKET=… python -m testbench migrate-files-to-s3
+```
+
+Start the app with the new settings, check a study's results, and keep the old `DATA_DIR` until
+you are sure.
+
+**On Dokploy:**
+
+1. Create a PostgreSQL service in the same project and copy its internal connection URL into the
+   app's `DATABASE_URL`.
+2. Create an R2 bucket (or a MinIO service) and an API token scoped to it. Set
+   `STORAGE_BACKEND=s3`, `S3_BUCKET`, `S3_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com`,
+   `S3_REGION=auto` and the two keys.
+3. Keep a volume mounted at `/data`. It holds the working copy of the studies; the bucket makes
+   losing it recoverable, not irrelevant.
+4. Keep the app at one replica.
+5. Redeploy, then open `/health`: it reports `"database": "postgres"` and `"database_ok": true`.
 
 ## Moderation
 

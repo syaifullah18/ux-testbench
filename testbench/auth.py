@@ -356,15 +356,12 @@ def _release_projects(user, action):
         return ("You are the only owner of: " + ", ".join(orphans) +
                 ". Invite another owner and transfer them first, or tick "
                 "“also delete these studies and their participant data”.")
-    from . import storage
+    from . import db
     from .web import registry
     for slug in orphans:
         project = registry().get(slug)
         moderation.audit("project.delete_with_account", actor=user["email"], project_slug=slug)
-        db = storage.db_path(slug)
-        for extra in (db, db.with_suffix(".db-wal"), db.with_suffix(".db-shm")):
-            if extra.exists():
-                extra.unlink()
+        db.drop_study(slug)
         if project is not None and project.editable:
             import shutil
             shutil.rmtree(project.dir, ignore_errors=True)

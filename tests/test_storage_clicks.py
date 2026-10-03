@@ -4,7 +4,8 @@ import sqlite3
 
 import pytest
 
-from testbench import storage
+from testbench import db, storage
+from .conftest import sqlite_only
 
 
 @pytest.fixture
@@ -26,18 +27,19 @@ def v1_file(path):
 
 
 def participant_with_session(conn, identity="P01"):
-    conn.execute("INSERT OR IGNORE INTO participants (identity, created_at, last_seen_at) VALUES (?, 'x', 'x')",
-                 (identity,))
+    conn.execute("INSERT INTO participants (identity, created_at, last_seen_at) VALUES (?, 'x', 'x') "
+                 "ON CONFLICT (identity) DO NOTHING", (identity,))
     pid = conn.execute("SELECT id FROM participants WHERE identity = ?", (identity,)).fetchone()[0]
-    conn.execute("INSERT INTO sessions (participant_id, module_id, step, started_at) VALUES (?, 'fc', 't1', 'x')",
-                 (pid,))
-    return pid, conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    sid = db.insert(conn, "INSERT INTO sessions (participant_id, module_id, step, started_at) "
+                    "VALUES (?, 'fc', 't1', 'x')", (pid,))
+    return pid, sid
 
 
 def point(seq, x=10, y=20, **kw):
     return {"seq": seq, "x": x, "y": y, "doc_w": 100, "doc_h": 200, **kw}
 
 
+@sqlite_only
 def test_an_existing_v1_database_gains_the_table_on_open(app):
     with app.app_context():
         path = storage.db_path("example")
