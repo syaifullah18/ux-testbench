@@ -28,7 +28,7 @@
                     <input type="checkbox" name="consent" value="1" class="mt-1 size-4 rounded text-brand-600 dark:text-brand-400 border-line focus:ring-brand/30">
                     <span>{{ project.consent }}</span>
                 </label>
-                {% if errors.consent %}<p class="mt-1.5 text-[13px] text-red-700">{{ errors.consent }}</p>{% endif %}
+                {% if errors.consent %}<p class="mt-1.5 text-[13px] text-bad-ink">{{ errors.consent }}</p>{% endif %}
             </div>
             {% endif %}
             {% if mode == 'anonymous' %}

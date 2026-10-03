@@ -83,12 +83,12 @@
             {% endif %}
 
             {% for item in all_notices %}
-            <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-ink{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
-                <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
+            <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318] text-white{% else %}bg-ink text-surface{% endif %} px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer" role="status">
+                <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-ok-line{% endif %}" aria-hidden="true"></i>
                 <span>{{ item.msg }}</span>
             </div>
             {% endfor %}
-            <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
+            <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink text-surface px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer"></div>
         </div>
         {% endblock %}
         {% block content %}{% endblock %}

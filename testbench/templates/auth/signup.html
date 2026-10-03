@@ -20,15 +20,15 @@
                 <label class="block text-sm font-medium text-ink-muted mb-1" for="su-name">Name</label>
                 <input id="su-name" name="name" type="text" value="{{ form.name }}" required autocomplete="name"
                        {% if errors.name %}aria-invalid="true" aria-describedby="su-name-msg"{% endif %}
-                       class="w-full min-h-11 bg-card text-ink border {{ 'border-red-400' if errors.name else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                {% if errors.name %}<p id="su-name-msg" class="text-red-600 dark:text-red-400 text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
+                       class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.name else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                {% if errors.name %}<p id="su-name-msg" class="text-bad text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
             </div>
             <div>
                 <label class="block text-sm font-medium text-ink-muted mb-1" for="su-email">Email</label>
                 <input id="su-email" name="email" type="email" value="{{ form.email }}" required autocomplete="email"
                        {% if errors.email %}aria-invalid="true" aria-describedby="su-email-msg"{% endif %}
-                       class="w-full min-h-11 bg-card text-ink border {{ 'border-red-400' if errors.email else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                {% if errors.email %}<p id="su-email-msg" class="text-red-600 dark:text-red-400 text-[13px] mt-1">{{ errors.email }}</p>{% endif %}
+                       class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.email else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                {% if errors.email %}<p id="su-email-msg" class="text-bad text-[13px] mt-1">{{ errors.email }}</p>{% endif %}
             </div>
 
             {#- One password field, not two. Asking for it twice is a field of pure friction that a
@@ -40,15 +40,15 @@
                 <div class="relative">
                     <input id="su-pw" name="password" type="password" required minlength="10" autocomplete="new-password"
                            aria-describedby="su-pw-msg"
-                           class="w-full min-h-11 bg-card text-ink border {{ 'border-red-400' if errors.password or errors.confirm else 'border-line' }} rounded-lg pl-3.5 pr-12 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                           class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.password or errors.confirm else 'border-line' }} rounded-lg pl-3.5 pr-12 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
                     <button type="button" id="su-pw-reveal"
                             class="absolute inset-y-0 right-0 grid w-12 place-items-center rounded-r-lg text-ink-subtle hover:text-ink"
                             aria-label="Show password" aria-pressed="false" aria-controls="su-pw">
                         <i class="fa-solid fa-eye text-[13px]"></i>
                     </button>
                 </div>
-                {% if errors.password %}<p id="su-pw-msg" class="text-red-600 dark:text-red-400 text-[13px] mt-1">{{ errors.password }}</p>
-                {% elif errors.confirm %}<p id="su-pw-msg" class="text-red-600 dark:text-red-400 text-[13px] mt-1">{{ errors.confirm }}</p>
+                {% if errors.password %}<p id="su-pw-msg" class="text-bad text-[13px] mt-1">{{ errors.password }}</p>
+                {% elif errors.confirm %}<p id="su-pw-msg" class="text-bad text-[13px] mt-1">{{ errors.confirm }}</p>
                 {% else %}<p id="su-pw-msg" class="text-ink-subtle text-[12px] mt-1">At least 10 characters.</p>{% endif %}
             </div>
 

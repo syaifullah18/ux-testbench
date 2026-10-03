@@ -15,6 +15,14 @@ const scale = (name) =>
 
 const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
+// Status colours: DEFAULT accent, a soft panel, its border, and text on it. See _head.html.
+const status = (name) => ({
+  DEFAULT: token(name),
+  soft: token(`${name}-soft`),
+  line: token(`${name}-line`),
+  ink: token(`${name}-ink`),
+});
+
 module.exports = {
   darkMode: "class",
   content: ["./testbench/templates/**/*.html", "./testbench/static/**/*.js"],
@@ -32,6 +40,10 @@ module.exports = {
         ink: token("ink"),
         "ink-muted": token("ink-muted"),
         "ink-subtle": token("ink-subtle"),
+        ok: status("ok"),
+        warn: status("warn"),
+        bad: status("bad"),
+        info: status("info"),
       },
       height: { 18: "4.5rem" },
       spacing: { 18: "4.5rem" },

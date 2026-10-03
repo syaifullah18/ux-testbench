@@ -4,7 +4,12 @@
 
     Colours come from the surface tokens (`bg-surface`, `text-ink`, `border-line`, `bg-card`),
     which flip with the theme class. That is what lets one set of markup serve both themes; see
-    the note at the top of _head.html. -#}
+    the note at the top of _head.html.
+
+    Layout: one centred headline, the product itself on a brand-coloured stage, then large
+    alternating feature cards that each pair a claim with the real screen that backs it, a grid
+    of the methods, an FAQ, and a short footer. Every picture is a frame of the running app, not a
+    mock-up, so what a visitor sees here is what they get after cloning it. -#}
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -15,55 +20,39 @@
     {% include "_head.html" %}
 </head>
 
+{%- set repo = "https://github.com/syaifullah18/ux-testbench" -%}
+{%- set mark -%}
+<svg width="26" height="26" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+{%- endset %}
+
 <body class="theme-anim bg-surface text-ink-muted font-sans antialiased selection:bg-brand-500/20">
 
-{#- ---------------------------------------------------------------- announcement -#}
-{#- The whole bar is one target. It used to be a line of text with a link that disappeared below
-    `sm`, so on a phone the highest strip of the page was an advert for a page you could not
-    reach. The dot is gone with it: a green dot means "systems operational" to anyone who has
-    read a status page, and spending that signal on release notes costs an accent the primary
-    button needs. -#}
-<a href="{{ url_for('public.docs') }}"
-   class="group block border-b border-line bg-surface-subtle transition-colors hover:bg-card">
-    <div class="mx-auto flex max-w-7xl items-center justify-center gap-2 px-6 py-3 text-[13px]">
-        <span class="text-ink-muted">
-            <span class="font-semibold text-ink">v0.3</span>
-            adds tree testing, card sorting and first-click tests.
-        </span>
-        <span class="whitespace-nowrap font-semibold text-ink-muted group-hover:text-ink">
-            Read the docs <i class="fa-solid fa-arrow-right text-[10px]"></i>
-        </span>
-    </div>
-</a>
-
 {#- ---------------------------------------------------------------- navigation -#}
-<header class="sticky top-0 z-50 border-b border-line bg-surface/80 backdrop-blur-xl">
-    <nav class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-6">
-        <div class="flex items-center gap-10">
-            {#- The wordmark folds to the mark alone on a phone. That is what buys the CTA beside it
-                enough room to keep its full label at every width instead of shortening to a second
-                name for the same destination. -#}
-            <a href="/" class="flex flex-none items-center gap-2.5" aria-label="UX Testbench, home">
-                <span class="grid size-9 flex-none place-items-center rounded-xl bg-brand-600 text-white">
-                    <i class="fa-solid fa-flask-vial text-sm"></i>
-                </span>
-                <span class="hidden whitespace-nowrap text-lg font-bold tracking-tight text-ink sm:inline">UX Testbench</span>
-            </a>
-            {#- Three destinations, not four. Privacy has a full section with its own heading and a
-                footer column; carrying it here too spent a nav slot on something already reachable
-                twice. -#}
-            <div class="hidden items-center gap-8 text-sm font-medium text-ink-muted lg:flex">
-                <a href="#methods" class="transition-colors hover:text-ink">Methods</a>
-                <a href="#how" class="transition-colors hover:text-ink">How it works</a>
-                <a href="{{ url_for('public.docs') }}" class="transition-colors hover:text-ink">Docs</a>
-            </div>
+<header class="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl">
+    <nav class="mx-auto flex h-18 max-w-[1080px] items-center justify-between gap-6 px-6">
+        {#- The wordmark folds to the mark alone on a phone. That is what buys the CTA beside it
+            enough room to keep its full label at every width. -#}
+        <a href="/" class="flex flex-none items-center gap-2.5 text-ink" aria-label="UX Testbench, home">
+            <span class="text-brand-600 dark:text-brand-400">{{ mark }}</span>
+            <span class="hidden whitespace-nowrap text-lg font-semibold tracking-tight sm:inline">UX Testbench</span>
+        </a>
+
+        <div class="hidden items-center gap-7 text-[15px] text-ink-muted lg:flex">
+            <a href="#features" class="transition-colors hover:text-ink">Features</a>
+            <a href="#methods" class="transition-colors hover:text-ink">Methods</a>
+            <a href="#faq" class="transition-colors hover:text-ink">FAQ</a>
+            <a href="{{ url_for('public.docs') }}" class="transition-colors hover:text-ink">Docs</a>
         </div>
 
         <div class="flex flex-none items-center gap-2 sm:gap-3">
             {% include "_theme_toggle.html" %}
+            <a href="{{ repo }}" target="_blank" rel="noopener"
+               class="hidden min-h-11 items-center gap-2 rounded-xl bg-surface-subtle px-3.5 text-sm font-medium text-ink transition-colors hover:bg-card md:inline-flex">
+                <i class="fa-brands fa-github text-base"></i> GitHub
+            </a>
             {% if user %}
-            <a href="{{ url_for('public.dashboard') }}"
-               class="inline-flex min-h-11 items-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700">
+            <a href="{{ url_for('public.dashboard') }}" id="nav-cta"
+               class="inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-line bg-card px-3 text-[13px] font-semibold text-ink shadow-sm transition-colors hover:bg-surface-subtle sm:px-4 sm:text-sm">
                 Dashboard
             </a>
             {% else %}
@@ -71,12 +60,9 @@
                class="hidden min-h-11 items-center rounded-xl px-3 text-sm font-medium text-ink-muted transition-colors hover:text-ink sm:inline-flex">
                 Log in
             </a>
-            {#- The same words as the hero button, because they go to the same place: two labels for
-                one destination read as two different offers and cost a beat of deciding.
-
-                It also starts as an outline. While the hero is on screen there is one filled brand
-                button in the viewport, not two competing for the same click; once the hero CTA
-                scrolls away this one takes over as the primary. -#}
+            {#- Same words as the hero button, because it goes to the same place. Signed in or not, the
+                nav button starts as an outline so the hero holds the only filled brand button on
+                screen; once the hero action scrolls away this one takes over as the primary. -#}
             <a href="{{ url_for('auth.signup') }}" id="nav-cta"
                class="inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-line bg-card px-3 text-[13px] font-semibold text-ink shadow-sm transition-colors hover:bg-surface-subtle sm:px-4 sm:text-sm">
                 Create a free account
@@ -88,34 +74,38 @@
 
 <main>
 {#- ---------------------------------------------------------------- hero -#}
-<section class="relative overflow-hidden px-6 pb-20 pt-16 sm:pt-24">
-    <div class="mx-auto max-w-4xl text-center">
+<section class="px-6 pb-24 pt-14 sm:pt-20">
+    <div class="mx-auto max-w-3xl text-center">
         {#- The pill sits directly above the H1, so anything coloured in it takes the eye's first
             fixation off the headline. It keeps its shape and loses the accent. -#}
         <a href="{{ url_for('public.docs', page='statistics') }}"
-           class="inline-flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-1.5 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink">
-            <span class="font-semibold text-ink">New</span>
-            Sign tests and three-state verdicts
+           class="inline-flex items-center gap-2 rounded-full bg-surface-subtle px-3.5 py-1.5 text-[13px] font-medium text-ink-muted transition-colors hover:text-ink">
+            <span class="font-semibold text-ink">New in v0.3</span>
+            Tree tests, card sorts and first-click heatmaps
             <i class="fa-solid fa-arrow-right text-[10px]"></i>
         </a>
 
-        <h1 class="mt-7 text-pretty text-[2.75rem] font-extrabold leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-[4.25rem]">
-            Know what your users<br class="hidden sm:inline"> actually do.
+        <h1 class="mt-7 text-pretty text-[2.75rem] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-6xl lg:text-[4.25rem]">
+            Know what your users actually do.
         </h1>
 
         <p class="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-ink-muted sm:text-xl">
-            Run surveys, A/B prototype tests, card sorts, tree tests and first-click tests from one
-            place. Open source, self-hostable, and honest about what the numbers can and cannot
-            tell you.
+            UX Testbench is an open-source tool for surveys, A/B prototype tests, card sorts, tree
+            tests and first-click tests. Self-host it, and get results that are honest about what
+            the numbers can and cannot tell you.
         </p>
 
-        {#- Goal gradient. A bare button hands the visitor a blank four-field form on another page
-            with nothing invested, and nothing invested is nothing to lose by closing the tab.
-            Typing an address here is one field of the signup already done, and the form arrives
-            with it filled in and the first step of its rail ticked off. The field is optional:
-            submitting it empty is the same plain link to /signup it always was. -#}
-        <form method="get" action="{{ url_for('auth.signup') }}"
-              class="mx-auto mt-9 flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row">
+        {#- Goal gradient. Typing an address here is one field of the signup already done, and the
+            form arrives with it filled in. The field is optional: submitting it empty is the same
+            plain link to /signup it always was. -#}
+        {% if user %}
+        <a href="{{ url_for('public.dashboard') }}" id="hero-cta"
+           class="mt-9 inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700">
+            Open your dashboard <i class="fa-solid fa-arrow-right text-sm"></i>
+        </a>
+        {% else %}
+        <form method="get" action="{{ url_for('auth.signup') }}" id="hero-cta"
+              class="mx-auto mt-9 flex w-full max-w-lg flex-col items-center gap-3 sm:flex-row">
             <label for="hero-email" class="sr-only">Work email</label>
             <input id="hero-email" name="email" type="email" autocomplete="email"
                    placeholder="you@company.com"
@@ -125,265 +115,168 @@
                 Create a free account
             </button>
         </form>
+        {% endif %}
 
-        {#- The demo is a real second path, not a second primary. It drops to a text link with an
-            icon: still an obvious target, no longer the same visual weight as the button that
-            finishes the job. -#}
-        <p class="mt-5 text-sm text-ink-subtle">
-            No credit card. MIT licensed. Self-host it and we never see your data.
-        </p>
-        <a href="{{ url_for('web.home', slug='example') }}"
-           class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
-            <i class="fa-solid fa-play text-[10px]"></i>
-            Or try the demo study first — no account needed
-        </a>
+        {#- One quiet second route under the one filled button, for someone who wants to look
+            first. GitHub is in the nav and the self-host section; a third copy here was noise. -#}
+        <div class="mt-5">
+            <a href="{{ url_for('web.home', slug='example') }}"
+               class="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink">
+                <i class="fa-solid fa-play text-[10px]"></i> Or try the demo study first
+            </a>
+        </div>
+        {% if not user %}
+        <p class="mt-2 text-sm text-ink-subtle">No credit card. MIT licensed. Self-host it and we never see your data.</p>
+        {% endif %}
     </div>
 
-    {#- Product shot: a real report, using the verdict vocabulary the app actually prints. -#}
-    <div class="mx-auto mt-16 max-w-5xl">
-        <div class="overflow-hidden rounded-2xl border border-line bg-card shadow-xl shadow-slate-900/5 dark:shadow-black/40">
-            <div class="flex items-center gap-2 border-b border-line bg-surface-subtle px-4 py-3">
-                <span class="size-2.5 rounded-full bg-red-400"></span>
-                <span class="size-2.5 rounded-full bg-amber-400"></span>
-                <span class="size-2.5 rounded-full bg-emerald-400"></span>
-                <span class="mx-auto rounded-md border border-line bg-card px-3 py-1 font-mono text-[11px] text-ink-subtle">
-                    uxtestbench.org/s/events-ab/
-                </span>
-            </div>
-
-            <div class="grid gap-4 p-4 sm:p-6 md:grid-cols-3">
-                <div class="rounded-xl border border-line bg-surface-subtle p-5 text-left">
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Variant A · control</p>
-                    <p class="mt-2 text-3xl font-bold tabular-nums text-ink">68.4%</p>
-                    <p class="mt-1 text-xs text-ink-muted">Task completion · 95% CI 58–77%</p>
-                    <div class="mt-4 flex justify-between border-t border-line pt-3 text-[11px] tabular-nums text-ink-subtle">
-                        <span>Median 42s</span><span>4.2 clicks</span>
-                    </div>
-                </div>
-
-                <div class="relative rounded-xl border border-brand-500/40 bg-brand-50 p-5 text-left dark:bg-brand-950/40">
-                    <span class="absolute right-4 top-4 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-200">
-                        +24.7%
-                    </span>
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-400">Variant B · filter bar</p>
-                    <p class="mt-2 text-3xl font-bold tabular-nums text-ink">93.1%</p>
-                    <p class="mt-1 text-xs text-ink-muted">Task completion · 95% CI 85–97%</p>
-                    {#- The p-value was here and again in the Decision card two columns over. One
-                        reading of it is enough, and dropping it lets this row mirror the control
-                        card exactly, so the eye compares like with like instead of re-parsing a
-                        different pair of figures. -#}
-                    <div class="mt-4 flex justify-between border-t border-brand-500/20 pt-3 text-[11px] font-medium tabular-nums text-brand-700 dark:text-brand-400">
-                        <span>Median 19s</span><span>2.8 clicks</span>
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-line bg-surface-subtle p-5 text-left">
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Decision</p>
-                    <p class="mt-2 flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                        <i class="fa-solid fa-circle-check"></i> Evidence for the challenger
-                    </p>
-                    <p class="mt-2 text-xs leading-relaxed text-ink-muted">
-                        Sign test over 34 paired participants, p&nbsp;=&nbsp;0.004. Faster and more often
-                        completed. Not proof, but enough to act on.
-                    </p>
-                </div>
-            </div>
+    {#- The product on a stage. The walkthrough is the real app recorded end to end. Visitors who
+        ask for reduced motion get one still frame of the A/B report instead of a 34-second
+        animation they cannot pause. -#}
+    <div id="demo" class="mx-auto mt-16 max-w-[1080px] scroll-mt-24">
+        <div class="rounded-[28px] bg-gradient-to-b from-brand-400 via-brand-600 to-brand-900 p-3 sm:p-8 lg:p-10">
+            <picture>
+                <source srcset="{{ url_for('static', filename='img/demo-still.png') }}" media="(prefers-reduced-motion: reduce)">
+                <img src="{{ url_for('static', filename='img/demo.gif') }}" width="960" height="664" decoding="async"
+                     class="block h-auto w-full rounded-xl shadow-2xl ring-1 ring-black/10"
+                     alt="UX Testbench walkthrough: building a study, a participant doing an A/B task on a prototype, the A/B verdict report, and a first-click heatmap">
+            </picture>
         </div>
+    </div>
+</section>
+
+{#- ---------------------------------------------------------------- features -#}
+{#- Each card pairs one claim with the screen that proves it, and alternates sides so the eye
+    zig-zags down the page instead of reading one long column. -#}
+<section id="features" class="scroll-mt-24 px-6 pb-24">
+    <div class="mx-auto max-w-[1080px] space-y-8 sm:space-y-12">
+        {% for f in [
+            {'img': 'feature-task.webp', 'stage': 'from-brand-200 to-brand-500',
+             'title': 'Real tasks on your real prototypes',
+             'body': 'Share one link. Participants join with a code, an email address or anonymously,
+                      on a phone or a laptop, with no account and nothing to install. Every task
+                      records time, success, first click and click path.',
+             'alt': 'A participant doing a timed task on an HTML prototype, with the task prompt above it'},
+            {'img': 'feature-report.webp', 'stage': 'from-brand-500 to-brand-900',
+             'title': 'A verdict that can say “not yet”',
+             'body': 'Most tools run a t-test on eight people and print a winner. UX Testbench uses an
+                      exact sign test and bootstrapped intervals, and every verdict shows its p-value
+                      and how many paired participants it rests on.',
+             'alt': 'An A/B report with a decision rule and a verdict for each measure', 'verdicts': true},
+            {'img': 'feature-heatmap.webp', 'stage': 'from-brand-300 to-brand-700',
+             'title': 'See where people click first',
+             'body': 'First-click tests turn every click into a heatmap over your screenshot, split by
+                      desktop and mobile. Below five participants it shows each click on its own,
+                      because a density map from so few would invent a pattern.',
+             'alt': 'A first-click heatmap over a screenshot of an events page'},
+            {'img': 'feature-studio.webp', 'stage': 'from-brand-100 to-brand-400',
+             'title': 'Build in the browser, or in YAML',
+             'body': 'Chain surveys, tests and screeners into one study in the Studio, or edit the YAML
+                      and keep it in version control. A scratch copy is validated before anything goes
+                      live, so a typo cannot take a running study down.',
+             'alt': 'The study builder listing four modules with their state and responses'},
+        ] %}
+        <article class="grid items-center gap-8 rounded-[28px] bg-surface-subtle p-4 sm:p-5 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
+            <div class="overflow-hidden rounded-[20px] bg-gradient-to-br {{ f.stage }} p-4 sm:p-7 {% if loop.index is even %}lg:order-last{% endif %}">
+                <img src="{{ url_for('static', filename='img/' ~ f.img) }}" width="1280" height="800" loading="lazy" decoding="async"
+                     class="block h-auto w-full rounded-lg shadow-xl ring-1 ring-black/10" alt="{{ f.alt }}">
+            </div>
+            <div class="px-3 pb-6 sm:px-6 lg:py-6">
+                <h2 class="text-balance text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-ink sm:text-[2.5rem]">{{ f.title }}</h2>
+                <p class="mt-5 text-pretty text-[17px] leading-relaxed text-ink-muted">{{ f.body }}</p>
+                {% if f.verdicts %}
+                <ul class="mt-6 space-y-2.5 text-sm">
+                    {% for tone, icon, label in [
+                        ('text-ok', 'fa-circle-check', 'Evidence for the challenger'),
+                        ('text-warn', 'fa-circle-question', 'Not enough evidence yet'),
+                        ('text-bad', 'fa-circle-xmark', 'Evidence against the challenger')] %}
+                    <li class="flex items-center gap-2.5 font-medium text-ink"><i class="fa-solid {{ icon }} {{ tone }}"></i> {{ label }}</li>
+                    {% endfor %}
+                </ul>
+                <a href="{{ url_for('public.docs', page='statistics') }}"
+                   class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ink hover:underline">
+                    Read how the maths works <i class="fa-solid fa-arrow-right text-[11px]"></i>
+                </a>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
     </div>
 </section>
 
 {#- ---------------------------------------------------------------- methods -#}
-<section id="methods" class="scroll-mt-24 border-y border-line bg-surface-subtle px-6 py-20 sm:py-28">
-    <div class="mx-auto max-w-7xl">
-        <div class="max-w-2xl">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Research toolkit</p>
-            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                Five methods, one participant session.
-            </h2>
-            <p class="mt-4 text-pretty text-lg leading-relaxed text-ink-muted">
-                Chain a screener, a card sort, a prototype task and an exit survey into a single link.
-                No plugins, and nothing for a participant to install.
-            </p>
-        </div>
+<section id="methods" class="scroll-mt-24 px-6 pb-24">
+    <div class="mx-auto max-w-[1080px]">
+        <h2 class="max-w-2xl text-balance text-3xl font-semibold leading-[1.12] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+            Five methods, one participant session.
+            <span class="text-ink-subtle">No plugins, nothing to install.</span>
+        </h2>
 
-        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {#- Five methods and a sixth card that is not a method: it is what you do with the other
+                five. The heading says five, and the grid keeps that promise. -#}
             {% for m in [
                 {'icon': 'fa-list-check', 'name': 'Surveys and screeners',
-                 'desc': 'Likert scales, multi-choice, matrices and open text, with conditional skip logic.',
-                 'use': 'Qualifying participants, satisfaction, discovery.'},
+                 'desc': 'Likert scales, multiple choice, matrices and open text, with conditional skip logic.'},
                 {'icon': 'fa-code-compare', 'name': 'A/B prototype tests',
-                 'desc': 'Serve two HTML prototypes and record time on task, success, first click and click path.',
-                 'use': 'Choosing between two designs before build.'},
+                 'desc': 'Serve two HTML prototypes and record time on task, success, first click and click path.'},
                 {'icon': 'fa-table-cells-large', 'name': 'Card sorting',
-                 'desc': 'Open, closed or hybrid sorts, with similarity matrices and dendrograms.',
-                 'use': 'Naming and grouping navigation.'},
+                 'desc': 'Open, closed or hybrid sorts, with similarity matrices and dendrograms.'},
                 {'icon': 'fa-sitemap', 'name': 'Tree testing',
-                 'desc': 'Text-only hierarchies measuring directness, success and backtracking.',
-                 'use': 'Finding where people get lost in a menu.'},
+                 'desc': 'Text-only hierarchies measuring directness, success and backtracking.'},
                 {'icon': 'fa-bullseye', 'name': 'First-click tests',
-                 'desc': 'Static mockups with click heatmaps and first-click success.',
-                 'use': 'Checking whether the hierarchy reads.'},
+                 'desc': 'Screenshots with click heatmaps and first-click success, by device.'},
+                {'icon': 'fa-diagram-project', 'name': '…and any of them chained',
+                 'desc': 'Prerequisites and audience rules decide who sees which module, and when. One study instead of four.'},
             ] %}
-            <div class="group rounded-2xl border border-line bg-card p-6 transition-colors hover:border-brand-500/50">
-                <span class="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
+            <div class="rounded-2xl bg-surface-subtle p-5">
+                <span class="grid size-14 place-items-center rounded-full bg-surface text-lg text-ink">
                     <i class="fa-solid {{ m.icon }}"></i>
                 </span>
-                <h3 class="mt-5 text-base font-bold text-ink">{{ m.name }}</h3>
-                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ m.desc }}</p>
-                <p class="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
-                    <span class="font-semibold text-ink-muted">Use it for</span> · {{ m.use }}
-                </p>
+                <h3 class="mt-8 text-base font-semibold text-ink">{{ m.name }}</h3>
+                <p class="mt-2 text-[15px] leading-relaxed text-ink-muted">{{ m.desc }}</p>
             </div>
             {% endfor %}
-
-            {#- The heading says five and the grid used to hold six, because multi-module journeys
-                was filed as a sixth method. It is not one: it is what you do with the other five.
-                Counting it broke the promise in the heading one card later, on a page whose whole
-                argument is that the numbers are honest. It keeps its place in the row, stated as
-                the composition it is. -#}
-            <div class="rounded-2xl border border-dashed border-line bg-surface-subtle p-6">
-                <span class="grid size-11 place-items-center rounded-xl border border-line bg-card text-ink-muted">
-                    <i class="fa-solid fa-diagram-project"></i>
-                </span>
-                <h3 class="mt-5 text-base font-bold text-ink">…and any of them chained</h3>
-                <p class="mt-2 text-sm leading-relaxed text-ink-muted">
-                    Prerequisites and audience rules decide who sees which module, and when.
-                </p>
-                <p class="mt-4 border-t border-line pt-3 text-xs text-ink-subtle">
-                    <span class="font-semibold text-ink-muted">Use it for</span> · One study instead of four.
-                </p>
-            </div>
         </div>
     </div>
 </section>
 
-{#- ---------------------------------------------------------------- how it works -#}
-<section id="how" class="scroll-mt-24 px-6 py-20 sm:py-28">
-    <div class="mx-auto max-w-7xl">
-        <div class="mx-auto max-w-2xl text-center">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">How it works</p>
-            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                From idea to evidence in an afternoon.
-            </h2>
-        </div>
-
-        <ol class="mt-14 grid gap-10 md:grid-cols-3">
-            {% for s in [
-                {'n': '01', 'title': 'Write the study',
-                 'body': 'Use the Studio in your browser, or edit the YAML directly and keep it in
-                          version control. A scratch copy is validated before anything goes live, so
-                          a typo cannot take a running study down.'},
-                {'n': '02', 'title': 'Share one link',
-                 'body': 'Participants join with a code, an email address, or anonymously. It works
-                          on a phone, needs no account and no install, and they can stop and resume.'},
-                {'n': '03', 'title': 'Read the result',
-                 'body': 'Reports arrive with confidence intervals, a sign test and a verdict that is
-                          allowed to say "not enough evidence yet". Export the raw rows as CSV whenever
-                          you want them.'},
-            ] %}
-            <li class="relative">
-                <span class="font-mono text-sm font-bold text-brand-600 dark:text-brand-400">{{ s.n }}</span>
-                <h3 class="mt-3 text-xl font-bold text-ink">{{ s.title }}</h3>
-                <p class="mt-3 text-pretty leading-relaxed text-ink-muted">{{ s.body }}</p>
-            </li>
-            {% endfor %}
-        </ol>
-    </div>
-</section>
-
-{#- ---------------------------------------------------------------- statistics -#}
-<section class="border-y border-line bg-surface-subtle px-6 py-20 sm:py-28">
-    <div class="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2">
+{#- ---------------------------------------------------------------- self-host -#}
+<section id="trust" class="scroll-mt-24 px-6 pb-24">
+    <div class="mx-auto grid max-w-[1080px] items-center gap-10 rounded-[28px] bg-surface-subtle p-6 sm:p-10 lg:grid-cols-2 lg:gap-14">
         <div>
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Statistical honesty</p>
-            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                A tool that will tell you it does not know.
-            </h2>
-            <p class="mt-5 text-pretty text-lg leading-relaxed text-ink-muted">
-                Most testing tools run a t-test on eight participants and print a winner. Task times
-                are not normally distributed and eight people are not a sample, so that number is
-                theatre.
-            </p>
-            <p class="mt-4 text-pretty leading-relaxed text-ink-muted">
-                UX Testbench uses an exact sign test, bootstrapped intervals, and a verdict with three
-                states instead of two. Every verdict shows its p-value and how many paired participants
-                it rests on.
-            </p>
-            <a href="{{ url_for('public.docs', page='statistics') }}"
-               class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400">
-                Read how the maths works <i class="fa-solid fa-arrow-right text-[11px]"></i>
-            </a>
-        </div>
-
-        <div class="space-y-3">
-            {% for v in [
-                {'tone': 'text-emerald-600 dark:text-emerald-400', 'icon': 'fa-circle-check',
-                 'label': 'Evidence for the challenger', 'note': 'p = 0.004 over 34 pairs'},
-                {'tone': 'text-amber-600 dark:text-amber-400', 'icon': 'fa-circle-question',
-                 'label': 'Not enough evidence yet', 'note': 'p = 0.21 over 9 pairs — keep collecting'},
-                {'tone': 'text-red-600 dark:text-red-400', 'icon': 'fa-circle-xmark',
-                 'label': 'Evidence against the challenger', 'note': 'p = 0.012 over 28 pairs'},
-            ] %}
-            <div class="flex items-start gap-4 rounded-xl border border-line bg-card p-5">
-                <i class="fa-solid {{ v.icon }} mt-0.5 {{ v.tone }}"></i>
-                <div>
-                    <p class="font-semibold text-ink">{{ v.label }}</p>
-                    <p class="mt-0.5 text-sm tabular-nums text-ink-muted">{{ v.note }}</p>
-                </div>
-            </div>
-            {% endfor %}
-            <p class="pt-2 text-sm text-ink-subtle">
-                The middle one is the state most tools refuse to show you.
-            </p>
-        </div>
-    </div>
-</section>
-
-{#- ---------------------------------------------------------------- privacy -#}
-<section id="trust" class="scroll-mt-24 px-6 py-20 sm:py-28">
-    <div class="mx-auto max-w-7xl">
-        <div class="mx-auto max-w-2xl text-center">
-            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">Privacy first</p>
-            <h2 class="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            <h2 class="text-balance text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
                 Your research belongs to you.
             </h2>
-            <p class="mt-4 text-pretty text-lg leading-relaxed text-ink-muted">
+            <p class="mt-5 text-pretty text-[17px] leading-relaxed text-ink-muted">
                 No participant panel resold, no model trained on your data, and no analytics script
                 following the people who help you.
             </p>
+            <ul class="mt-7 space-y-4">
+                {% for icon, title, body in [
+                    ('fa-database', 'One database per study', 'Archiving a study is copying a file; deleting one leaves nothing behind.'),
+                    ('fa-ban', 'No third-party requests', 'With LOCAL_ASSETS=1, participant pages load nothing from a CDN.'),
+                    ('fa-scale-balanced', 'MIT licensed', 'Self-host it forever, for free. No seat count, no feature held back.')] %}
+                <li class="flex gap-4">
+                    <span class="grid size-10 flex-none place-items-center rounded-full bg-surface text-ink"><i class="fa-solid {{ icon }} text-sm"></i></span>
+                    <span><span class="block font-semibold text-ink">{{ title }}</span><span class="text-[15px] text-ink-muted">{{ body }}</span></span>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
 
-        <div class="mt-12 grid gap-5 md:grid-cols-3">
-            {% for t in [
-                {'icon': 'fa-database', 'title': 'One database per study',
-                 'body': 'Every study gets its own SQLite file. Archiving one is copying a file; deleting one leaves nothing behind.'},
-                {'icon': 'fa-ban', 'title': 'No third-party requests',
-                 'body': 'Run with LOCAL_ASSETS=1 and participant pages load nothing from a CDN, so no participant IP reaches anyone else.'},
-                {'icon': 'fa-scale-balanced', 'title': 'MIT licensed',
-                 'body': 'Self-host it forever, for free, on your own machine. No seat count and no feature held back.'},
-            ] %}
-            <div class="rounded-2xl border border-line bg-card p-6">
-                <span class="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400">
-                    <i class="fa-solid {{ t.icon }}"></i>
-                </span>
-                <h3 class="mt-5 text-base font-bold text-ink">{{ t.title }}</h3>
-                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ t.body }}</p>
-            </div>
-            {% endfor %}
-        </div>
-
-        {#- Self-host terminal -#}
-        <div class="mx-auto mt-12 max-w-3xl overflow-hidden rounded-2xl border border-line bg-slate-950">
+        {#- A console in both themes, on purpose: the literal slate here is an allowed one-off. -#}
+        <div class="overflow-hidden rounded-2xl bg-slate-950 shadow-xl shadow-slate-900/5">
             <div class="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
                 <span class="size-2.5 rounded-full bg-red-400"></span>
                 <span class="size-2.5 rounded-full bg-amber-400"></span>
                 <span class="size-2.5 rounded-full bg-emerald-400"></span>
                 <span class="ml-2 font-mono text-[11px] text-slate-400">self-host in a minute</span>
             </div>
-            <pre class="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed text-slate-300"><code><span class="text-slate-400"># clone, install, run</span>
-<span class="text-emerald-400">$</span> <span class="text-slate-300">git clone https://github.com/your-org/ux-testbench</span>
-<span class="text-emerald-400">$</span> <span class="text-slate-300">cd ux-testbench && pip install -r requirements.txt</span>
-<span class="text-emerald-400">$</span> <span class="text-slate-300">python -m testbench run</span>
+            <pre class="overflow-x-auto px-5 py-5 font-mono text-[12.5px] leading-relaxed text-slate-300"><code><span class="text-slate-400"># clone, install, run</span>
+<span class="text-emerald-400">$</span> git clone {{ repo }}
+<span class="text-emerald-400">$</span> cd ux-testbench && pip install -r requirements.txt
+<span class="text-emerald-400">$</span> python -m testbench run
 
 <span class="text-slate-400">  * Running on http://127.0.0.1:5000</span>
 <span class="text-slate-400">  * No database server, no container, no build step</span></code></pre>
@@ -391,21 +284,60 @@
     </div>
 </section>
 
+{#- ---------------------------------------------------------------- FAQ -#}
+<section id="faq" class="scroll-mt-24 px-6 pb-24">
+    <div class="mx-auto grid max-w-[1080px] gap-10 lg:grid-cols-[1.1fr_1fr]">
+        <div>
+            <p class="font-mono text-sm text-ink-subtle">// FAQ</p>
+            <h2 class="mt-3 text-3xl font-semibold leading-[1.12] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+                Questions? <span class="whitespace-nowrap text-ink-subtle">We have answers.</span>
+            </h2>
+            <p class="mt-4 text-ink-muted">
+                Anything else, <a href="{{ repo }}/issues" target="_blank" rel="noopener" class="font-medium text-ink underline underline-offset-4">open an issue on GitHub</a>.
+            </p>
+        </div>
+
+        <div class="space-y-3">
+            {% for q, a in [
+                ('Is UX Testbench really free?',
+                 'Yes. It is MIT licensed, so you can self-host it forever at no cost. The hosted version is free while it is in beta.'),
+                ('Can I use it for commercial research?',
+                 'Yes. The MIT licence allows commercial use, including running studies for clients.'),
+                ('What do participants need?',
+                 'Only the study link. It works on a phone, needs no account and no install, and participants can stop and resume later.'),
+                ('Where is the data stored?',
+                 'On your own server. Every study gets its own SQLite file, and with LOCAL_ASSETS=1 participant pages contact no third party at all.'),
+                ('How many participants do I need?',
+                 'Fewer than you might think for a direction, more than most tools admit for a decision. The report says "not enough evidence yet" until the sign test has enough paired participants to back a verdict.'),
+                ('How can I contribute?',
+                 'Open an issue or a pull request on GitHub. CONTRIBUTING.md in the repository explains how to run the tests and what a good change looks like.'),
+            ] %}
+            <details class="group rounded-xl bg-surface-subtle">
+                <summary class="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-medium text-ink [&::-webkit-details-marker]:hidden">
+                    {{ q }}
+                    <i class="fa-solid fa-plus text-sm text-ink-muted transition-transform group-open:rotate-45" aria-hidden="true"></i>
+                </summary>
+                <p class="px-5 pb-5 text-[15px] leading-relaxed text-ink-muted">{{ a }}</p>
+            </details>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
 {#- ---------------------------------------------------------------- final CTA -#}
 <section class="px-6 pb-24">
-    <div class="mx-auto max-w-5xl rounded-3xl border border-line bg-surface-subtle px-6 py-16 text-center sm:px-16">
-        <h2 class="text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Start your first study today.
+    <div class="mx-auto max-w-[1080px] rounded-[28px] bg-surface-subtle px-6 py-16 text-center sm:px-16">
+        <h2 class="text-balance text-3xl font-semibold tracking-[-0.03em] text-ink sm:text-[2.5rem]">
+            {{ 'Start your next study.' if user else 'Start your first study today.' }}
         </h2>
         <p class="mx-auto mt-4 max-w-xl text-pretty text-lg leading-relaxed text-ink-muted">
             Free while it is in beta, and free forever if you host it yourself.
         </p>
-        {#- Same shape as the hero, for the same reason: one filled button, and the alternative
-            route demoted to a link rather than a second slab of equal weight. -#}
+        {#- Same shape as the hero: one filled button, the alternative demoted to a link. -#}
         <div class="mt-8 flex flex-col items-center justify-center gap-4">
-            <a href="{{ url_for('auth.signup') }}"
+            <a href="{{ url_for('public.dashboard') if user else url_for('auth.signup') }}"
                class="inline-flex min-h-[3.25rem] w-full items-center justify-center rounded-xl bg-brand-600 px-8 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 sm:w-auto">
-                Create a free account
+                {{ 'Open your dashboard' if user else 'Create a free account' }}
             </a>
             <a href="{{ url_for('public.explore') }}"
                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-card hover:text-ink">
@@ -418,25 +350,26 @@
 </main>
 
 {#- ---------------------------------------------------------------- footer -#}
-<footer class="border-t border-line bg-surface-subtle px-6 py-14">
-    <div class="mx-auto max-w-7xl">
-        <div class="grid gap-10 md:grid-cols-4">
-            <div class="md:col-span-1">
-                <div class="flex items-center gap-2.5">
-                    <span class="grid size-8 place-items-center rounded-lg bg-brand-600 text-white">
-                        <i class="fa-solid fa-flask-vial text-xs"></i>
-                    </span>
-                    <span class="font-bold tracking-tight text-ink">UX Testbench</span>
+<footer class="bg-surface-subtle px-6 py-14">
+    <div class="mx-auto max-w-[1080px]">
+        <div class="grid gap-10 md:grid-cols-5">
+            <div class="md:col-span-2">
+                <div class="flex items-center gap-2.5 text-ink">
+                    <span class="text-brand-600 dark:text-brand-400">{{ mark }}</span>
+                    <span class="font-semibold tracking-tight">UX Testbench</span>
                 </div>
                 <p class="mt-4 max-w-xs text-pretty text-sm leading-relaxed text-ink-muted">
-                    Open-source usability testing and behavioural research, for teams who would rather
-                    know than guess.
+                    Open-source usability testing for teams who would rather know than guess.
                 </p>
+                <a href="{{ repo }}" target="_blank" rel="noopener" aria-label="UX Testbench on GitHub"
+                   class="mt-5 inline-grid size-11 place-items-center rounded-xl text-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink">
+                    <i class="fa-brands fa-github"></i>
+                </a>
             </div>
 
             {% for col in [
                 {'title': 'Product', 'links': [
-                    ('Methods', '#methods'), ('How it works', '#how'),
+                    ('Features', '#features'), ('Methods', '#methods'),
                     ('Demo study', url_for('web.home', slug='example')),
                     ('Public studies', url_for('public.explore'))]},
                 {'title': 'Resources', 'links': [
@@ -450,7 +383,7 @@
                     ('Report abuse', url_for('public.report'))]},
             ] %}
             <div>
-                <p class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ col.title }}</p>
+                <p class="text-sm font-semibold text-ink">{{ col.title }}</p>
                 <ul class="mt-4 space-y-2.5 text-sm">
                     {% for label, href in col.links %}
                     <li><a href="{{ href }}" class="text-ink-muted transition-colors hover:text-ink">{{ label }}</a></li>
@@ -467,8 +400,9 @@
     </div>
 </footer>
 
-{#- One primary at a time. The nav button is an outline while the hero form is on screen, and
-    becomes the filled brand button once that form scrolls away, so the page never shows two
+{#- One primary at a time. The nav button is an outline while the hero action (the sign-up form,
+    or the dashboard button when signed in) is on screen, and becomes the filled brand button once
+    it scrolls away, so the page never shows two
     equally weighted routes to /signup at the same moment.
 
     Progressive enhancement: with no JavaScript, or no IntersectionObserver, the nav button stays
@@ -476,7 +410,7 @@
 <script>
     (function () {
         var cta = document.getElementById('nav-cta');
-        var hero = document.getElementById('hero-email');
+        var hero = document.getElementById('hero-cta');
         if (!cta || !hero || !('IntersectionObserver' in window)) return;
 
         var outline = ['border', 'border-line', 'bg-card', 'text-ink', 'hover:bg-surface-subtle'];

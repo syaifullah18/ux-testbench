@@ -29,7 +29,7 @@
 
 {% macro error_banner(errors, t) -%}
 {% if errors %}
-<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-red-800 rounded-lg bg-red-50 border border-red-300 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900" role="alert">
+<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-bad-ink rounded-lg bg-bad-soft border border-bad-line" role="alert">
     <i class="fa-solid fa-circle-exclamation mt-1"></i><span>{{ t('error.banner') }}</span>
 </div>
 {% endif %}
@@ -41,8 +41,8 @@
     <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="{{ autocomplete }}"
            {% if placeholder %}placeholder="{{ placeholder }}"{% endif %} {% if required %}required{% endif %}
            {% if error or hint %}aria-describedby="{{ id }}-msg"{% endif %} {% if error %}aria-invalid="true"{% endif %}
-           class="{% if error %}bg-red-50 border-red-400 dark:bg-red-950/30{% else %}bg-card border-line{% endif %} min-h-11 border rounded-lg block w-full px-3.5 py-2.5 text-ink placeholder:text-ink-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-red-700 dark:text-red-400">{{ error }}</p>
+           class="{% if error %}bg-bad-soft border-bad{% else %}bg-card border-line{% endif %} min-h-11 border rounded-lg block w-full px-3.5 py-2.5 text-ink placeholder:text-ink-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-bad-ink">{{ error }}</p>
     {% elif hint %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-ink-subtle">{{ hint }}</p>{% endif %}
 </div>
 {%- endmacro %}

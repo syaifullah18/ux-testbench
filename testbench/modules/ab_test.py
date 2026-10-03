@@ -103,10 +103,10 @@ from flask import abort, jsonify, render_template, request, send_from_directory,
 
 from .. import questions as Q
 from .. import storage
+from ..heatmap import MOBILE_MAX_W
 from .base import ADVANCE, ModuleType
 
 ORDERS = {"rotate", "code_parity", "random", "fixed"}
-MOBILE_MAX_W = 767
 CLICK_PATH_MAX = 40
 GRADES = ("success", "assisted", "fail")
 

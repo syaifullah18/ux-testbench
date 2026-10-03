@@ -301,5 +301,32 @@ auth:
   reset_ok: Your password has been changed successfully.
   wrong_password: Incorrect current password.
   confirm_email_mismatch: The email does not match.
+first_click:
+  hint_first: Click where you would go first. Your first click completes the task.
+  hint_all: Click everywhere you would try, in order. Press Next when you are done.
+  count: "{n} clicks so far"
+  undo: Undo last click
+  image_alt: Screenshot for this task
+heatmap:
+  report_title: First-click results
+  none_finished: No participants have finished this module yet.
+  survey_title: Survey responses
+  counts: "{participants} participants, {clicks} clicks"
+  mode_label: Show
+  mode_heat: Heat
+  mode_dots: Dots
+  mode_image: Image only
+  device_label: Device
+  desktop: Desktop
+  mobile: "Mobile ({max} px or narrower)"
+  image_alt: "What participants saw for: {title}"
+  legend_high: "{v} or more"
+  legend: "Clicks per cell, smoothed over neighbouring cells. One cell is about {px} px square."
+  clipped: "Colour stops changing above {v} clicks per cell, so the densest 5% of the map is drawn at full strength. The single densest cell has {peak}."
+  min_n: "Fewer than {min} participants, so this shows each click on its own. A density map from so few clicks would suggest a pattern the data cannot support."
+  no_dots: Too many clicks to show one by one. Use the heat view.
+  excluded: "{n} clicks left out: they were made on a layout more than 10% wider or narrower than the rest, and moving them onto this one would place them where nobody clicked."
+  no_clicks: No clicks yet.
+  mean_first: "Average time to first click: {s}"
 card_sort:
   sort: Card Sorting

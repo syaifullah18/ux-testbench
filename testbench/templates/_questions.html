@@ -1,7 +1,7 @@
 {#- Renders one question from the question engine. Conditions on questions of the same page are
     toggled client-side through data-show-if; other conditions were already resolved server-side. -#}
 {% macro question(q, value, error, t, number=None, cond=None) -%}
-{% set boxed = 'border rounded-xl p-5 sm:p-6 ' ~ ('border-red-400' if error else 'border-line') %}
+{% set boxed = 'border rounded-xl p-5 sm:p-6 ' ~ ('border-bad' if error else 'border-line') %}
 {% set card = 'flex items-center gap-2.5 h-full px-3.5 py-2.5 border border-line rounded-lg cursor-pointer text-[14px] leading-snug hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/40 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 dark:has-[:checked]:bg-brand-950/60 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand/30' %}
 <fieldset class="{{ boxed }}" data-q="{{ q.id }}" {% if cond %}data-show-if='{{ cond|tojson }}'{% endif %}>
     <legend class="sr-only">{{ q.label }}</legend>
@@ -63,7 +63,7 @@
         {% endif %}
     {% endif %}
     </div>
-    {% if error %}<p class="mt-2.5 text-[13px] text-red-700">{{ t('error.' ~ error, max=q.max) }}</p>{% endif %}
+    {% if error %}<p class="mt-2.5 text-[13px] text-bad-ink">{{ t('error.' ~ error, max=q.max) }}</p>{% endif %}
 </fieldset>
 {%- endmacro %}
 

@@ -4,10 +4,10 @@
 
 {% block panel %}
 {% if config_error %}
-<div class="rounded-2xl border border-amber-300 bg-amber-50 p-5">
-    <p class="font-semibold text-amber-900 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> A project's YAML is broken</p>
-    <p class="text-sm text-amber-800">The previous working configuration is still running. Fix the file, then reload.</p>
-    <pre class="mt-3 text-xs bg-white/60 rounded-lg p-3 overflow-x-auto text-amber-900">{{ config_error }}</pre>
+<div class="rounded-2xl border border-warn-line bg-warn-soft p-5">
+    <p class="font-semibold text-warn-ink mb-1"><i class="fa-solid fa-triangle-exclamation"></i> A project's YAML is broken</p>
+    <p class="text-sm text-warn-ink">The previous working configuration is still running. Fix the file, then reload.</p>
+    <pre class="mt-3 text-xs bg-card rounded-lg p-3 overflow-x-auto text-warn-ink">{{ config_error }}</pre>
 </div>
 {% endif %}
 
@@ -21,7 +21,7 @@
     ] %}
     <div class="bg-card border border-line/80 rounded-2xl p-5 shadow-sm">
         <span class="text-xs font-semibold uppercase tracking-wider text-ink-subtle block mb-1">{{ label }}</span>
-        <div class="text-2xl font-bold tabular-nums {% if label in ('Disabled', 'Offline') and value %}text-red-600{% else %}text-ink{% endif %}">{{ value }}</div>
+        <div class="text-2xl font-bold tabular-nums {% if label in ('Disabled', 'Offline') and value %}text-bad{% else %}text-ink{% endif %}">{{ value }}</div>
         <span class="text-xs text-ink-subtle mt-1 block">{{ hint }}</span>
     </div>
     {% endfor %}

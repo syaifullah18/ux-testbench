@@ -8,18 +8,18 @@
 {% set p = row.p %}
 {% set offline = row.flags and row.flags.offline_at %}
 {% set listed = row.flags and row.flags.explore_approved_at %}
-<div class="bg-card border rounded-2xl p-5 sm:p-6 shadow-sm {% if offline %}border-red-300 bg-red-50/30{% else %}border-line/90{% endif %}">
+<div class="bg-card border rounded-2xl p-5 sm:p-6 shadow-sm {% if offline %}border-bad-line bg-bad-soft/30{% else %}border-line/90{% endif %}">
     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
         <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2 mb-1.5">
                 <h3 class="text-base font-bold text-ink">{{ p.name }}</h3>
                 <code class="text-[11px] bg-surface-subtle px-1.5 py-0.5 rounded">{{ p.slug }}</code>
                 <span class="text-[11px] font-bold px-2 py-0.5 rounded-full
-                    {% if p.status == 'live' %}bg-emerald-100 text-emerald-700
-                    {% elif p.status == 'draft' %}bg-amber-100 text-amber-700
+                    {% if p.status == 'live' %}bg-ok-soft text-ok-ink
+                    {% elif p.status == 'draft' %}bg-warn-soft text-warn-ink
                     {% else %}bg-line text-ink-muted{% endif %}">{{ p.status }}</span>
-                {% if offline %}<span class="text-[11px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">offline</span>{% endif %}
-                {% if listed %}<span class="text-[11px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">on /explore</span>{% endif %}
+                {% if offline %}<span class="text-[11px] font-bold bg-bad-soft text-bad-ink px-2 py-0.5 rounded-full">offline</span>{% endif %}
+                {% if listed %}<span class="text-[11px] font-bold bg-info-soft text-info-ink px-2 py-0.5 rounded-full">on /explore</span>{% endif %}
                 {% if not p.editable %}<span class="text-[11px] font-medium bg-surface-subtle text-ink-subtle px-2 py-0.5 rounded-full">read-only</span>{% endif %}
             </div>
             <p class="text-xs text-ink-subtle tabular-nums">
@@ -28,7 +28,7 @@
                 owner: {{ row.owners|join(', ') if row.owners else 'unclaimed' }}
             </p>
             {% if offline and row.flags.offline_reason %}
-            <p class="text-xs text-red-700 mt-2"><i class="fa-solid fa-circle-info"></i> {{ row.flags.offline_reason }}</p>
+            <p class="text-xs text-bad-ink mt-2"><i class="fa-solid fa-circle-info"></i> {{ row.flags.offline_reason }}</p>
             {% endif %}
             <a href="{{ url_for('web.home', slug=p.slug) }}" class="text-xs text-brand-600 dark:text-brand-400 underline mt-2 inline-block">Open participant view</a>
         </div>
@@ -45,7 +45,7 @@
             <form method="post" action="{{ url_for('platform.set_offline', slug=p.slug) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="online" value="1">
-                <button class="w-full min-h-11 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 whitespace-nowrap">
+                <button class="w-full min-h-11 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-ok-line text-ok-ink hover:bg-ok-soft whitespace-nowrap">
                     Put back online
                 </button>
             </form>
@@ -55,7 +55,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input name="reason" placeholder="Reason (internal)" maxlength="500"
                        class="text-xs px-2.5 py-2 rounded-lg border border-line w-40 focus:ring-2 focus:ring-brand/30 focus:outline-none">
-                <button class="min-h-11 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 whitespace-nowrap">
+                <button class="min-h-11 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-bad-line text-bad-ink hover:bg-bad-soft whitespace-nowrap">
                     Take offline
                 </button>
             </form>

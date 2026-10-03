@@ -40,7 +40,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="user_id" value="{{ m.user_id }}">
-                        <button class="min-h-10 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-red-300 text-red-700 hover:bg-red-50">Remove</button>
+                        <button class="min-h-10 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border border-bad-line text-bad-ink hover:bg-bad-soft">Remove</button>
                     </form>
                 </td>
             </tr>
@@ -85,7 +85,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="revoke_invite">
                         <input type="hidden" name="invitation_id" value="{{ inv.id }}">
-                        <button class="text-xs font-semibold text-ink-subtle hover:text-red-600 underline">Revoke</button>
+                        <button class="text-xs font-semibold text-ink-subtle hover:text-bad underline">Revoke</button>
                     </form>
                 </li>
                 {% endfor %}

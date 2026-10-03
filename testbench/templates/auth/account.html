@@ -14,8 +14,8 @@
 </div>
 
 {% if saved %}
-<div class="bg-emerald-50 text-emerald-800 p-4 rounded-lg text-[14px] mb-8 flex items-center gap-3">
-    <i class="fa-solid fa-check-circle text-emerald-600"></i> Settings saved successfully.
+<div class="bg-ok-soft text-ok-ink p-4 rounded-lg text-[14px] mb-8 flex items-center gap-3">
+    <i class="fa-solid fa-check-circle text-ok"></i> Settings saved successfully.
 </div>
 {% endif %}
 
@@ -25,7 +25,7 @@
             <a href="#profile" class="min-h-11 flex items-center px-3 rounded-lg bg-surface-subtle text-ink">Profile</a>
             <a href="#security" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Security</a>
             <a href="#sessions" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Sessions</a>
-            <a href="#danger" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 mt-4">Danger Zone</a>
+            <a href="#danger" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-bad-soft text-bad mt-4">Danger Zone</a>
         </nav>
     </div>
     
@@ -44,8 +44,8 @@
                 <div>
                     <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-name">Name</label>
                     <input id="ac-name" name="name" type="text" value="{{ user.name }}" required
-                           class="w-full border {{ 'border-red-400' if errors.name else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.name %}<p class="text-red-600 text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
+                           class="w-full border {{ 'border-bad' if errors.name else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                    {% if errors.name %}<p class="text-bad text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
                 </div>
                 <button type="submit" class="bg-brand-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-brand-700 text-[14px]">Save profile</button>
             </form>
@@ -60,20 +60,20 @@
                 <div>
                     <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-curr">Current password</label>
                     <input id="ac-pw-curr" name="current_password" type="password" required
-                           class="w-full border {{ 'border-red-400' if errors.current_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.current_password %}<p class="text-red-600 text-[13px] mt-1">{{ errors.current_password }}</p>{% endif %}
+                           class="w-full border {{ 'border-bad' if errors.current_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                    {% if errors.current_password %}<p class="text-bad text-[13px] mt-1">{{ errors.current_password }}</p>{% endif %}
                 </div>
                 <div>
                     <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-new">New password</label>
                     <input id="ac-pw-new" name="new_password" type="password" required minlength="10"
-                           class="w-full border {{ 'border-red-400' if errors.new_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.new_password %}<p class="text-red-600 text-[13px] mt-1">{{ errors.new_password }}</p>{% endif %}
+                           class="w-full border {{ 'border-bad' if errors.new_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                    {% if errors.new_password %}<p class="text-bad text-[13px] mt-1">{{ errors.new_password }}</p>{% endif %}
                 </div>
                 <div>
                     <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-conf">Confirm new password</label>
                     <input id="ac-pw-conf" name="confirm_password" type="password" required
-                           class="w-full border {{ 'border-red-400' if errors.confirm_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.confirm_password %}<p class="text-red-600 text-[13px] mt-1">{{ errors.confirm_password }}</p>{% endif %}
+                           class="w-full border {{ 'border-bad' if errors.confirm_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+                    {% if errors.confirm_password %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm_password }}</p>{% endif %}
                 </div>
                 <button type="submit" class="bg-brand-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-brand-700 text-[14px]">Update password</button>
             </form>
@@ -105,15 +105,15 @@
 
         <!-- Danger Zone -->
         <section id="danger" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-red-600 mb-4 pb-2 border-b border-red-200">Danger Zone</h2>
-            <div class="border border-red-200 rounded-xl p-5 bg-red-50/50">
+            <h2 class="text-lg font-bold text-bad mb-4 pb-2 border-b border-bad-line">Danger Zone</h2>
+            <div class="border border-bad-line rounded-xl p-5 bg-bad-soft/50">
                 <h3 class="font-bold text-ink mb-1 text-[15px]">Delete Account</h3>
                 <p class="text-[13px] text-ink-muted mb-4">
                     Deleting your account cannot be undone. Your name, email and sessions are removed, and
                     your entries in the platform audit log are kept but no longer linked to you.
                 </p>
                 {% if sole_owned %}
-                <div class="bg-card border border-red-200 rounded-lg p-3.5 mb-4">
+                <div class="bg-card border border-bad-line rounded-lg p-3.5 mb-4">
                     <p class="text-[13px] text-ink-muted mb-2">
                         You are the <strong>only owner</strong> of {{ sole_owned|join(', ') }}. Nobody else could
                         reach {{ 'them' if sole_owned|length > 1 else 'it' }} once your account is gone, so decide what happens:
@@ -131,8 +131,8 @@
                     <input type="hidden" name="action" value="delete_account">
                     <div>
                         <label class="block text-[13px] font-semibold text-ink-muted mb-1">To verify, type <strong>{{ user.email }}</strong> below</label>
-                        <input name="confirm_email" type="text" required class="w-full max-w-sm border border-line rounded-lg px-3 py-2 text-[14px] outline-none focus:border-red-400">
-                        {% if errors.confirm_email %}<p class="text-red-600 text-[13px] mt-1">{{ errors.confirm_email }}</p>{% endif %}
+                        <input name="confirm_email" type="text" required class="w-full max-w-sm border border-line rounded-lg px-3 py-2 text-[14px] outline-none focus:border-bad">
+                        {% if errors.confirm_email %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm_email }}</p>{% endif %}
                     </div>
                     {% if sole_owned %}
                     <label class="flex items-start gap-2 text-[13px] text-ink-muted max-w-sm">

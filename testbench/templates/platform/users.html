@@ -18,16 +18,16 @@
         <tbody class="divide-y divide-line">
         {% for row in rows %}
         {% set u = row.u %}
-        <tr class="{% if u.disabled_at %}bg-red-50/40{% endif %}">
+        <tr class="{% if u.disabled_at %}bg-bad-soft/40{% endif %}">
             <td class="px-5 py-3.5">
                 <p class="font-semibold text-ink">{{ u.name or '—' }}</p>
                 <p class="text-xs text-ink-subtle">{{ u.email }}</p>
             </td>
             <td class="px-5 py-3.5 space-x-1.5 whitespace-nowrap">
-                {% if u.disabled_at %}<span class="text-[11px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">disabled</span>{% endif %}
+                {% if u.disabled_at %}<span class="text-[11px] font-bold bg-bad-soft text-bad-ink px-2 py-0.5 rounded-full">disabled</span>{% endif %}
                 {% if u.is_platform_admin %}<span class="text-[11px] font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">admin</span>{% endif %}
-                {% if u.email_verified_at %}<span class="text-[11px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">verified</span>
-                {% else %}<span class="text-[11px] font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">unverified</span>{% endif %}
+                {% if u.email_verified_at %}<span class="text-[11px] font-medium bg-ok-soft text-ok-ink px-2 py-0.5 rounded-full">verified</span>
+                {% else %}<span class="text-[11px] font-medium bg-warn-soft text-warn-ink px-2 py-0.5 rounded-full">unverified</span>{% endif %}
             </td>
             <td class="px-5 py-3.5 text-ink-muted text-xs">
                 {{ row.projects|join(', ') if row.projects else '—' }}
@@ -41,7 +41,7 @@
                       {% if not u.disabled_at %}onsubmit="return confirm('Disable {{ u.email }}? They are signed out everywhere and cannot log in again.');"{% endif %}>
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="enable" value="{{ '1' if u.disabled_at else '0' }}">
-                    <button class="min-h-10 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border {% if u.disabled_at %}border-emerald-300 text-emerald-700 hover:bg-emerald-50{% else %}border-red-300 text-red-700 hover:bg-red-50{% endif %}">
+                    <button class="min-h-10 inline-flex items-center justify-center text-xs font-semibold px-3 rounded-lg border {% if u.disabled_at %}border-ok-line text-ok-ink hover:bg-ok-soft{% else %}border-bad-line text-bad-ink hover:bg-bad-soft{% endif %}">
                         {{ 'Enable' if u.disabled_at else 'Disable' }}
                     </button>
                 </form>

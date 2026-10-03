@@ -301,5 +301,32 @@ auth:
   reset_ok: Kata sandi Anda berhasil diubah.
   wrong_password: Kata sandi saat ini salah.
   confirm_email_mismatch: Email tidak cocok.
+first_click:
+  hint_first: Klik tempat yang akan Anda tuju pertama kali. Klik pertama Anda menyelesaikan tugas ini.
+  hint_all: Klik semua tempat yang akan Anda coba, secara berurutan. Tekan Berikutnya jika sudah selesai.
+  count: "{n} klik sejauh ini"
+  undo: Batalkan klik terakhir
+  image_alt: Tangkapan layar untuk tugas ini
+heatmap:
+  report_title: Hasil klik pertama
+  none_finished: Belum ada peserta yang menyelesaikan modul ini.
+  survey_title: Jawaban survei
+  counts: "{participants} peserta, {clicks} klik"
+  mode_label: Tampilkan
+  mode_heat: Kepadatan
+  mode_dots: Titik
+  mode_image: Gambar saja
+  device_label: Perangkat
+  desktop: Desktop
+  mobile: "Seluler ({max} px atau lebih sempit)"
+  image_alt: "Yang dilihat peserta untuk: {title}"
+  legend_high: "{v} atau lebih"
+  legend: "Klik per sel, dihaluskan dengan sel di sekitarnya. Satu sel kira-kira {px} px persegi."
+  clipped: "Warna berhenti berubah di atas {v} klik per sel, sehingga 5% bagian terpadat peta digambar dengan kekuatan penuh. Sel terpadat berisi {peak}."
+  min_n: "Peserta kurang dari {min}, jadi setiap klik ditampilkan sendiri-sendiri. Peta kepadatan dari klik sesedikit ini akan menyiratkan pola yang tidak didukung data."
+  no_dots: Klik terlalu banyak untuk ditampilkan satu per satu. Gunakan tampilan kepadatan.
+  excluded: "{n} klik tidak diikutkan: klik tersebut dibuat pada tata letak yang lebih lebar atau lebih sempit lebih dari 10% dibanding yang lain, dan memindahkannya ke tata letak ini akan menempatkannya di tempat yang tidak pernah diklik siapa pun."
+  no_clicks: Belum ada klik.
+  mean_first: "Rata-rata waktu hingga klik pertama: {s}"
 card_sort:
   sort: Sortir Kartu

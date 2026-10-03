@@ -54,3 +54,15 @@ def test_signup_no_longer_demands_the_password_twice(public_app):
     assert r.status_code == 200
     with public_app.app_context():
         assert users.get_user_by_email("one@example.org") is not None
+
+
+@pytest.mark.parametrize("mode", ["public", "internal"])
+def test_every_page_links_the_favicon_and_the_bare_path_serves_it(projects_dir, make_app, mode):
+    """Browsers request /favicon.ico on their own. Without its own route it fell through to the
+    study-slug route and redirected to /favicon.ico/, a page that does not exist."""
+    c = make_app(projects_dir, TESTBENCH_MODE=mode).test_client()
+    r = c.get("/favicon.ico")
+    assert r.status_code == 200 and r.mimetype in ("image/vnd.microsoft.icon", "image/x-icon")
+    for path in ("/", "/login", "/admin/"):
+        body = c.get(path, follow_redirects=True).get_data(as_text=True)
+        assert "favicon.svg" in body and "apple-touch-icon.png" in body, f"{mode} {path} has no favicon"
