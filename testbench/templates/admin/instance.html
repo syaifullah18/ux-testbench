@@ -49,7 +49,7 @@
           <span>Overview</span>
         </a>
         {% if is_public %}
-        <a href="{{ url_for('admin.instance', s='users') }}" {% if cur_sec == 'users' %}aria-current="page"{% endif %}>
+        <a href="{{ url_for('platform.user_list') }}" {% if cur_sec == 'users' %}aria-current="page"{% endif %}>
           <span>Users</span>
         </a>
         {% endif %}
@@ -57,7 +57,7 @@
           <span>Studies</span>
         </a>
         {% if is_public %}
-        <a href="{{ url_for('admin.instance', s='reports') }}" {% if cur_sec == 'reports' %}aria-current="page"{% endif %}>
+        <a href="{{ url_for('platform.report_list') }}" {% if cur_sec == 'reports' %}aria-current="page"{% endif %}>
           <span>Reports</span>
           {% if open_reports_count %}
           <span class="count">{{ open_reports_count }}</span>
