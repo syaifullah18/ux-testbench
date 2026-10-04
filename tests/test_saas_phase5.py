@@ -312,3 +312,13 @@ def test_operator_sidebar_lists_accounts_and_reports_inside_the_shell(projects_d
     assert "Make admin" in page
     reports = client.get("/admin/instance/?s=reports")
     assert reports.status_code == 200 and "Filed from /report" in reports.get_data(as_text=True)
+
+
+def test_new_study_cancel_goes_back_to_the_studies_list(projects_dir, make_app):
+    """Cancel rendered href="" (the URL was set in another template block), so it reloaded the wizard."""
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    make_user(app, "owner@example.org")
+    client = app.test_client()
+    login(app, client, "owner@example.org")
+    page = client.get("/app/new").get_data(as_text=True)
+    assert 'href="/app/" id="cancel"' in page
