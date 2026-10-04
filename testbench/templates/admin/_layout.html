@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {#- Theme before first paint, so a dark-theme viewer never sees a white flash. The viewer's
+      choice (shared with the public pages under tb-theme) wins; otherwise follow the system. -#}
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('tb-theme');
+        var dark = saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) { /* blocked storage: light theme */ }
+    })();
+  </script>
   <title>{% block title %}{% endblock %} · UX Testbench</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="32x32">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -40,7 +51,7 @@
 
 <a class="skip" href="#main">Skip to content</a>
 {% if self.shell() != 'none' %}
-<header class="topbar bg-ink text-white">
+<header class="topbar text-white">
   <div class="wrap flex h-14 items-center gap-8" style="padding-top:0">
     {% set is_public = config.get('TESTBENCH_MODE') == 'public' %}
     {% set ns = namespace(is_super=false) %}
@@ -72,6 +83,7 @@
       <a class="topnav" href="{{ url_for('admin.help') }}" {% if self.tab() == 'help' %}aria-current="page"{% endif %}>Help</a>
     </nav>
     <div class="ml-auto flex items-center gap-4 text-sm">
+      {% with toggle_on_nav = true %}{% include "_theme_toggle.html" %}{% endwith %}
       {% if is_public %}
         {% if user %}
         <div class="relative">
@@ -136,12 +148,12 @@
   {% endif %}
 
   {% for item in all_notices %}
-  <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-ink{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
+  <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-nav{% endif %} px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer" role="status">
     <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
     <span>{{ item.msg }}</span>
   </div>
   {% endfor %}
-  <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden is-hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
+  <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden is-hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-nav px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
