@@ -1309,6 +1309,18 @@ def instance():
     superadmin_set = bool(os.environ.get("SUPERADMIN_PASSCODE"))
     open_reports_count = moderation.count_open_reports() if is_public else 0
 
+    account_rows, report_rows, report_status = [], [], None
+    if is_public and cur_sec == "users":
+        from . import users as users_mod
+        for u in users_mod.list_users():
+            owned = [m["project_slug"] for m in users_mod.user_projects(u["id"])]
+            account_rows.append({"u": u, "projects": owned})
+    if is_public and cur_sec == "reports":
+        report_status = request.args.get("status") or None
+        if report_status not in moderation.REPORT_STATUSES:
+            report_status = None
+        report_rows = moderation.list_reports(report_status)
+
     return render_template(
         "admin/instance.html",
         is_allowed=True,
@@ -1329,6 +1341,11 @@ def instance():
         audit_actions=sorted(audit_actions),
         recent_audit=audit_entries[:5],
         open_reports_count=open_reports_count,
+        account_rows=account_rows,
+        report_rows=report_rows,
+        report_status=report_status,
+        report_statuses=moderation.REPORT_STATUSES,
+        me=auth.current_user() if is_public else None,
     )
 
 

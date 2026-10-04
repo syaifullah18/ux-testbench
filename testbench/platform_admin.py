@@ -45,18 +45,7 @@ def _shell(user, **kw):
 @bp.route("/")
 @require_platform_admin
 def home(user):
-    reg = registry()
-    all_users = users.list_users()
-    return render_template("platform/home.html", **_shell(
-        user,
-        counts={"users": len(all_users),
-                "verified": sum(1 for u in all_users if u["email_verified_at"]),
-                "disabled": sum(1 for u in all_users if u["disabled_at"]),
-                "projects": len(reg.projects),
-                "offline": len(moderation.offline_slugs())},
-        limits=limits.all_limits(),
-        recent=moderation.list_audit(limit=12),
-        config_error=reg.last_error))
+    return redirect(url_for("admin.instance", s="overview"))
 
 
 # ---------------------------------------------------------------- accounts
@@ -64,11 +53,7 @@ def home(user):
 @bp.route("/users")
 @require_platform_admin
 def user_list(user):
-    rows = []
-    for u in users.list_users():
-        owned = [m["project_slug"] for m in users.user_projects(u["id"])]
-        rows.append({"u": u, "projects": owned})
-    return render_template("platform/users.html", **_shell(user, rows=rows))
+    return redirect(url_for("admin.instance", s="users"))
 
 
 @bp.post("/users/<int:user_id>/disable")
@@ -79,14 +64,14 @@ def disable_user(user, user_id):
         abort(404)
     if target["id"] == user["id"]:
         flash("You cannot disable your own account.", "error")
-        return redirect(url_for("platform.user_list"))
+        return redirect(url_for("admin.instance", s="users"))
     enable = request.form.get("enable") == "1"
     users.update_user(user_id, disabled_at=None if enable else storage.now_iso())
     if not enable:
         users.revoke_all_sessions(user_id)   # a disabled account should lose its sessions now
     _audit(user, "user.enable" if enable else "user.disable", detail={"email": target["email"]})
     flash(f"{target['email']} {'enabled' if enable else 'disabled'}.", "success")
-    return redirect(url_for("platform.user_list"))
+    return redirect(url_for("admin.instance", s="users"))
 
 
 @bp.post("/users/<int:user_id>/admin")
@@ -97,13 +82,13 @@ def toggle_admin(user, user_id):
         abort(404)
     if target["id"] == user["id"]:
         flash("You cannot change your own admin rights.", "error")
-        return redirect(url_for("platform.user_list"))
+        return redirect(url_for("admin.instance", s="users"))
     grant = request.form.get("grant") == "1"
     users.update_user(user_id, is_platform_admin=1 if grant else 0)
     _audit(user, "user.admin_grant" if grant else "user.admin_revoke",
            detail={"email": target["email"]})
     flash(f"Platform admin {'granted to' if grant else 'revoked from'} {target['email']}.", "success")
-    return redirect(url_for("platform.user_list"))
+    return redirect(url_for("admin.instance", s="users"))
 
 
 # ---------------------------------------------------------------- studies
@@ -158,12 +143,7 @@ def set_explore(user, slug):
 @bp.route("/reports")
 @require_platform_admin
 def report_list(user):
-    status = request.args.get("status") or None
-    if status and status not in moderation.REPORT_STATUSES:
-        status = None
-    return render_template("platform/reports.html", **_shell(
-        user, reports=moderation.list_reports(status), status=status,
-        statuses=moderation.REPORT_STATUSES))
+    return redirect(url_for("admin.instance", s="reports", status=request.args.get("status") or None))
 
 
 @bp.post("/reports/<int:report_id>")
@@ -176,11 +156,10 @@ def handle_report(user, report_id):
                                  note=request.form.get("note", ""))
     _audit(user, "report.handle", detail={"report": report_id, "status": status})
     flash(f"Report #{report_id} marked {status}.", "success")
-    return redirect(url_for("platform.report_list"))
+    return redirect(url_for("admin.instance", s="reports"))
 
 
 @bp.route("/audit")
 @require_platform_admin
 def audit_list(user):
-    return render_template("platform/audit.html", **_shell(
-        user, entries=moderation.list_audit(limit=300)))
+    return redirect(url_for("admin.instance", s="audit"))

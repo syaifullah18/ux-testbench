@@ -299,15 +299,16 @@ def test_study_cloning_requires_view_permission_and_no_silent_fallback(projects_
 
 
 
-def test_operator_sidebar_opens_the_accounts_and_reports_pages(projects_dir, make_app):
-    """The Users and Reports links used to open the overview shell with an empty body."""
+def test_operator_sidebar_lists_accounts_and_reports_inside_the_shell(projects_dir, make_app):
+    """Users and Reports used to open the overview shell with an empty body."""
     app = make_app(projects_dir, TESTBENCH_MODE="public")
     make_user(app, "root@example.org", admin=True)
-    make_user(app, "someone@example.org")
+    make_user(app, "someone@example.org", verified=False)
     client = app.test_client()
     login(app, client, "root@example.org")
-    page = client.get("/admin/instance/?s=overview").get_data(as_text=True)
-    assert 'href="/app/admin/users"' in page and 'href="/app/admin/reports"' in page
-    users_page = client.get("/app/admin/users").get_data(as_text=True)
-    assert "someone@example.org" in users_page
-    assert client.get("/app/admin/reports").status_code == 200
+    page = client.get("/admin/instance/?s=users").get_data(as_text=True)
+    assert 'aria-label="Operator pages"' in page          # same shell as Overview and Studies
+    assert "someone@example.org" in page and "Unverified" in page
+    assert "Make admin" in page
+    reports = client.get("/admin/instance/?s=reports")
+    assert reports.status_code == 200 and "Filed from /report" in reports.get_data(as_text=True)

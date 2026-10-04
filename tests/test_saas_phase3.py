@@ -109,7 +109,7 @@ def test_report_is_stored_and_visible_to_platform_admin(projects_dir, make_app):
     make_user(app, email="admin@example.org", admin=True)
     admin_client = app.test_client()
     login(app, admin_client, "admin@example.org")
-    page = admin_client.get("/app/admin/reports").get_data(as_text=True)
+    page = admin_client.get("/app/admin/reports", follow_redirects=True).get_data(as_text=True)
     assert "bank password" in page
 
 

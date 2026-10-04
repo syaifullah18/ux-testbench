@@ -49,7 +49,7 @@
           <span>Overview</span>
         </a>
         {% if is_public %}
-        <a href="{{ url_for('platform.user_list') }}" {% if cur_sec == 'users' %}aria-current="page"{% endif %}>
+        <a href="{{ url_for('admin.instance', s='users') }}" {% if cur_sec == 'users' %}aria-current="page"{% endif %}>
           <span>Users</span>
         </a>
         {% endif %}
@@ -57,7 +57,7 @@
           <span>Studies</span>
         </a>
         {% if is_public %}
-        <a href="{{ url_for('platform.report_list') }}" {% if cur_sec == 'reports' %}aria-current="page"{% endif %}>
+        <a href="{{ url_for('admin.instance', s='reports') }}" {% if cur_sec == 'reports' %}aria-current="page"{% endif %}>
           <span>Reports</span>
           {% if open_reports_count %}
           <span class="count">{{ open_reports_count }}</span>
@@ -234,6 +234,110 @@
             </tbody>
           </table>
         </div>
+      </section>
+
+      {% elif cur_sec == 'users' %}
+      <!-- Accounts Section -->
+      <section class="panel" aria-labelledby="u-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="u-h">Users</h2>
+            <p>{{ account_rows|length }} accounts. Disabling one signs it out everywhere and blocks any new login.</p>
+          </div>
+        </header>
+        <div class="overflow-x-auto">
+          <table class="tbl w-full min-w-[720px]">
+            <thead>
+              <tr>
+                <th scope="col">Account</th>
+                <th scope="col">Status</th>
+                <th scope="col">Studies</th>
+                <th scope="col">Last login</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in account_rows %}
+              {% set u = row.u %}
+              <tr>
+                <td>
+                  <p class="t-strong">{{ u.name or '—' }}</p>
+                  <p class="t-meta">{{ u.email }}</p>
+                </td>
+                <td>
+                  <div class="flex flex-wrap gap-1.5">
+                    {% if u.disabled_at %}<span class="st st-fail">Disabled</span>{% endif %}
+                    {% if u.is_platform_admin %}<span class="st st-closed">Admin</span>{% endif %}
+                    {% if u.email_verified_at %}<span class="st st-live">Verified</span>{% else %}<span class="st st-draft">Unverified</span>{% endif %}
+                  </div>
+                </td>
+                <td class="text-xs">{{ row.projects|join(', ') if row.projects else '—' }}</td>
+                <td class="num text-xs">{{ u.last_login_at[:16].replace('T', ' ') if u.last_login_at else 'never' }}</td>
+                <td class="text-right">
+                  {% if me and u.id != me.id %}
+                  <div class="flex justify-end gap-2">
+                    <form method="post" action="{{ url_for('platform.disable_user', user_id=u.id) }}"
+                          {% if not u.disabled_at %}onsubmit="return confirm('Disable {{ u.email }}? They are signed out everywhere and cannot log in again.');"{% endif %}>
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="enable" value="{{ '1' if u.disabled_at else '0' }}">
+                      <button class="btn btn-secondary btn-sm">{{ 'Enable' if u.disabled_at else 'Disable' }}</button>
+                    </form>
+                    <form method="post" action="{{ url_for('platform.toggle_admin', user_id=u.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="grant" value="{{ '0' if u.is_platform_admin else '1' }}">
+                      <button class="btn btn-secondary btn-sm">{{ 'Revoke admin' if u.is_platform_admin else 'Make admin' }}</button>
+                    </form>
+                  </div>
+                  {% else %}
+                  <span class="t-meta">you</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center py-8 t-meta">No accounts yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {% elif cur_sec == 'reports' %}
+      <!-- Reports Section -->
+      <section class="panel" aria-labelledby="r-h">
+        <header class="panel-h">
+          <div>
+            <h2 id="r-h">Reports</h2>
+            <p>Filed from /report by anyone, including participants.</p>
+          </div>
+        </header>
+        <div class="panel-b flex flex-wrap gap-2 border-b border-line">
+          <a class="btn {{ 'btn-primary' if not report_status else 'btn-secondary' }} btn-sm" href="{{ url_for('admin.instance', s='reports') }}">All</a>
+          {% for st in report_statuses %}
+          <a class="btn {{ 'btn-primary' if report_status == st else 'btn-secondary' }} btn-sm" href="{{ url_for('admin.instance', s='reports', status=st) }}">{{ st }}</a>
+          {% endfor %}
+        </div>
+        {% for r in report_rows %}
+        <div class="panel-b border-b border-line">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="t-meta">#{{ r.id }}</span>
+            <span class="st {{ 'st-draft' if r.status == 'open' else 'st-closed' }}">{{ r.status }}</span>
+            {% if r.project_slug %}<span class="t-meta font-mono">/{{ r.project_slug }}</span>{% endif %}
+            <span class="t-meta">{{ r.at[:16].replace('T', ' ') }} UTC</span>
+          </div>
+          <p class="text-sm whitespace-pre-wrap">{{ r.reason }}</p>
+          {% if r.contact %}<p class="t-meta mt-2">Reporter contact: {{ r.contact }}</p>{% endif %}
+          <form method="post" action="{{ url_for('platform.handle_report', report_id=r.id) }}" class="mt-3 flex flex-col sm:flex-row gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input name="note" placeholder="What you did about it" maxlength="2000" value="{{ r.note }}" class="input flex-1 border border-line rounded-lg px-3 py-1.5 text-sm">
+            <select name="status" class="input border border-line rounded-lg px-3 py-1.5 text-sm">
+              {% for st in report_statuses %}<option value="{{ st }}" {% if st == r.status %}selected{% endif %}>{{ st }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-primary btn-sm">Save</button>
+          </form>
+        </div>
+        {% else %}
+        <div class="panel-b"><p class="t-meta">Nothing to review{% if report_status %} with status "{{ report_status }}"{% endif %}.</p></div>
+        {% endfor %}
       </section>
 
       {% elif cur_sec == 'audit' %}
