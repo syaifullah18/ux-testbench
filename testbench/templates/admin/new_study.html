@@ -374,7 +374,8 @@
   <div class="mt-6 flex items-center justify-between gap-4">
     <div>
       <button type="button" id="back" class="btn btn-secondary">Back</button>
-      <a href="{{ studies_url }}" id="cancel" class="btn btn-secondary">Cancel</a>
+      {#- studies_url is set in the header block, and block variables do not reach this one. -#}
+      <a href="{{ url_for('public.dashboard') if config.get('TESTBENCH_MODE') == 'public' else url_for('admin.overview') }}" id="cancel" class="btn btn-secondary">Cancel</a>
     </div>
     <div class="flex items-center gap-4">
       <p class="t-meta text-right" id="next-help" role="status"></p>
