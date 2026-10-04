@@ -87,12 +87,12 @@
       {% if is_public %}
         {% if user %}
         <div class="relative">
-          <button id="acct-btn" data-dropdown-toggle="acct-menu" data-dropdown-placement="bottom-end" class="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 hover:bg-white/10" aria-label="Account menu">
+          <button id="acct-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="acct-menu" class="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 hover:bg-white/10" aria-label="Account menu">
             <span class="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-sm font-bold">{{ user.name[:2]|upper if user.name else 'ME' }}</span>
             <span class="text-base font-medium">{{ user.name or user.email }}</span>
             <i class="fa-solid fa-chevron-down text-xs text-white/70" aria-hidden="true"></i>
           </button>
-          <div id="acct-menu" class="menu z-50 hidden w-64 text-ink">
+          <div id="acct-menu" class="menu absolute right-0 top-full mt-2 z-50 hidden w-64 text-ink">
             <div class="px-3 py-2">
               <p class="font-semibold">{{ user.name or 'Researcher' }}</p>
               <p class="t-meta">{{ user.email }}</p>
@@ -156,7 +156,21 @@
   <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden is-hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-nav px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 cursor-pointer"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+{#- Account menu. Flowbite used to open it, but the Content Security Policy only allows scripts
+    from this origin and the Tailwind CDN, so it never loaded and the menu never opened. -#}
+<script>
+  (function () {
+    var btn = document.getElementById('acct-btn'), menu = document.getElementById('acct-menu');
+    if (!btn || !menu) return;
+    function set(open) {
+      menu.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); set(menu.classList.contains('hidden')); });
+    document.addEventListener('click', function (e) { if (!menu.contains(e.target)) set(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { set(false); btn.focus(); } });
+  })();
+</script>
 <script src="{{ url_for('static', filename='admin/admin.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
