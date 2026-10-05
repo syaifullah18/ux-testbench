@@ -34,7 +34,7 @@
             {% if conf.allow_new_categories %}
             <div class="mb-4 flex items-center gap-2">
                 <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="border border-line bg-card text-ink rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand/40 focus:border-brand flex-1 outline-none">
-                <button type="button" aria-label="Add Category" onclick="addCategory()" class="btn btn-secondary px-4 py-2 text-sm font-semibold flex items-center gap-1.5"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add</button>
+                <button type="button" aria-label="Add Category" onclick="addCategory()" class="inline-flex min-h-11 items-center justify-center gap-1.5 font-semibold rounded-lg text-sm px-4 py-2 border border-line bg-card text-ink hover:bg-surface-subtle focus:outline-none focus:ring-4 focus:ring-brand/30"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add</button>
             </div>
             {% endif %}
             
@@ -54,7 +54,7 @@
     </div>
 
     <div class="flex justify-end pt-4 border-t border-line">
-        <button id="btn-done" type="button" class="btn btn-primary px-8" onclick="submitSort()">Complete Sort</button>
+        <button id="btn-done" type="button" class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-8 py-2.5 text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand/30 disabled:opacity-40 disabled:cursor-not-allowed" onclick="submitSort()">Complete Sort</button>
     </div>
 </div>
 
