@@ -71,6 +71,9 @@ def report():
 # ---------------------------------------------------------------- docs reader
 
 DOCS_DIR = Path(__file__).parent.parent / "docs"
+# Only these pages are served at /docs/. The rest of docs/ (plans, decision records, the
+# operations runbook) is for people working on or running the code, and stays in the repo.
+PUBLIC_DOCS = ("configuration", "statistics")
 SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
@@ -82,6 +85,8 @@ def doc_path(page):
     and compared against the docs directory, so neither `..` nor a symlink can escape it.
     """
     segments = [seg for seg in page.split("/") if seg]
+    if "/".join(segments) not in PUBLIC_DOCS:
+        return None
     if not segments or not all(SEGMENT_RE.match(seg) for seg in segments):
         return None
     candidate = (DOCS_DIR / "/".join(segments)).with_suffix(".md")
@@ -98,6 +103,8 @@ def doc_index():
     groups = {}
     for path in sorted(DOCS_DIR.rglob("*.md")):
         rel = path.relative_to(DOCS_DIR)
+        if rel.with_suffix("").as_posix() not in PUBLIC_DOCS:
+            continue
         group = rel.parent.as_posix() if rel.parent.as_posix() != "." else ""
         slug = rel.with_suffix("").as_posix()
         title = rel.stem.replace("-", " ").replace("_", " ")

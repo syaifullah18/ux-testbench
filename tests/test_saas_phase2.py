@@ -117,3 +117,12 @@ def test_public_pages_and_docs(projects_dir, make_app):
     for path in ("/about", "/privacy", "/terms", "/report", "/explore", "/docs/configuration"):
         resp = c.get(path)
         assert resp.status_code == 200, f"Failed for {path}"
+
+
+def test_internal_docs_are_not_served(projects_dir, make_app):
+    app = make_app(projects_dir, TESTBENCH_MODE="public")
+    c = app.test_client()
+    for page in ("plans/saas-readiness", "decisions/003-sqlite-per-project", "operations"):
+        assert c.get(f"/docs/{page}").status_code == 404, page
+    index = c.get("/docs/").get_data(as_text=True)
+    assert "/docs/statistics" in index and "/docs/plans/" not in index and "/docs/operations" not in index

@@ -77,24 +77,6 @@
     }
   });
 
-  // Account menu in the top bar
-  document.addEventListener('click', function (e) {
-    var btn = document.getElementById('acct-btn');
-    var menu = document.getElementById('acct-menu');
-    if (!btn || !menu) return;
-    var open = btn.contains(e.target) ? menu.classList.contains('hidden') : false;
-    if (!open && menu.contains(e.target)) return;
-    menu.classList.toggle('hidden', !open);
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-  document.addEventListener('keydown', function (e) {
-    var menu = document.getElementById('acct-menu');
-    if (e.key === 'Escape' && menu && !menu.classList.contains('hidden')) {
-      menu.classList.add('hidden');
-      document.getElementById('acct-btn').setAttribute('aria-expanded', 'false');
-    }
-  });
-
   // Clipboard copy
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-copy]');
