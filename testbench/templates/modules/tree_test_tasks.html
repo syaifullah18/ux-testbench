@@ -24,7 +24,7 @@
                             </div>
                         </details>
                     {% else %}
-                        <div class="cursor-pointer px-3 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/50 hover:text-brand-600 dark:text-brand-400 rounded-lg flex items-center gap-2 select-none leaf-node" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}'); selectNode('{{ node.id }}', '{{ node.label|replace("'", "\\'") }}')">
+                        <div class="cursor-pointer px-3 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/50 hover:text-brand-600 dark:hover:text-brand-400 rounded-lg flex items-center gap-2 select-none leaf-node" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}'); selectNode('{{ node.id }}', '{{ node.label|replace("'", "\\'") }}')">
                             <i class="fa-regular fa-file text-ink-subtle w-3 text-center"></i>
                             {{ node.label }}
                         </div>
@@ -62,20 +62,23 @@
         }
     }
 
+    // classList takes one class per argument; a string with a space throws.
+    const LEAF_HOVER = ['hover:bg-brand-50', 'dark:hover:bg-brand-950/50', 'hover:text-brand-600', 'dark:hover:text-brand-400'];
+
     function selectNode(nodeId, label) {
         selectedNodeId = nodeId;
-        
+
         // Update UI
         document.querySelectorAll('.leaf-node').forEach(el => {
             el.classList.remove('bg-brand', 'text-white');
-            el.classList.add('hover:bg-brand-50 dark:hover:bg-brand-950/50', 'hover:text-brand-600 dark:text-brand-400');
+            el.classList.add(...LEAF_HOVER);
             el.querySelector('i').classList.remove('text-white');
             el.querySelector('i').classList.add('text-ink-subtle');
         });
-        
-        const selectedEl = document.querySelector(`[data-node-id="${nodeId}"]`);
+
+        const selectedEl = document.querySelector(`.leaf-node[data-node-id="${CSS.escape(nodeId)}"]`);
         if (selectedEl) {
-            selectedEl.classList.remove('hover:bg-brand-50 dark:hover:bg-brand-950/50', 'hover:text-brand-600 dark:text-brand-400');
+            selectedEl.classList.remove(...LEAF_HOVER);
             selectedEl.classList.add('bg-brand', 'text-white');
             selectedEl.querySelector('i').classList.remove('text-ink-subtle');
             selectedEl.querySelector('i').classList.add('text-white');

@@ -103,10 +103,18 @@ function addCategory() {
     const container = document.getElementById('categories-container');
     const col = document.createElement('div');
     col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-xl border border-line p-3 h-full';
-    col.innerHTML = `
-        <h3 class="font-semibold text-ink mb-2 truncate" title="${name}">${name}</h3>
-        <div class="flex-1 overflow-y-auto space-y-2.5 category-dropzone p-1 rounded-lg min-h-[120px]" data-category="${name}" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
-    `;
+    // Built with DOM calls, not innerHTML: the name is typed by the participant, and a quote in
+    // it would break the data-category attribute the result is read from.
+    const h = document.createElement('h3');
+    h.className = 'font-semibold text-ink mb-2 truncate';
+    h.title = name;
+    h.textContent = name;
+    const zone = document.createElement('div');
+    zone.className = 'flex-1 overflow-y-auto space-y-2.5 category-dropzone p-1 rounded-lg min-h-[120px]';
+    zone.dataset.category = name;
+    zone.addEventListener('drop', drop);
+    zone.addEventListener('dragover', allowDrop);
+    col.append(h, zone);
     container.appendChild(col);
     input.value = '';
 }

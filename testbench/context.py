@@ -164,7 +164,8 @@ def is_super():
     if os.environ.get("TESTBENCH_MODE", "internal") == "public":
         from . import auth
         user = auth.current_user()
-        val = user is not None and bool(user.get("is_platform_admin") if isinstance(user, dict) else getattr(user, "is_platform_admin", False))
+        # User rows (sqlite3.Row, db.Row) are read by key; they have no .get or attributes.
+        val = user is not None and bool(user["is_platform_admin"])
         return SuperAdminBool(1 if val else 0)
     val = "*" in (cookie.get("tb_admin") or [])
     return SuperAdminBool(1 if val else 0)
