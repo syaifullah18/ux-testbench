@@ -275,12 +275,15 @@ def studio_dir(data_dir=None):
 
 
 def project_dirs(data_dir=None):
-    """Read-only folders from PROJECTS_DIRS, then the Studio folder (created if missing)."""
+    """Read-only folders from PROJECTS_DIRS, then the Studio folder (created if missing).
+
+    Absolute, because Flask's send_from_directory resolves a relative folder against the
+    package, not the working directory, and prototype files would 404."""
     raw = os.environ.get("PROJECTS_DIRS") or "projects"
-    dirs = [Path(p).expanduser() for p in raw.split(os.pathsep) if p]
+    dirs = [Path(p).expanduser().resolve() for p in raw.split(os.pathsep) if p]
     studio = studio_dir(data_dir)
     studio.mkdir(parents=True, exist_ok=True)
-    return dirs + [studio]
+    return dirs + [studio.resolve()]
 
 
 def studio_dir_of(dirs):

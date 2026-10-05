@@ -99,7 +99,10 @@
             </div>
             <hr class="my-1 border-line">
             <a href="{{ url_for('auth.account') }}">Account</a>
-            <a href="{{ url_for('auth.logout') }}">Sign out</a>
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="mi" role="menuitem">Sign out</button>
+            </form>
           </div>
         </div>
         {% else %}
