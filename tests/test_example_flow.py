@@ -105,7 +105,7 @@ def test_full_participant_and_admin_flow(projects_dir, make_app):
     assert "Picked as priority" in journey and "Could not find the date" in journey
     assert "&lt;section" not in journey and "&lt;table" not in journey  # report HTML must not be escaped
     ab = admin.get("/example/admin/m/events-ab/").get_data(as_text=True)
-    assert "Decision rule: B against A" in ab and "2/2" in ab  # B faster for both
+    assert "Is Search and filters better than Current list?" in ab and "2 of 2 people were faster" in ab  # B faster for both
     assert "&lt;div" not in ab and "&lt;table" not in ab
     assert "&lt;dl" not in admin.get("/example/admin/p/1").get_data(as_text=True)
     assert admin.get("/example/admin/m/events-ab/x/preview/B/").status_code == 200

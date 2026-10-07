@@ -1,0 +1,52 @@
+{% from "modules/_terms.html" import term, tterm %}
+{% set rs = rules_state %}
+{% set trial = t('report.trial_run') if rs.pilots == 1 else t('report.trial_runs') %}
+<section class="panel" aria-labelledby="rules-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="rules-h">{{ term(t('report.rules_title'), t('report.rules_tip')) }}</h2>
+      <p>
+        {% if rs.lock %}{{ t('report.locked_since', when=rs.lock.at[:16]|replace('T', ' ')) }} {{ t('report.locked_flow') if c.roles_played_by is defined else t('report.locked_ab') }}
+        {% else %}{{ tterm(t('report.not_locked_sub', term='@@TERM@@'), t('report.trial_run'), t('report.trial_tip')) }}
+        {% endif %}
+      </p>
+    </div>
+    {% if rs.lock %}
+      <span class="st st-ok"><i class="fa-solid fa-lock" aria-hidden="true"></i>{{ t('report.locked') }}</span>
+    {% else %}
+      <span class="st st-warn"><i class="fa-solid fa-lock-open" aria-hidden="true"></i>{{ t('report.not_locked') }}</span>
+    {% endif %}
+  </header>
+  <div class="panel-b space-y-3">
+    {% if rs.drift %}
+      <p class="err">{{ t('report.drift', fields=rs.drift|join(', ')) }}</p>
+    {% endif %}
+    {% if rs.lock and rs.pilots %}
+      <p class="t-meta">
+        {% if rs.show_pilot %}{{ tterm(t('report.pilots_shown', n=rs.pilots, term='@@TERM@@'), trial, t('report.trial_tip')) }} <a class="text-brand" href="?">{{ t('report.hide_them') }}</a>
+        {% else %}{{ tterm(t('report.pilots_hidden', n=rs.pilots, term='@@TERM@@'), trial, t('report.trial_tip')) }} <a class="text-brand" href="?pilot=1">{{ t('report.show_them') }}</a>
+        {% endif %}
+      </p>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.module_rules', slug=slug, mid=mid) }}" class="flex flex-wrap gap-2 items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if rs.lock %}
+        <label class="label" style="flex:1 1 240px">{{ t('report.unlock_reason') }}
+          <input class="input" name="reason" required maxlength="500">
+        </label>
+        <button class="btn btn-secondary btn-sm" name="action" value="unlock">{{ t('report.unlock') }}</button>
+      {% else %}
+        <button class="btn btn-primary btn-sm" name="action" value="lock">{{ t('report.lock_now') }}</button>
+      {% endif %}
+    </form>
+    {% if rs.history %}
+      <details class="text-sm"><summary class="cursor-pointer text-brand">{{ t('report.lock_history', n=rs.history|length) }}</summary>
+        <ul class="mt-1">
+          {% for h in rs.history %}
+            <li>{{ h.when[:16]|replace('T', ' ') }} UTC: {{ t('report.history_locked') if h.action == 'lock_rules' else t('report.history_unlocked') }}{% if h.reason %}, “{{ h.reason }}”{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
+  </div>
+</section>

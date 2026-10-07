@@ -35,6 +35,7 @@
             <div class="flex gap-1 text-xs">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-surface-subtle py-1"><strong>{{ n }}</strong></div><div class="text-ink-subtle mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
         </div>
     {% elif q.type == 'matrix' %}
+      {% if q.preset %}<p class="panel-b t-panel">{{ 'SUS' if q.preset == 'sus' else 'UMUX-Lite' }} score: <span class="num t-strong">{{ s.score|num(1) }}</span> of 100 ({{ s.score_n }} complete{% if s.grade %}, grade {{ s.grade }}{% endif %}). <span class="t-meta">{{ q.preset_note }}.</span></p>{% endif %}
         <div class="overflow-x-auto">
         <table class="tbl" style="min-width:640px">
             <thead><tr>

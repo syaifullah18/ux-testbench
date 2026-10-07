@@ -92,6 +92,9 @@ runner:
   show: Show task
   your_answer: Your answer
   submit: Submit answer
+  stuck: "Can't finish"
+  stuck_title: "Can't finish this task?"
+  stuck_confirm: "Yes, I can't finish it"
   gave_up: I couldn't find it
   back: Keep looking
   ease_q: How easy was that task?
@@ -150,9 +153,9 @@ admin:
   n_finished: "{n} finished responses"
   n_runs: "{n} completed runs"
   ab_note: Tasks without an answer key count once graded on the participant page.
-  rule_title: "Decision rule: {challenger} against {baseline}"
-  rule_pairs: "Based on {n} participants who tried both."
-  rule_indicative: "Fewer than {min} participants, so treat this as indicative."
+  rule_title: "Is {challenger} better than {baseline}?"
+  rule_pairs: "Based on {n} people who tried both designs."
+  rule_indicative: "Fewer than the {min} people planned, so this is an early result that may still change."
   rule_faster: "Total task time is shorter on {challenger} for most participants"
   rule_success: "Task success on {challenger} is not lower"
   rule_survey: "Mean of {qs} rises by at least {gain}"
@@ -330,3 +333,162 @@ heatmap:
   mean_first: "Average time to first click: {s}"
 card_sort:
   sort: Card Sorting
+report:
+  details: Details for researchers
+  people: People
+  design: Design
+  task: Task
+  group: Group
+  clear_yes: a clear difference
+  clear_no: could still be chance
+  early_result: Early result
+  early_result_tip: Fewer people than planned have taken part, so this result may still change.
+  verdict_yes: 'Yes: {design} is clearly better on every measure set before testing.'
+  verdict_too_few: Too few people have tried both designs to say yet.
+  verdict_not_yet: 'Not yet: we can''t say {design} is better than {baseline} on every measure.'
+  col_question: Question
+  col_saw: What we saw
+  col_difference: Difference
+  col_answer: Answer
+  chk_faster: Faster on {design}
+  chk_faster_sub: Total time to finish all tasks
+  chk_success: More people did the task correctly
+  chk_success_sub: All tasks together
+  chk_first_click: Clicked the right place first
+  chk_first_click_sub: Did people know where to start? For context; it does not change the answer above
+  chk_survey: Rated higher ({q})
+  chk_survey_sub: Question asked after each design
+  faster_people: '{n} of {total} people were faster on {design}'
+  fc_better: people did better on {design}; {clear}
+  likely_range: Likely range
+  likely_range_tip: The likely range of the true difference (95% interval). If the whole range sits on one side of zero, the difference is clear.
+  range: '{a} to {b}'
+  early_sign: 'Early sign: {design} ahead'
+  yes_better: Yes, clearly better
+  no_worse: No, clearly worse
+  cant_tell: Can't tell yet
+  yes_faster: Yes, clearly faster
+  no_slower: No, clearly slower
+  answer_note: An answer is only "clearly" yes or no when the difference is too big to be chance.
+  ease_title: How easy people found it
+  ease_sub: A score out of 100 from a short, standard set of questions people answered. Higher is better; 68 is about average.
+  ease_higher: People rated {design} {points} points higher than {baseline}.
+  ease_lower: People rated {design} {points} points lower than {baseline}.
+  ease_clear: This is a clear difference.
+  ease_chance: With this many people the difference could still be chance.
+  col_asked: Asked
+  col_score: Score out of 100
+  col_rating: Rating
+  after_each: After each design
+  at_end: At the end
+  everyone: Everyone
+  grade_excellent: Excellent
+  grade_very_good: Very good
+  grade_good: Good
+  grade_ok: OK
+  grade_below: Below average
+  grade_poor: Poor
+  grade_very_poor: Very poor
+  conf_title: Signs of confusion
+  conf_sub: How often people went back, clicked things that do nothing or hit errors. Lower is better.
+  conf_back: Went back to a page already seen
+  conf_misclicks: Clicked something that does nothing
+  conf_errors: Got an error message
+  conf_lostness: How lost they were (0 = straight there)
+  verb_back: went back to earlier pages
+  verb_misclicks: clicked things that do nothing
+  verb_errors: hit error messages
+  verb_lostness: got lost
+  and: ' and '
+  conf_less: On {design}, people clearly {what} less often than on {baseline}.
+  conf_less_more: On {design}, people clearly {what} less often than on {baseline}, but {more} more often.
+  conf_more: On {design}, people clearly {what} more often than on {baseline}.
+  conf_none: No clear difference in confusion between {design} and {baseline} yet.
+  task_title: Task by task
+  task_sub: Each task, design by design.
+  col_correct: Did it correctly
+  typical_time: Typical time
+  typical_tip: 'The median: half of the people took less time than this, half took more.'
+  how_easy: How easy, 1 to 7
+  how_easy_tip: Right after each task, people rate how easy it was from 1 (very difficult) to 7 (very easy).
+  gave_up: Gave up
+  first_click: First click
+  first_click_tip: The first thing a person clicked in the task. A wrong first click often means the page did not show where to start.
+  why_task: 'Why this task: {probe}'
+  on_target: '{pct} on target'
+  wrong: 'Wrong: {list}'
+  typical_total: Typical total, all tasks
+  device_title: By screen size
+  device_sub: Phone or small screen ({px} px wide or less) against larger screens. Groups under 5 people are too small to read.
+  desktop: Large screen
+  mobile: Phone
+  too_few: Too few to read
+  group_title: By group
+  group_sub: The same results split by group (for example by role). Groups are small, so read these as hints, not conclusions.
+  col_correct_of: '{design}: correct'
+  col_time_of: '{design}: typical time'
+  time_saved_on: Time saved on {design}
+  order_title: Does the order matter?
+  order_sub: Typical total time, grouped by which design people saw first. People can do better on the second design just because they practised on the first.
+  saw_first: Saw first
+  no_order: No order data yet
+  order_warn: 'Check the order: the result changes depending on which design people saw first. {design} was {a} for people who saw {baseline} first ({na} people), but {b} for people who saw it first ({nb} people). Practice on the first design may be helping the second. With few people this can be chance; check individual sessions before trusting the overall result.'
+  secs_faster: '{s}s faster'
+  secs_slower: '{s}s slower'
+  pref_title: Which design people preferred
+  pref_sub: 'Asked at the end: which one would you use?'
+  survey_title: Questions after each design
+  survey_sub: Average on a 1 to 7 scale.
+  col_q: Question
+  compared_with: '{design} compared with {baseline}'
+  words_title: In their own words
+  words_sub: What people wrote.
+  comments: Open comments
+  answers: '{n} answers'
+  rules_title: Rules fixed before testing
+  rules_tip: What counts as success, and how designs are compared, are fixed when the study goes live, so they cannot be adjusted after seeing results. Researchers call this pre-registration.
+  locked_since: Locked since {when} UTC.
+  locked_ab: The designs, tasks, correct answers, goals, first-click targets and how designs are compared can no longer change, so results cannot be adjusted after the fact.
+  locked_flow: The flows (steps, roles, pages, goals) and how they are compared can no longer change, so results cannot be adjusted after the fact.
+  not_locked_sub: Not locked. Rules lock when the study goes live; until then every session counts as a {term}.
+  locked: Locked
+  not_locked: Not locked
+  drift: The setup changed after the lock ({fields}). Answers are withheld until the change is undone, or the rules are unlocked and locked again.
+  trial_run: trial run
+  trial_runs: trial runs
+  trial_tip: Sessions from before the rules were fixed, usually the team trying the study out. They are left out of results. Researchers call these pilot sessions.
+  pilots_hidden: '{n} {term} from before the lock left out.'
+  show_them: Show them
+  pilots_shown: Including {n} {term} from before the lock; no answer is final.
+  hide_them: Hide them
+  unlock_reason: Reason to unlock (kept in the audit log)
+  unlock: Unlock rules
+  lock_now: Lock rules now
+  lock_history: Lock history ({n})
+  history_locked: Locked
+  history_unlocked: Unlocked
+  flow_title: Flow structure
+  flow_sub: How each flow is built, before anyone tries it. Fewer steps and fewer handoffs (work passed from one role to another) usually mean less waiting.
+  col_flow: Flow
+  col_steps: Steps
+  col_handoffs: Handoffs
+  col_roles: Roles
+  col_cycle: Whole process today
+  baseline: today's flow
+  hours: '{h} h'
+  flow_vs: '{design} against {baseline}'
+  flow_vs_sub: '{n} people ran both flows. Only totals are compared; the flows have different steps.'
+  work_time: Time people spent working
+  finished_faster: '{n} of {total} people finished faster with {design}.'
+  saved: 'Typical time saved: {t} per run.'
+  saved_share: 'Typical time saved: {t} per run, which is {pct}% of the {h} hours the whole process takes today; most of that time is waiting between roles.'
+  all_steps: Finished every step correctly
+  range_diff: '(likely range of the difference: {a} to {b})'
+  steps_title: Step by step
+  steps_sub: Where time goes and where people struggle, step by step. Time runs from opening the step to finishing it.
+  col_step: Step
+  col_role: Role
+  col_done: Done correctly
+  col_back: Went back
+  col_err: Error messages
+  runs_line: '{design}: {n} runs, typical total {t}'

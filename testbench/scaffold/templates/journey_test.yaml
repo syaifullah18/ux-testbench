@@ -1,0 +1,21 @@
+type: journey_test
+title: Current flow against proposed flow
+minutes: 15
+intro: >-
+  You will play each role in a work flow, step by step. Each step ends when you complete it.
+variants:
+  current:
+    label: Current flow
+    cycle_time_hours: 48            # optional: total elapsed time in production, for context
+    steps:
+      - { id: submit, role: vendor, file: prototypes/variant-a.html, goal: submitted, prompt: Submit the update. }
+      - { id: verify, role: verificator, file: prototypes/variant-a.html, goal: verified, prompt: Verify it. }
+  proposed:
+    label: Proposed flow
+    steps:
+      - { id: submit, role: vendor, file: prototypes/variant-b.html, goal: submitted, prompt: Submit the update. }
+baseline: current
+order: rotate
+roles_played_by: same_participant
+decision_rule:
+  planned_participants: 8

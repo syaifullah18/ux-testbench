@@ -63,6 +63,20 @@
           <div class="row-main">
             <p class="row-title">{{ item.title }}</p>
             <p class="t-meta">{{ item.meta }}</p>
+            {% if item.findings %}
+              <details class="text-sm mt-1"><summary class="cursor-pointer text-brand">Show {{ item.findings|length }} finding{{ '' if item.findings|length == 1 else 's' }}</summary>
+                <ul class="mt-1 space-y-2">
+                  {% for f in item.findings %}
+                    <li>
+                      <span class="st {{ 'st-fail' if f.severity == 'error' else 'st-warn' }}">{{ 'Must fix' if f.severity == 'error' else 'Check' }}</span>
+                      <span class="mono">{{ f.file }}</span>{% if f.variant %} ({{ f.module }}, variant {{ f.variant }}){% endif %}: {{ f.message }}
+                      {% if f.snippet %}<code class="block t-meta mono">{{ f.snippet }}</code>{% endif %}
+                      <span class="t-meta block">Fix: {{ f.fix }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </details>
+            {% endif %}
           </div>
           <div class="row-state">
             {% if item.status == 'pass' %}

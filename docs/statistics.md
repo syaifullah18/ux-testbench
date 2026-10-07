@@ -12,6 +12,12 @@ The Sign Test is beautifully simple: it only cares if Variant B was *better* tha
 
 By throwing away the magnitude, we throw away the effect of extreme outliers. One participant getting lost and taking 5 minutes to complete a 10-second task will completely skew a t-test. The Sign Test simply counts it as a single "B was worse" event.
 
+### The Wilcoxon signed-rank test, alongside
+
+The report also shows the **Wilcoxon signed-rank test** for total time. It ranks the size of each person's difference, so a large gain counts for more than a small one, and it usually needs fewer people than the sign test to detect a consistent effect. Zero differences are dropped and tied differences share their average rank. Up to 25 non-zero pairs the p-value is exact (the full distribution of the rank sum given those ranks); above 25 it uses the normal approximation with tie and continuity corrections, and the report says so. The effect size is the matched-pairs rank-biserial correlation `r = (W+ − W−) / (W+ + W−)`: +1 means every person was faster on the challenger, 0 means no tendency.
+
+The sign test stays the default for the verdict because it is the most robust. Set `decision_rule.time_test: wilcoxon` to let the Wilcoxon p-value decide instead. Choose before data comes in: the setting is part of the locked rules.
+
 ## 2. Why 8 Participants Isn't Enough
 
 The Sign Test requires a minimum number of consistent observations to reach statistical significance. 

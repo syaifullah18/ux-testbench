@@ -22,7 +22,7 @@ import yaml
 from flask import (Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request,
                    send_from_directory, session as cookie, url_for)
 
-from . import db, filestore, limits, passcodes, storage
+from . import db, filestore, limits, locks, passcodes, storage
 from .config import SLUG_RE, ID_RE, RESERVED_SLUGS, Problems, env_prefix, load_project
 from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import available as available_locales, translator
@@ -87,7 +87,12 @@ def trial(project_dir, slug, writes=None, deletes=()):
             (dst / rel).write_text(text, encoding="utf-8")
         for rel in deletes:
             (dst / rel).unlink(missing_ok=True)
-        load_project(dst, MODULE_TYPES, problems)
+        loaded = load_project(dst, MODULE_TYPES, problems)
+        if not problems and loaded and db.study_exists(slug):
+            # A study that went live keeps the rules it was pre-registered with.
+            with storage.connect(slug) as conn:
+                for msg in locks.violations(conn, loaded):
+                    problems.add(msg)
         tmp_str = str(Path(tmp))
         return [p.replace(tmp_str + "/", "").replace(tmp_str + "\\", "") for p in problems]
 
@@ -133,6 +138,11 @@ def reload():
 def editable_files(project_dir):
     files = ["project.yaml"] + sorted(f"modules/{p.name}" for p in (project_dir / "modules").glob("*.yaml"))
     return files
+
+
+STUDIO_KEEP_TASK_KEYS = ("goals", "end_on_goal", "first_click")
+STUDIO_KEEP_MODULE_KEYS = ("segments",)
+FORM_TYPES = {"ab_test", "survey", "tree_test", "card_sort", "first_click"}   # types with a Studio form
 
 
 def check_editable_rel(rel):
@@ -406,6 +416,7 @@ MODULE_TYPE_LABELS = {
     "survey": "Survey",
     "ab_test": "A/B test",
     "first_click": "First click",
+    "journey_test": "Journey test",
     "card_sort": "Card sort",
     "tree_test": "Tree test",
 }
@@ -827,7 +838,7 @@ def module_new(slug):
     data = read_project_yaml(project.dir)
     data["modules"] = list(data.get("modules") or []) + [mid]
     writes = {"project.yaml": dump_yaml(data), f"modules/{mid}.yaml": template}
-    if mtype == "ab_test":
+    if mtype in ("ab_test", "journey_test"):
         for name in ("variant-a.html", "variant-b.html"):
             if not (project.dir / "prototypes" / name).exists():
                 writes[f"prototypes/{name}"] = (SCAFFOLD / "templates" / name).read_text(encoding="utf-8")
@@ -932,8 +943,12 @@ def module_to_ui_data(mid, m, data):
                 "options": options_str,
                 "accept": [str(a) for a in accept_list],
                 "probe": str(t.get("probe") or ""),
+                # Settings Studio has no form for yet travel through untouched.
+                "keep": {k: t[k] for k in STUDIO_KEEP_TASK_KEYS if k in t},
+                "noFields": bool(t.get("goals")) and not t.get("fields"),
             })
         out["tasks"] = tasks
+        out["keepModule"] = {k: data[k] for k in STUDIO_KEEP_MODULE_KEYS if k in data}
         out["ease"] = bool(data.get("ease_question", True))
 
         def norm_qs(qs):
@@ -945,7 +960,9 @@ def module_to_ui_data(mid, m, data):
                 opts_str = format_options_or_rows(q.get("options"))
                 res.append({
                     "id": str(q.get("id") or ""),
-                    "type": str(q.get("type") or "scale"),
+                    # A standard questionnaire (SUS, UMUX-Lite) is written back as its preset.
+                    "preset": str(q["preset"]) if q.get("preset") else "",
+                    "type": str(q.get("type") or ("matrix" if q.get("preset") else "scale")),
                     "label": str(q.get("label") or ""),
                     "required": bool(q.get("required", True)),
                     "points": int(q.get("points") or 5),
@@ -962,7 +979,8 @@ def module_to_ui_data(mid, m, data):
         rule = data.get("decision_rule") or {}
         sqs = list(rule.get("survey_questions") or [])
         out["rule"] = {
-            "min": int(rule.get("min_participants", 8)),
+            "min": int(rule.get("planned_participants", rule.get("min_participants", 8))),
+            "timeTest": str(rule.get("time_test") or "sign"),
             "question": str(sqs[0]) if sqs else "",
             "gain": float(rule.get("min_survey_gain", 0.5)),
         }
@@ -1170,6 +1188,9 @@ def module_edit(slug, mid):
 
     m_obj = project.modules.get(mid)
     m_type = data.get("type") or (m_obj.type if m_obj else "ab_test")
+    if m_type not in FORM_TYPES:
+        # No form for this type (journey_test): edit its YAML directly.
+        return redirect(url_for("studio.edit", slug=slug, file=rel))
     initial_data = module_to_ui_data(mid, m_obj, data)
 
     # Available prototype files

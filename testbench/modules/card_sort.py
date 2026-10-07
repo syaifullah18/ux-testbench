@@ -46,9 +46,9 @@ class CardSort(ModuleType):
         c["allow_new_categories"] = bool(raw.get("allow_new_categories", not bool(c["categories"])))
         c["instructions"] = str(raw.get("instructions", "Sort the cards into categories."))
         
-        c["pre"] = Q.normalize(raw.get("pre", []), scope, "pre")
-        c["post"] = Q.normalize(raw.get("post", []), scope, "post")
-        c["final"] = Q.normalize(raw.get("final", []), scope, "final")
+        c["pre"] = Q.normalize(raw.get("pre", []), scope, "pre", locale=getattr(self.m.project, "locale", None))
+        c["post"] = Q.normalize(raw.get("post", []), scope, "post", locale=getattr(self.m.project, "locale", None))
+        c["final"] = Q.normalize(raw.get("final", []), scope, "final", locale=getattr(self.m.project, "locale", None))
 
         all_q = c["pre"] + c["post"] + c["final"]
         q_ids = [q["id"] for q in all_q]

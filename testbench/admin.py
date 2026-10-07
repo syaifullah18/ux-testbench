@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session as cookie, url_for
 
-from . import filestore, passcodes, storage
+from . import filestore, locks, passcodes, preflight, storage
 from .context import Ctx, is_admin, is_super, can_edit
 from .i18n import translator
 from .web import get_project, registry
@@ -275,13 +275,28 @@ def build_study_dashboard_data(ctx, project):
             "status": "pass"
         })
 
+    # 3b. Prototype preflight (static checks on the variant HTML)
+    if ab_mods or any(m.type == "journey_test" for m in project.modules.values()):
+        found = preflight.run(project, current_app.config.get("LOCAL_ASSETS"))
+        errors, warnings = preflight.summary(found)
+        checklist.append({
+            "id": "preflight",
+            "title": "Prototype pages work",
+            "meta": (f"{errors} problem{'s' if errors != 1 else ''} to fix before going live, {warnings} thing{'s' if warnings != 1 else ''} worth checking."
+                     if found else "Every page, image and button checked: nothing missing or blocked."),
+            "status": "fail" if errors else ("warn" if warnings else "pass"),
+            "findings": found,
+            "action_url": url_for("studio.prototypes", slug=project.slug) if found else None,
+            "action_text": "Open prototypes" if found else None,
+        })
+
     # 4. Answer keys
     if ab_mods:
         ungraded_tasks = []
         for m in ab_mods:
             tasks = (m.conf.get("tasks", []) if m.conf else [])
             for i, tsk in enumerate(tasks, 1):
-                has_key = bool(tsk.get("accept") or tsk.get("answer_key") or tsk.get("key"))
+                has_key = bool(tsk.get("accept") or tsk.get("goals") or tsk.get("answer_key") or tsk.get("key"))
                 if not has_key:
                     ungraded_tasks.append((m.id, i))
         if ungraded_tasks:
@@ -509,6 +524,14 @@ def set_status(slug):
     new_status = request.form.get("status", "").strip().lower()
     if new_status not in ("draft", "live", "closed"):
         abort(400)
+    if new_status == "live" and project.status != "live":
+        errors, _ = preflight.summary(preflight.run(project, current_app.config.get("LOCAL_ASSETS")))
+        if errors:
+            msg = f"Going live is blocked: the prototype preflight found {errors} error{'s' if errors != 1 else ''}. See Launch."
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+                return jsonify({"ok": False, "error": msg}), 409
+            flash(msg, "error")
+            return redirect(request.form.get("next") or request.referrer or url_for("admin.dashboard", slug=slug))
     
     pyaml_path = project.dir / "project.yaml"
     if pyaml_path.is_file():
@@ -522,6 +545,9 @@ def set_status(slug):
             import logging
     with storage.connect(slug) as conn:
         storage.audit(conn, "set_status", request.remote_addr, {"status": new_status})
+        if new_status == "live":
+            locks.lock_all(conn, get_project(slug), request.remote_addr)
+            conn.commit()
     if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
         return jsonify({"ok": True, "status": new_status})
     msg = f"Status set to {new_status}."
@@ -551,6 +577,7 @@ MODULE_TYPE_LABELS = {
     "card_sort": "Card sort",
     "tree_test": "Tree test",
     "tree": "Tree test",
+    "journey_test": "Journey test",
 }
 
 
@@ -562,7 +589,7 @@ def make_headline(ctx, m, m_stat):
     try:
         if m.type in ("ab", "ab_test"):
             c = m.conf
-            runs = m.impl._finished_runs(ctx)
+            runs = m.impl._finished_runs(ctx, since=locks.locked_at(ctx.conn, m.id))
             if runs:
                 base = c.get("baseline")
                 keys = [k for k in c.get("variants", {}) if k != base]
@@ -574,7 +601,7 @@ def make_headline(ctx, m, m_stat):
                     pairs = [p for p in people.values() if base in p and challenger in p]
                     min_n = c.get("rule", {}).get("min_participants", 8)
                     if len(pairs) < min_n:
-                        return f"Indicative: {len(pairs)} of {min_n} people tried both variants."
+                        return f"Interim: {len(pairs)} of {min_n} planned people tried both variants."
                     else:
                         return f"{len(pairs)} people tried both variants. Rules evaluated against baseline."
         elif m.type in ("tree", "tree_test"):
@@ -653,7 +680,7 @@ def results(slug, mid=None):
     if cur_module:
         cur_stat = stats.get(cur_module.id, {"started": 0, "finished": 0})
         cur_module_type_label = MODULE_TYPE_LABELS.get(cur_module.type, cur_module.type)
-        if cur_stat["finished"] > 0:
+        if cur_stat["finished"] > 0 or getattr(cur_module.impl, "report_without_data", False):
             mctx = Ctx(project, module=cur_module, admin=True)
             try:
                 report_body = cur_module.impl.report(mctx)
@@ -679,6 +706,34 @@ def results(slug, mid=None):
 @bp.route("/<slug>/admin/m/<mid>/")
 def module_report(slug, mid):
     return results(slug, mid=mid)
+
+
+@bp.route("/app/p/<slug>/m/<mid>/rules", methods=["POST"])
+@bp.route("/<slug>/admin/m/<mid>/rules", methods=["POST"])
+def module_rules(slug, mid):
+    """Unlock (with a reason) or lock again a module's pre-registered analysis rules."""
+    ctx, early = admin_ctx(slug, mid)
+    if early:
+        return early
+    if not can_edit(slug):
+        abort(403)
+    action = request.form.get("action")
+    back = url_for("admin.module_report", slug=slug, mid=mid)
+    if action == "unlock":
+        reason = request.form.get("reason", "").strip()[:500]
+        if not reason:
+            flash("Give a reason to unlock the rules. It is kept in the audit log.", "error")
+            return redirect(back)
+        locks.unlock(ctx.conn, mid, reason, request.remote_addr)
+        msg = "Rules unlocked. Lock them again before collecting more data."
+    elif action == "lock":
+        locks.lock_module(ctx.conn, ctx.module, request.remote_addr)
+        msg = "Rules locked. Results now count sessions started from this moment."
+    else:
+        abort(400)
+    ctx.conn.commit()
+    flash(msg, "success")
+    return redirect(back)
 
 
 @bp.route("/app/p/<slug>/m/<mid>/export.csv")

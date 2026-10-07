@@ -46,8 +46,8 @@ class FirstClick(ModuleType):
                 mode = default_mode
             out["tasks"].append({"id": tid, "prompt": str(t.get("prompt") or ""), "image": img, "clicks": mode})
 
-        out["post"] = Q.normalize(raw.get("post", []), scope, "post")
-        out["final"] = Q.normalize(raw.get("final", []), scope, "final")
+        out["post"] = Q.normalize(raw.get("post", []), scope, "post", locale=getattr(self.m.project, "locale", None))
+        out["final"] = Q.normalize(raw.get("final", []), scope, "final", locale=getattr(self.m.project, "locale", None))
         
         ids = [t["id"] for t in out["tasks"]] + [q["id"] for q in out["post"]] + [q["id"] for q in out["final"]]
         if len(ids) != len(set(ids)):
