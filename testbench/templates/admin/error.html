@@ -1,0 +1,18 @@
+{#- An error inside the researcher workspace keeps the workspace around it, so the way back is
+    the nav the researcher was already using. Participants and visitors get error.html. -#}
+{% extends "admin/_layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block tab %}none{% endblock %}
+{% block content %}
+<section class="panel max-w-2xl" aria-labelledby="err-h">
+  <div class="panel-b">
+    <p class="t-meta font-mono">{{ code }}</p>
+    <h1 id="err-h" class="t-page mt-2">{{ title }}</h1>
+    <p class="mt-2 text-muted">{{ message }}</p>
+    <div class="mt-6">
+      <a href="{{ url_for('public.dashboard') if config.get('TESTBENCH_MODE') == 'public' else url_for('admin.overview') }}" class="btn btn-secondary">Back to studies</a>
+    </div>
+    {% if request_id %}<p class="help mt-6">Reference: <code class="font-mono">{{ request_id }}</code></p>{% endif %}
+  </div>
+</section>
+{% endblock %}
