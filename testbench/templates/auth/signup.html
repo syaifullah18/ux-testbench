@@ -1,88 +1,78 @@
-{% extends "base.html" %}
+{% extends "auth/_split.html" %}
 {% from "auth/_rail.html" import rail %}
 {% from "auth/_providers.html" import provider_buttons, divider %}
 {% block title %}Create your account{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14">
+{% block form %}
+      {%- set have_email = form.email and not errors.email -%}
+      {{ rail(1, partial=have_email) }}
 
-    {%- set have_email = form.email and not errors.email -%}
-    {{ rail(1, partial=have_email) }}
+      <h1 class="t-page">Create your account</h1>
+      <p class="mt-2 text-muted">
+        {% if have_email and password_login %}Two fields left. Free, and no credit card.
+        {% else %}Free. No credit card needed.{% endif %}
+      </p>
 
-    <div class="border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
-        <h1 class="text-xl font-bold text-ink mb-1.5 text-center">Create your account</h1>
-        <p class="text-ink-subtle text-[14px] mb-6 text-center">
-            {% if have_email and password_login %}Two fields left. Free, and no credit card.
-            {% else %}Free. No credit card needed.{% endif %}
-        </p>
+      {% if providers %}<div class="mt-8">{{ provider_buttons(providers, next_param, verb="Sign up") }}</div>{% endif %}
 
-        {{ provider_buttons(providers, next_param, verb="Sign up") }}
+      {% if password_login %}
+      {% if providers %}{{ divider() }}{% endif %}
+      <form method="post" class="{{ '' if providers else 'mt-8 ' }}space-y-6" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label class="label" for="su-name">Name</label>
+          <input id="su-name" name="name" type="text" class="input" value="{{ form.name }}" required autocomplete="name"
+                 {% if errors.name %}aria-invalid="true" aria-describedby="su-name-msg"{% endif %}>
+          {% if errors.name %}<p id="su-name-msg" class="err">{{ errors.name }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="label" for="su-email">Email</label>
+          <input id="su-email" name="email" type="email" class="input" value="{{ form.email }}" required autocomplete="email" placeholder="you@company.com"
+                 {% if errors.email %}aria-invalid="true" aria-describedby="su-email-msg"{% endif %}>
+          {% if errors.email %}<p id="su-email-msg" class="err">{{ errors.email }}</p>{% endif %}
+        </div>
 
-        {% if password_login %}
-        {% if providers %}{{ divider() }}{% endif %}
-        <form method="post" class="space-y-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <div>
-                <label class="block text-sm font-medium text-ink-muted mb-1" for="su-name">Name</label>
-                <input id="su-name" name="name" type="text" value="{{ form.name }}" required autocomplete="name"
-                       {% if errors.name %}aria-invalid="true" aria-describedby="su-name-msg"{% endif %}
-                       class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.name else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                {% if errors.name %}<p id="su-name-msg" class="text-bad text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-ink-muted mb-1" for="su-email">Email</label>
-                <input id="su-email" name="email" type="email" value="{{ form.email }}" required autocomplete="email"
-                       {% if errors.email %}aria-invalid="true" aria-describedby="su-email-msg"{% endif %}
-                       class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.email else 'border-line' }} rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                {% if errors.email %}<p id="su-email-msg" class="text-bad text-[13px] mt-1">{{ errors.email }}</p>{% endif %}
-            </div>
-
-            {#- One password field, not two. Asking for it twice is a field of pure friction that a
-                reveal toggle solves better: the point of confirming is catching a typo, and being
-                able to read what you typed catches it directly. A mistyped password is also
-                recoverable here — the address is verified by email either way. -#}
-            <div>
-                <label class="block text-sm font-medium text-ink-muted mb-1" for="su-pw">Password</label>
-                <div class="relative">
-                    <input id="su-pw" name="password" type="password" required minlength="10" autocomplete="new-password"
-                           aria-describedby="su-pw-msg"
-                           class="w-full min-h-11 bg-card text-ink border {{ 'border-bad' if errors.password or errors.confirm else 'border-line' }} rounded-lg pl-3.5 pr-12 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    <button type="button" id="su-pw-reveal"
-                            class="absolute inset-y-0 right-0 grid w-12 place-items-center rounded-r-lg text-ink-subtle hover:text-ink"
-                            aria-label="Show password" aria-pressed="false" aria-controls="su-pw">
-                        <i class="fa-solid fa-eye text-[13px]"></i>
-                    </button>
-                </div>
-                {% if errors.password %}<p id="su-pw-msg" class="text-bad text-[13px] mt-1">{{ errors.password }}</p>
-                {% elif errors.confirm %}<p id="su-pw-msg" class="text-bad text-[13px] mt-1">{{ errors.confirm }}</p>
-                {% else %}<p id="su-pw-msg" class="text-ink-subtle text-[12px] mt-1">At least 10 characters.</p>{% endif %}
-            </div>
-
-            <button type="submit" class="w-full min-h-11 inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-2.5 rounded-lg hover:bg-brand-700 transition-colors focus:outline-none focus:ring-4 focus:ring-brand/30">
-                <i class="fa-solid fa-user-plus"></i>Create a free account
+        {#- One password field, not two. Asking for it twice is a field of pure friction that a
+            reveal toggle solves better: the point of confirming is catching a typo, and being
+            able to read what you typed catches it directly. A mistyped password is also
+            recoverable here — the address is verified by email either way. -#}
+        <div>
+          <label class="label" for="su-pw">Password</label>
+          <div class="relative">
+            <input id="su-pw" name="password" type="password" class="input pr-12" required minlength="10" autocomplete="new-password"
+                   aria-describedby="su-pw-msg" {% if errors.password or errors.confirm %}aria-invalid="true"{% endif %}>
+            <button type="button" id="su-pw-reveal" class="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded text-muted hover:bg-paper"
+                    aria-label="Show password" aria-pressed="false" aria-controls="su-pw">
+              <i class="fa-regular fa-eye" aria-hidden="true"></i>
             </button>
-        </form>
-        {% endif %}
+          </div>
+          {% if errors.password %}<p id="su-pw-msg" class="err">{{ errors.password }}</p>
+          {% elif errors.confirm %}<p id="su-pw-msg" class="err">{{ errors.confirm }}</p>
+          {% else %}<p id="su-pw-msg" class="help">At least 10 characters.</p>{% endif %}
+        </div>
 
-        <p class="text-center text-[14px] text-ink-subtle mt-5">
-            Already have an account?
-            <a href="{{ url_for('auth.login') }}" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Log in</a>
-        </p>
-    </div>
-</div>
+        <button type="submit" class="btn btn-primary w-full">Create a free account</button>
+      </form>
+      {% endif %}
 
+      <p class="mt-8 border-t border-line pt-6 text-sm text-muted">
+        Already have an account? <a href="{{ url_for('auth.login') }}" class="link">Sign in</a>
+      </p>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    (function () {
-        var field = document.getElementById('su-pw');
-        var toggle = document.getElementById('su-pw-reveal');
-        if (!field || !toggle) return;
-        toggle.addEventListener('click', function () {
-            var shown = field.type === 'text';
-            field.type = shown ? 'password' : 'text';
-            toggle.setAttribute('aria-pressed', shown ? 'false' : 'true');
-            toggle.setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
-            toggle.firstElementChild.className = 'fa-solid text-[13px] ' + (shown ? 'fa-eye' : 'fa-eye-slash');
-            field.focus();
-        });
-    })();
+  (function () {
+    var field = document.getElementById('su-pw');
+    var toggle = document.getElementById('su-pw-reveal');
+    if (!field || !toggle) return;
+    toggle.addEventListener('click', function () {
+      var shown = field.type === 'text';
+      field.type = shown ? 'password' : 'text';
+      toggle.setAttribute('aria-pressed', shown ? 'false' : 'true');
+      toggle.setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
+      toggle.firstElementChild.className = 'fa-regular ' + (shown ? 'fa-eye' : 'fa-eye-slash');
+      field.focus();
+    });
+  })();
 </script>
 {% endblock %}

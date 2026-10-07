@@ -9,10 +9,9 @@ Only accounts with `is_platform_admin` reach these routes, and only in public mo
 """
 import functools
 
-from flask import (Blueprint, abort, flash, redirect, render_template, request, url_for)
+from flask import (Blueprint, abort, flash, redirect, request, url_for)
 
-from . import auth, limits, moderation, storage, users
-from .i18n import translator
+from . import auth, moderation, storage, users
 from .web import registry
 
 bp = Blueprint("platform", __name__, url_prefix="/app/admin")
@@ -35,11 +34,6 @@ def require_platform_admin(view):
 def _audit(user, action, slug="", detail=None):
     moderation.audit(action, user_id=user["id"], actor=user["email"], project_slug=slug,
                      detail=detail, ip=request.remote_addr)
-
-
-def _shell(user, **kw):
-    return dict(user=user, t=translator("en"), project=None,
-                open_reports=moderation.count_open_reports(), **kw)
 
 
 @bp.route("/")
@@ -96,17 +90,7 @@ def toggle_admin(user, user_id):
 @bp.route("/projects")
 @require_platform_admin
 def project_list(user):
-    reg = registry()
-    flags = moderation.flags_for(set(reg.projects))
-    rows = []
-    for p in reg.projects.values():
-        members = users.project_members(p.slug)
-        rows.append({"p": p, "flags": flags.get(p.slug),
-                     "owners": [m["email"] for m in members if m["role"] == "owner"],
-                     "members": len(members),
-                     "participants": limits.participant_count(p.slug)})
-    rows.sort(key=lambda r: r["p"].slug)
-    return render_template("platform/projects.html", **_shell(user, rows=rows))
+    return redirect(url_for("admin.instance", s="studies"))
 
 
 @bp.post("/projects/<slug>/offline")

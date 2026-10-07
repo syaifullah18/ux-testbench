@@ -1,28 +1,22 @@
-{% extends "base.html" %}
-{% block title %}Reset Password{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14 border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
-    <h1 class="text-xl font-bold text-ink mb-1.5 text-center">Set new password</h1>
-    <p class="text-ink-subtle text-[14px] mb-6 text-center">Enter your new password below.</p>
-    
-    <form method="post" class="space-y-4">
+{% extends "auth/_split.html" %}
+{% block title %}Set a new password{% endblock %}
+{% block form %}
+      <h1 class="t-page">Set a new password</h1>
+      <p class="mt-2 text-muted">Choose a password with at least 10 characters.</p>
+      <form method="post" class="mt-8 space-y-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div>
-            <label class="block text-sm font-medium text-ink-muted mb-1" for="rp-pw">New password</label>
-            <input id="rp-pw" name="password" type="password" required minlength="10"
-                   class="w-full border {{ 'border-bad' if errors.password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-            <p class="text-ink-subtle text-[12px] mt-1">At least 10 characters.</p>
-            {% if errors.password %}<p class="text-bad text-[13px] mt-1">{{ errors.password }}</p>{% endif %}
+          <label class="label" for="rp-pw">New password</label>
+          <input id="rp-pw" name="password" type="password" class="input" required minlength="10" autocomplete="new-password"
+                 {% if errors.password %}aria-invalid="true" aria-describedby="rp-pw-msg"{% endif %}>
+          {% if errors.password %}<p id="rp-pw-msg" class="err">{{ errors.password }}</p>{% endif %}
         </div>
         <div>
-            <label class="block text-sm font-medium text-ink-muted mb-1" for="rp-pw2">Confirm new password</label>
-            <input id="rp-pw2" name="confirm" type="password" required
-                   class="w-full border {{ 'border-bad' if errors.confirm else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-            {% if errors.confirm %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm }}</p>{% endif %}
+          <label class="label" for="rp-pw2">Confirm new password</label>
+          <input id="rp-pw2" name="confirm" type="password" class="input" required autocomplete="new-password"
+                 {% if errors.confirm %}aria-invalid="true" aria-describedby="rp-pw2-msg"{% endif %}>
+          {% if errors.confirm %}<p id="rp-pw2-msg" class="err">{{ errors.confirm }}</p>{% endif %}
         </div>
-        <button type="submit" class="w-full bg-brand-600 text-white font-semibold min-h-11 py-2.5 rounded-lg hover:bg-brand-700 transition-colors mt-2">
-            Reset password
-        </button>
-    </form>
-</div>
+        <button type="submit" class="btn btn-primary w-full">Reset password</button>
+      </form>
 {% endblock %}
