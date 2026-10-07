@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="{{ project.locale if project else 'en' }}">
+{% from "_brand.html" import html_attrs %}
+<html {{ html_attrs(project, nav=true) }}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,20 +8,23 @@
     {% include "_head.html" %}
     {% block head %}{% endblock %}
 </head>
-<body class="theme-anim bg-surface font-sans text-[15px] leading-relaxed text-ink-muted antialiased min-h-dvh flex flex-col {% block body_class %}{% endblock %}">
-    <nav class="bg-nav text-white flex-none">
-        <div class="{% block width %}max-w-3xl{% endblock %} mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
+<body class="theme-anim bg-surface text-ink min-h-dvh flex flex-col {% block body_class %}{% endblock %}">
+    <a class="skip" href="#main">Skip to content</a>
+    <nav class="topbar text-white flex-none">
+        <div class="{% block width %}max-w-3xl{% endblock %} mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-4">
             {#- The wordmark is the way back to the top of whatever the visitor is in. When there is
                 no project it used to be inert text, which leaves a public visitor on a form with no
                 exit but the back button. -#}
-            {% if project %}<a href="{{ url_for('web.home', slug=project.slug) }}" class="text-base font-bold tracking-wide">{{ project.name }}</a>
-            {% else %}<a href="{{ url_for('web.index') }}" class="text-base font-bold tracking-wide">UX Testbench</a>{% endif %}
+            {% if project %}<a href="{{ url_for('web.home', slug=project.slug) }}" class="min-w-0 truncate text-lg font-bold tracking-tight">{{ project.name }}</a>
+            {% else %}<a href="{{ url_for('web.index') }}" class="flex items-center gap-3 text-lg font-bold tracking-tight">
+                <svg width="24" height="24" viewBox="0 0 22 22" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="9.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+                <span>UX Testbench</span></a>{% endif %}
             <div class="flex flex-none items-center gap-3">
             {% block nav_right %}
             {% if participant and not (ctx and ctx.admin) %}
-            <span class="flex flex-none items-center gap-3 text-[13px]">
-                <span class="bg-white/10 px-2.5 py-1 rounded-md font-semibold whitespace-nowrap">{{ participant.identity }}</span>
-                <a href="{{ url_for('web.logout', slug=project.slug) }}" class="text-white/70 hover:text-white underline whitespace-nowrap">{{ t('common.logout') }}</a>
+            <span class="flex flex-none items-center gap-4 text-sm">
+                <span class="bg-white/10 px-3 py-1 rounded-md font-semibold whitespace-nowrap">{{ participant.identity }}</span>
+                <a href="{{ url_for('web.logout', slug=project.slug) }}" class="text-white/80 underline-offset-2 hover:text-white hover:underline whitespace-nowrap">{{ t('common.logout') }}</a>
             </span>
             {% endif %}
             {% endblock %}
@@ -40,7 +44,7 @@
     {%- set left = progress.total - progress.index -%}
     <div class="bg-card border-b border-line flex-none">
         <div class="{{ self.width() }} mx-auto px-4 sm:px-8 py-3">
-            <div class="flex items-baseline justify-between gap-4 text-[13px] mb-2">
+            <div class="flex items-baseline justify-between gap-4 text-sm mb-2">
                 <span><span class="text-ink-subtle">{{ progress.module }} ·</span> <span class="font-semibold text-ink">{{ progress.label }}</span></span>
                 <span class="text-ink-subtle whitespace-nowrap tabular-nums">{{ t('common.step_of', n=progress.index, total=progress.total) }}</span>
             </div>
@@ -49,7 +53,7 @@
             </div>
             {#- Naming what is left is what turns a bar into momentum, and it is the line that makes
                 someone finish rather than close the tab on the second-to-last page. -#}
-            <p class="mt-1.5 text-[12px] text-ink-subtle">
+            <p class="mt-1.5 text-sm text-ink-subtle">
                 {% if left <= 0 %}Last one — you are done after this.
                 {% elif left == 1 %}One step left after this.
                 {% else %}{{ left }} steps left — about {{ left }} min.{% endif %}
@@ -59,7 +63,7 @@
     {% endif %}
 
     {% block main %}
-    <main class="flex-1 w-full {{ self.width() }} mx-auto px-4 sm:px-8 pt-8 pb-12">
+    <main id="main" class="flex-1 w-full {{ self.width() }} mx-auto px-4 sm:px-8 pt-8 pb-12">
         {% block flashes %}
         <div id="toast-wrap" class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none w-max max-w-[90vw]">
             {% set flash_msgs = get_flashed_messages(with_categories=true) %}
@@ -83,12 +87,12 @@
             {% endif %}
 
             {% for item in all_notices %}
-            <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318] text-white{% else %}bg-ink text-surface{% endif %} px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer" role="status">
-                <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-ok-line{% endif %}" aria-hidden="true"></i>
+            <div class="toast-item pointer-events-auto flex items-center gap-2.5 rounded-lg {% if item.cat == 'error' %}bg-[#B42318]{% else %}bg-nav{% endif %} text-white px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer" role="status">
+                <i class="fa-solid {% if item.cat == 'error' %}fa-circle-exclamation text-amber-300{% else %}fa-circle-check text-emerald-400{% endif %}" aria-hidden="true"></i>
                 <span>{{ item.msg }}</span>
             </div>
             {% endfor %}
-            <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-ink text-surface px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer"></div>
+            <div id="toast" role="status" aria-live="polite" style="display: none;" class="hidden pointer-events-auto items-center gap-2.5 rounded-lg bg-nav text-white px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 cursor-pointer"></div>
         </div>
         {% endblock %}
         {% block content %}{% endblock %}

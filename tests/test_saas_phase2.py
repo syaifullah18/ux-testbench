@@ -23,8 +23,9 @@ def test_landing_page_modes(projects_dir, make_app):
     assert 'id="theme-toggle"' in body              # both themes reachable
     # One filled primary in the first viewport: the nav button starts as an outline and only
     # becomes the brand button once the hero form scrolls away.
-    assert 'id="nav-cta"' in body
-    assert body.count("bg-brand-600 px-6 text-base font-semibold text-white") == 1
+    assert 'id="nav-cta" class="btn btn-secondary"' in body
+    hero = body.split('id="hero-cta"', 1)[1].split("</form>", 1)[0]
+    assert hero.count("btn-primary") == 1
 
 
 def test_url_move_and_legacy_redirects(projects_dir, make_app):

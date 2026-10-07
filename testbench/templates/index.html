@@ -5,9 +5,9 @@
 <p class="mb-8 text-ink-muted">Choose the project you were invited to. If you received a direct link, use that instead.</p>
 <ul class="space-y-3">
     {% for p in projects %}
-    <li><a href="{{ url_for('web.home', slug=p.slug) }}" class="block border border-line rounded-xl p-5 hover:border-line">
+    <li><a href="{{ url_for('web.home', slug=p.slug) }}" class="block border border-line rounded-lg p-5 hover:border-line">
         <p class="font-semibold text-ink">{{ p.name }}</p>
-        {% if p.description %}<p class="text-[14px] text-ink-muted mt-1">{{ p.description }}</p>{% endif %}
+        {% if p.description %}<p class="text-sm text-ink-muted mt-1">{{ p.description }}</p>{% endif %}
     </a></li>
     {% else %}
     <li class="text-ink-subtle">No public projects.</li>

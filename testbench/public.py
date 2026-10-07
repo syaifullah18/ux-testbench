@@ -348,11 +348,19 @@ def members(slug):
                 flash("Member removed.", "success")
         return redirect(url_for("public.members", slug=slug))
 
+    # The page sits under the study header (the Team tab), which needs the same figures as the
+    # other tabs.
+    from .admin import get_study_card
+    membership = users.get_membership(slug, user["id"])
+    card = get_study_card(project, role=membership["role"] if membership else "superadmin")
     return render_template("public/members.html", user=user, project=project,
                            members=users.project_members(slug),
                            invitations=users.pending_invitations(slug),
                            invite_link=cookie.pop("invite_link", None),
-                           roles=users.ROLES, t=translator("en"))
+                           roles=users.ROLES, t=translator("en"),
+                           status=card["status"], role=card["role"],
+                           n_participants=card["participants"],
+                           last_activity_text=card["last_activity_text"])
 
 
 @bp.route("/invite/<token>")

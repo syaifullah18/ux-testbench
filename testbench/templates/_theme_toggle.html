@@ -11,7 +11,7 @@
     `{% with toggle_on_nav = true %}{% include "_theme_toggle.html" %}{% endwith %}`. -#}
 <button type="button"
         id="theme-toggle"
-        class="grid size-11 flex-none place-items-center rounded-xl border transition-colors
+        class="grid h-10 w-10 flex-none place-items-center rounded-md border transition-colors
                {% if toggle_on_nav %}border-white/20 text-white/70 hover:bg-white/10 hover:text-white
                {% else %}border-line bg-card text-ink-muted hover:text-ink{% endif %}"
         aria-label="Switch between the light and dark theme">

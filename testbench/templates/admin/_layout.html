@@ -1,49 +1,11 @@
 <!doctype html>
-<html lang="{{ project.locale if project else 'en' }}" {% if project and project.brand and project.brand.primary %}style="--brand: {{ project.brand.primary }};"{% endif %}>
+{% from "_brand.html" import html_attrs %}
+<html {{ html_attrs(project) }}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {#- Theme before first paint, so a dark-theme viewer never sees a white flash. The viewer's
-      choice (shared with the public pages under tb-theme) wins; otherwise follow the system. -#}
-  <script>
-    (function () {
-      try {
-        var saved = localStorage.getItem('tb-theme');
-        var dark = saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-      } catch (e) { /* blocked storage: light theme */ }
-    })();
-  </script>
   <title>{% block title %}{% endblock %} · UX Testbench</title>
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="32x32">
-  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <script src="https://cdn.tail{{ '' }}windcss.com"></script>
-  <script src="{{ url_for('static', filename='admin/tw.js') }}"></script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='admin/app.css') }}">
-  {%- set brand = project.brand if project and project.brand and project.brand.primary else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
-  {%- macro _rgb(hex) -%}{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}{%- endmacro -%}
-  {%- macro _tint(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r + (255 - r) * p)|round|int }} {{ (g + (255 - g) * p)|round|int }} {{ (b + (255 - b) * p)|round|int }}{%- endmacro -%}
-  {%- macro _shade(hex, p) -%}{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}{{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}{%- endmacro -%}
-  <style>
-    :root {
-      --brand-50:  {{ _tint(brand.primary, 0.95) }};
-      --brand-100: {{ _tint(brand.primary, 0.89) }};
-      --brand-200: {{ _tint(brand.primary, 0.76) }};
-      --brand-300: {{ _tint(brand.primary, 0.60) }};
-      --brand-400: {{ _tint(brand.primary, 0.33) }};
-      --brand-500: {{ _rgb(brand.primary) }};
-      --brand-600: {{ _shade(brand.primary, 0.12) }};
-      --brand-700: {{ _shade(brand.primary, 0.27) }};
-      --brand-800: {{ _shade(brand.primary, 0.42) }};
-      --brand-900: {{ _shade(brand.primary, 0.55) }};
-      --brand-950: {{ _shade(brand.primary, 0.72) }};
-    }
-  </style>
+  {% include "_head.html" %}
   {% block extra_head %}{% endblock %}
 </head>
 <body data-shell="{% block shell %}workspace{% endblock %}" data-tab="{% block tab %}studies{% endblock %}">

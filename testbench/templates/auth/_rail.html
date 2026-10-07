@@ -10,20 +10,21 @@
     that lies about it is noticed once and then ignored forever. -#}
 
 {% macro rail(current, partial=false) -%}
-<ol class="flex items-center gap-2 mb-6 text-[12px] font-medium" aria-label="Where you are in setting up">
+<ol class="mb-8 flex items-center gap-2 text-sm font-medium" aria-label="Where you are in setting up">
     {% for step in [(1, 'Your details'), (2, 'Verify email'), (3, 'First study')] %}
     {%- set n, label = step -%}
     {%- set done = n < current or (n == current and partial) -%}
     {%- set here = n == current -%}
     <li class="flex flex-1 items-center gap-2">
-        <span class="grid size-6 flex-none place-items-center rounded-full text-[11px] font-bold
-                     {% if done %}bg-brand-600 text-white
-                     {% elif here %}border-2 border-brand-600 text-brand-600 dark:text-brand-400
-                     {% else %}border border-line text-ink-subtle{% endif %}"
+        <span class="grid h-6 w-6 flex-none place-items-center rounded-full text-xs font-bold
+                     {% if done %}bg-brand
+                     {% elif here %}border-2 border-brand text-brand
+                     {% else %}border border-line text-muted{% endif %}"
+              {% if done %}style="color: var(--on-brand)"{% endif %}
               {% if here %}aria-current="step"{% endif %}>
-            {% if done %}<i class="fa-solid fa-check"></i>{% else %}{{ n }}{% endif %}
+            {% if done %}<i class="fa-solid fa-check" aria-hidden="true"></i>{% else %}{{ n }}{% endif %}
         </span>
-        <span class="truncate {% if here or done %}text-ink{% else %}text-ink-subtle{% endif %}">{{ label }}</span>
+        <span class="truncate {% if here or done %}text-ink{% else %}text-muted{% endif %}">{{ label }}</span>
     </li>
     {% endfor %}
 </ol>

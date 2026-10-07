@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% block title %}{% if project.locale == 'id' %}Pratinjau Draft Saja{% else %}Draft Preview Only{% endif %}{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-card border border-warn-line/80 rounded-3xl p-8 sm:p-10 shadow-sm bg-warn-soft/30">
-    <div class="size-16 bg-warn-soft text-warn rounded-2xl flex items-center justify-center mx-auto mb-5 text-2xl">
+<div class="max-w-md mx-auto my-12 sm:my-20 text-center bg-card border border-warn-line/80 rounded-lg p-8 sm:p-10  bg-warn-soft/30">
+    <div class="size-16 bg-warn-soft text-warn rounded-lg flex items-center justify-center mx-auto mb-5 text-2xl">
         <i class="fa-solid fa-flask"></i>
     </div>
     <h1 class="text-2xl font-bold text-ink mb-2">{% if project.locale == 'id' %}Mode Draft{% else %}Draft Mode{% endif %}</h1>
-    <p class="text-ink-muted text-[15px] leading-relaxed mb-6 text-pretty">
+    <p class="text-ink-muted text-base leading-relaxed mb-6 text-pretty">
         {% if project.locale == 'id' %}
         Studi ini belum dibuka untuk peserta umum.
         {% else %}
         This research study is currently being prepared and is not yet open to public participants.
         {% endif %}
     </p>
-    <div class="bg-card border border-warn-line rounded-xl p-4 text-xs text-ink-subtle text-left mb-6">
+    <div class="bg-card border border-warn-line rounded-lg p-4 text-xs text-ink-subtle text-left mb-6">
         <div class="flex items-center gap-2 font-semibold text-warn-ink mb-1">
             <i class="fa-solid fa-lock"></i> {% if project.locale == 'id' %}Akses Peneliti Saja{% else %}Researcher Access Only{% endif %}
         </div>
@@ -25,7 +25,7 @@
     </div>
     {% set is_pub = config.get('TESTBENCH_MODE') == 'public' %}
     {% set login_target = url_for('auth.login') if is_pub else url_for('admin.dashboard', slug=project.slug) %}
-    <a href="{{ login_target }}" class="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm">
+    <a href="{{ login_target }}" class="btn btn-primary">
         <i class="fa-solid fa-right-to-bracket text-sm"></i> {% if project.locale == 'id' %}Masuk Peneliti{% else %}Researcher Log in{% endif %}
     </a>
 </div>

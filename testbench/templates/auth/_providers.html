@@ -4,9 +4,8 @@
 {% if providers %}
 <div class="space-y-3" id="providers">
     {% for name, label in providers %}
-    <a href="{{ url_for('auth.oauth_start', provider=name, next=next_param or None) }}"
-       class="w-full min-h-11 inline-flex items-center justify-center gap-2.5 rounded-lg border border-line bg-card px-4 py-2.5 text-[14px] font-semibold text-ink hover:bg-surface-subtle focus:outline-none focus:ring-4 focus:ring-brand/30">
-        <i class="fa-brands fa-{{ name }} text-base" aria-hidden="true"></i>{{ verb }} with {{ label }}
+    <a href="{{ url_for('auth.oauth_start', provider=name, next=next_param or None) }}" class="btn btn-secondary w-full">
+        <i class="fa-brands fa-{{ name }}" aria-hidden="true"></i>{{ verb }} with {{ label }}
     </a>
     {% endfor %}
 </div>
@@ -14,7 +13,7 @@
 {% endmacro %}
 
 {% macro divider() %}
-<div class="my-6 flex items-center gap-3 text-[12px] uppercase tracking-wider text-ink-subtle" aria-hidden="true">
+<div class="my-6 flex items-center gap-3 text-sm uppercase tracking-wider text-muted" aria-hidden="true">
     <span class="h-px flex-1 bg-line"></span>or<span class="h-px flex-1 bg-line"></span>
 </div>
 {% endmacro %}

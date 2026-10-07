@@ -1,0 +1,8 @@
+{#- Attributes for <html>: the language, and a study's own colours. Without a study the page keeps
+    the neutral accent from app.css, which flips to a light one in the dark theme. `nav` paints the
+    participant top bar in the study's colour; the workspace keeps its own bar. -#}
+{% macro html_attrs(project, nav=false) -%}
+lang="{{ project.locale if project else 'en' }}"
+{%- if project and project.brand and project.brand.primary %} style="--brand: {{ project.brand.primary }};
+{%- if nav and project.brand.nav %} --nav: {{ project.brand.nav }};{% endif %}"{% endif %}
+{%- endmacro %}

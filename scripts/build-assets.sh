@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VENDOR="$ROOT/testbench/static/vendor"
 CACHE="$ROOT/.cache"
 TAILWIND_VERSION="v3.4.17"
-FA_VERSION="6.5.1"
+FA_VERSION="6.5.2"
 
 mkdir -p "$VENDOR/webfonts" "$CACHE"
 
@@ -44,16 +44,17 @@ cat > "$CACHE/input.css" <<'CSS'
 CSS
 "$TW_BIN" -c "$ROOT/tailwind.config.js" -i "$CACHE/input.css" -o "$VENDOR/tailwind.css" --minify
 
-echo "→ Fetching Plus Jakarta Sans"
+echo "→ Fetching Hanken Grotesk and JetBrains Mono"
+# Ask Google Fonts for the stylesheet a current browser would get (woff2), then download every
+# file it names and point the stylesheet at our copies.
 FONT_CSS="$VENDOR/fonts.css"
-: > "$FONT_CSS"
-for weight in 400 500 600 700; do
-  woff="plus-jakarta-sans-$weight.woff2"
-  curl -fsSL -o "$VENDOR/webfonts/$woff" \
-    "https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU79QRTp.woff2"
-  cat >> "$FONT_CSS" <<CSS
-@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:$weight;font-display:swap;src:url('webfonts/$woff') format('woff2');}
-CSS
+curl -fsSL -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36" \
+  -o "$FONT_CSS" \
+  "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+for url in $(grep -oE 'https://fonts\.gstatic\.com/[^)]+' "$FONT_CSS" | sort -u); do
+  file="font-$(printf '%s' "$url" | cksum | cut -d' ' -f1).woff2"
+  curl -fsSL -o "$VENDOR/webfonts/$file" "$url"
+  sed -i.bak "s|$url|webfonts/$file|g" "$FONT_CSS" && rm -f "$FONT_CSS.bak"
 done
 
 echo "→ Fetching Font Awesome $FA_VERSION"

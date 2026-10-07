@@ -1,28 +1,19 @@
-{% extends "base.html" %}
+{% extends "auth/_split.html" %}
 {% from "auth/_rail.html" import rail %}
 {% block title %}Check your email{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14">
-    {{ rail(2) }}
-
-    <div class="border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm text-center">
-        <div class="size-16 bg-ok-soft text-ok rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            <i class="fa-solid fa-envelope"></i>
-        </div>
-        <h1 class="text-xl font-bold text-ink mb-2">Check your email</h1>
-        <p class="text-ink-muted mb-2">
-            We sent a verification link to <strong class="text-ink">{{ email }}</strong>.
-            Open it and your account is ready.
-        </p>
-        {#- Zeigarnik: this page is an open loop the visitor has to leave the site to close, so it
-            says plainly what is left rather than ending on a link backwards. Naming the wait and
-            the fallback is also what stops the "nothing arrived" support mail. -#}
-        <p class="text-ink-subtle text-[13px] mb-6">
-            It usually lands within a minute. If it does not, check the spam folder before trying again.
-        </p>
-        <a href="{{ url_for('auth.login') }}" class="inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-[14px] font-semibold text-ink-muted hover:bg-surface-subtle hover:text-ink transition-colors">
-            Return to login
-        </a>
-    </div>
-</div>
+{% block form %}
+      {{ rail(2) }}
+      <div class="mb-6 grid h-12 w-12 place-items-center rounded-full bg-ok-soft text-xl text-ok">
+        <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+      </div>
+      <h1 class="t-page">Check your email</h1>
+      <p class="mt-2 text-muted">
+        We sent a verification link to <strong class="text-ink">{{ email }}</strong>.
+        Open it and your account is ready.
+      </p>
+      {#- Zeigarnik: this page is an open loop the visitor has to leave the site to close, so it
+          says plainly what is left rather than ending on a link backwards. Naming the wait and
+          the fallback is also what stops the "nothing arrived" support mail. -#}
+      <p class="help">It usually lands within a minute. If it does not, check the spam folder before trying again.</p>
+      <p class="mt-8 border-t border-line pt-6 text-sm text-muted"><a href="{{ url_for('auth.login') }}" class="link">Return to sign in</a></p>
 {% endblock %}

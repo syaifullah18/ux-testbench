@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = sorted((ROOT / "testbench" / "templates").rglob("*.html"))
 
 # Tailwind's default spacing scale. Anything else must be an arbitrary value in [brackets] or be
-# added to the theme in both templates/_head.html and tailwind.config.js.
+# added to the theme in both static/admin/tw.js and tailwind.config.js.
 VALID_SPACING = {
     "0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "9", "10", "11",
     "12", "14", "16", "18", "20", "24", "28", "32", "36", "40", "44", "48", "52", "56", "60",
@@ -35,7 +35,7 @@ def test_no_undefined_spacing_steps():
 
 
 def test_every_brand_step_used_is_defined():
-    head = (ROOT / "testbench" / "templates" / "_head.html").read_text()
+    head = (ROOT / "testbench" / "static" / "admin" / "app.css").read_text()
     config = (ROOT / "tailwind.config.js").read_text()
     used = set()
     for path in TEMPLATES:
@@ -43,7 +43,7 @@ def test_every_brand_step_used_is_defined():
     undefined = used - DEFINED_BRAND
     assert not undefined, f"brand steps used but not defined: {sorted(undefined)}"
     for step in used:
-        assert f"--brand-{step}:" in head, f"--brand-{step} is never emitted by _head.html"
+        assert f"--brand-{step}:" in head, f"--brand-{step} is never defined in app.css"
         assert f"--brand-{step}" in config or "map(" in config, f"{step} missing from the build config"
 
 

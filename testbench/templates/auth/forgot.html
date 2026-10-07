@@ -1,30 +1,22 @@
-{% extends "base.html" %}
-{% block title %}Forgot Password{% endblock %}
-{% block content %}
-<div class="max-w-md mx-auto my-8 sm:my-14 border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
-    <h1 class="text-xl font-bold text-ink mb-1.5 text-center">Reset your password</h1>
-    
-    {% if sent %}
-    <div class="bg-ok-soft text-ok-ink p-4 rounded-lg text-[14px] text-center mt-4">
-        If an account exists for that email, we have sent a password reset link. Check your inbox.
-    </div>
-    <div class="mt-6 text-center">
-        <a href="{{ url_for('auth.login') }}" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Return to login</a>
-    </div>
-    {% else %}
-    <p class="text-ink-subtle text-[14px] mb-6 text-center">Enter your email and we'll send you a link to reset your password.</p>
-    <form method="post" class="space-y-4">
+{% extends "auth/_split.html" %}
+{% block title %}Reset your password{% endblock %}
+{% block form %}
+      <h1 class="t-page">Reset your password</h1>
+      {% if sent %}
+      <div class="mt-6 rounded-lg bg-ok-soft p-4 text-ok" role="status">
+        <p class="t-strong">If an account exists for that email, we have sent a password reset link. Check your inbox.</p>
+      </div>
+      <p class="mt-8"><a href="{{ url_for('auth.login') }}" class="link">Return to sign in</a></p>
+      {% else %}
+      <p class="mt-2 text-muted">Enter your email and we'll send you a link to reset your password.</p>
+      <form method="post" class="mt-8 space-y-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div>
-            <label class="block text-sm font-medium text-ink-muted mb-1" for="fp-email">Email</label>
-            <input id="fp-email" name="email" type="email" required
-                   class="w-full border border-line min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
+          <label class="label" for="fp-email">Email</label>
+          <input id="fp-email" name="email" type="email" class="input" autocomplete="email" placeholder="you@company.com" required autofocus>
         </div>
-        <button type="submit" class="w-full bg-brand-600 text-white font-semibold min-h-11 py-2.5 rounded-lg hover:bg-brand-700 transition-colors">
-            Send reset link
-        </button>
-    </form>
-    <p class="text-center text-[14px] text-ink-subtle mt-5"><a href="{{ url_for('auth.login') }}" class="hover:underline">Cancel</a></p>
-    {% endif %}
-</div>
+        <button type="submit" class="btn btn-primary w-full">Send reset link</button>
+      </form>
+      <p class="mt-8 border-t border-line pt-6 text-sm text-muted"><a href="{{ url_for('auth.login') }}" class="link">Back to sign in</a></p>
+      {% endif %}
 {% endblock %}

@@ -49,6 +49,32 @@ html.dark {
 }
 html.dark:not([style*="--brand:"]) { --brand: #E6E9EF; --on-brand: #0B0E14; }
 
+/* Aliases and derived tokens, so participant, public and workspace pages share one palette.
+   Every value derives from the tokens above, so it flips with the theme and follows a study's
+   own --brand (set inline on <html>) without a second definition anywhere. */
+:root {
+  --surface: var(--paper);
+  --surface-subtle: var(--sub);
+  --ink-muted: var(--muted);
+  --ink-subtle: var(--subtle);
+  --ok-line: color-mix(in srgb, var(--ok-fg) 35%, var(--card));
+  --warn-line: color-mix(in srgb, var(--warn-fg) 35%, var(--card));
+  --bad-line: color-mix(in srgb, var(--bad-fg) 35%, var(--card));
+  --info-line: color-mix(in srgb, var(--info-fg) 35%, var(--card));
+  /* The brand as a scale: tints toward the card colour, shades toward black. 500 is the brand. */
+  --brand-50: color-mix(in srgb, var(--brand) 6%, var(--card));
+  --brand-100: color-mix(in srgb, var(--brand) 12%, var(--card));
+  --brand-200: color-mix(in srgb, var(--brand) 25%, var(--card));
+  --brand-300: color-mix(in srgb, var(--brand) 45%, var(--card));
+  --brand-400: color-mix(in srgb, var(--brand) 70%, var(--card));
+  --brand-500: var(--brand);
+  --brand-600: color-mix(in srgb, var(--brand) 88%, #000);
+  --brand-700: color-mix(in srgb, var(--brand) 74%, #000);
+  --brand-800: color-mix(in srgb, var(--brand) 58%, #000);
+  --brand-900: color-mix(in srgb, var(--brand) 45%, #000);
+  --brand-950: color-mix(in srgb, var(--brand) 28%, #000);
+}
+
 html { background: var(--paper); overflow-x: clip; overscroll-behavior-x: none; }
 /* Preloader */
 #preloader { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: var(--paper); transition: opacity .25s ease, visibility .25s ease; }
@@ -125,6 +151,10 @@ body {
   transition: background-color .12s, border-color .12s;
 }
 .btn-sm { height: 32px; padding: 0 12px; font-size: 14px; }
+.btn-lg { height: 48px; padding: 0 24px; }
+.input.input-lg { height: 48px; padding: 0 16px; }
+/* Tailwind's `hidden` must still hide a component, whichever stylesheet loads last. */
+.btn.hidden, .input.hidden { display: none; }
 .btn-icon { width: 32px; padding: 0; }
 .btn-primary { background: var(--brand); color: var(--on-brand); }
 .btn-primary:hover { background: var(--brand-strong); }
@@ -132,6 +162,11 @@ body {
 .btn-secondary:hover { background: var(--paper); }
 .btn-danger-solid { background: #B42318; color: #fff; }
 .btn-danger-solid:hover { background: #912018; }
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-ghost:hover { background: var(--paper); color: var(--ink); }
+/* On a touch screen every control is at least 44px, the smallest target a thumb hits reliably;
+   participants answer on phones. A mouse keeps the denser 40px. */
+@media (pointer: coarse) { .btn:not(.btn-sm), .input { min-height: 44px; } }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .link { color: var(--brand); font-weight: 600; text-underline-offset: 3px; }
 .link:hover { text-decoration: underline; }

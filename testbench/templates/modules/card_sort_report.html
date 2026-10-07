@@ -40,7 +40,7 @@
               {% if cs.agree < 0.5 %}
                 <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>No clear home</span>
               {% else %}
-                <span class="num t-strong {% if cs.agree >= 0.7 %}text-emerald-600{% endif %}">{{ cs.agree_pct }}%</span>
+                <span class="num t-strong {% if cs.agree >= 0.7 %}text-ok{% endif %}">{{ cs.agree_pct }}%</span>
               {% endif %}
             </td>
           </tr>

@@ -218,9 +218,19 @@ def csp(app):
     ])
 
 
+RESEARCHER_BLUEPRINTS = {"admin", "studio", "platform"}
+
+
+def _in_workspace():
+    """True for a request in the researcher workspace rather than a participant or public page."""
+    return (request.blueprint in RESEARCHER_BLUEPRINTS
+            or request.path.startswith(("/app/", "/account")))
+
+
 def render_error(code, title, message):
     try:
-        return render_template("error.html", code=code, title=title, message=message,
+        template = "admin/error.html" if _in_workspace() else "error.html"
+        return render_template(template, code=code, title=title, message=message,
                                request_id=g.get("request_id", ""), project=None)
     except Exception:       # a template failure must not replace the real error
         return f"{code} {title}: {message}"

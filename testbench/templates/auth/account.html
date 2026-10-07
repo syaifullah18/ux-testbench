@@ -1,190 +1,189 @@
-{% extends "base.html" %}
-{% block title %}Account Settings{% endblock %}
-{% block width %}max-w-4xl{% endblock %}
-{% block nav_right %}
-<form method="post" action="{{ url_for('auth.logout') }}" class="inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="text-white/70 hover:text-white underline text-[13px]"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Log out</button>
-</form>
-{% endblock %}
-{% block content %}
-<div class="mb-8">
-    <h1 class="text-2xl font-bold text-ink">Account Settings</h1>
-    <p class="text-ink-subtle text-[14px]">Manage your profile, how you sign in, and your sessions.</p>
-</div>
+{% extends "admin/_layout.html" %}
+{% block title %}Account{% endblock %}
+{% block tab %}account{% endblock %}
 
+{% block header %}
+<div class="page-head">
+  <div class="wrap head-end">
+    <h1 class="t-page">Account</h1>
+    <p class="t-meta mt-1">Your profile, how you sign in, and where you are signed in.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
 {% if saved %}
-<div class="bg-ok-soft text-ok-ink p-4 rounded-lg text-[14px] mb-8 flex items-center gap-3">
-    <i class="fa-solid fa-check-circle text-ok"></i> Settings saved successfully.
+<div class="panel" role="status">
+  <div class="panel-b flex items-center gap-3 text-ok">
+    <i class="fa-solid fa-circle-check" aria-hidden="true"></i><span class="t-strong">Settings saved.</span>
+  </div>
 </div>
 {% endif %}
 
-<div class="grid md:grid-cols-3 gap-8">
-    <div class="md:col-span-1">
-        <nav class="flex flex-col gap-1 text-[14px] font-medium text-ink-muted">
-            <a href="#profile" class="min-h-11 flex items-center px-3 rounded-lg bg-surface-subtle text-ink">Profile</a>
-            {% if providers or identities %}<a href="#linked" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Linked accounts</a>{% endif %}
-            {% if password_login and has_password %}<a href="#security" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Security</a>{% endif %}
-            <a href="#sessions" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Sessions</a>
-            <a href="#danger" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-bad-soft text-bad mt-4">Danger Zone</a>
-        </nav>
-    </div>
-    
-    <div class="md:col-span-2 space-y-10">
-        <!-- Profile -->
-        <section id="profile" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Profile</h2>
-            <form method="post" class="space-y-4 max-w-sm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="action" value="update_profile">
-                <div>
-                    <label class="block text-[13px] font-semibold text-ink-muted mb-1">Email</label>
-                    <input type="text" value="{{ user.email }}" disabled class="w-full border border-line bg-surface-subtle rounded-lg px-3 py-2 text-ink-subtle cursor-not-allowed">
-                    <p class="text-[12px] text-ink-subtle mt-1">To change your email, contact support.</p>
-                </div>
-                <div>
-                    <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-name">Name</label>
-                    <input id="ac-name" name="name" type="text" value="{{ user.name }}" required
-                           class="w-full border {{ 'border-bad' if errors.name else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.name %}<p class="text-bad text-[13px] mt-1">{{ errors.name }}</p>{% endif %}
-                </div>
-                <button type="submit" class="bg-brand-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-brand-700 text-[14px]">Save profile</button>
-            </form>
-        </section>
+<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+  <nav aria-label="Account sections" class="panel side hidden lg:block lg:sticky lg:top-6 lg:self-start">
+    <a href="#profile">Profile</a>
+    {% if providers or identities %}<a href="#linked">Linked accounts</a>{% endif %}
+    {% if password_login and has_password %}<a href="#security">Password</a>{% endif %}
+    <a href="#sessions">Sessions</a>
+    <a href="#danger" style="color: var(--bad-fg)">Delete account</a>
+  </nav>
 
-        {% if providers or identities %}
-        <!-- Linked accounts -->
-        <section id="linked" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Linked accounts</h2>
-            <p class="text-[13px] text-ink-subtle mb-4">Sign in with any of these instead of a password.</p>
-            {% if errors.identities %}<p class="text-bad text-[13px] mb-3" role="alert">{{ errors.identities }}</p>{% endif %}
-            <div class="space-y-3">
-                {% set labels = dict(providers) %}
-                {% for name in (labels.keys() | list) + (identities.keys() | reject('in', labels) | list) %}
-                {% set linked = identities.get(name) %}
-                <div class="border border-line rounded-lg p-3 flex flex-wrap justify-between items-center gap-3 text-[13px]">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <i class="fa-brands fa-{{ name }} text-lg text-ink" aria-hidden="true"></i>
-                        <div class="min-w-0">
-                            <p class="font-medium text-ink">{{ labels.get(name, name|capitalize) }}</p>
-                            <p class="text-ink-subtle truncate">{{ ('Linked as ' ~ linked.email) if linked else 'Not linked' }}</p>
-                        </div>
-                    </div>
-                    {% if linked %}
-                    <form method="post">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input type="hidden" name="action" value="unlink_identity">
-                        <input type="hidden" name="provider" value="{{ name }}">
-                        <button type="submit" class="border border-line text-ink-muted font-medium min-h-10 py-2 px-3 rounded-lg hover:bg-surface-subtle">Unlink</button>
-                    </form>
-                    {% elif name in labels %}
-                    <a href="{{ url_for('auth.oauth_start', provider=name, link=1) }}" class="border border-line text-ink-muted font-medium min-h-10 inline-flex items-center py-2 px-3 rounded-lg hover:bg-surface-subtle">Link</a>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </section>
+  <div class="stack min-w-0">
+    <section id="profile" class="panel scroll-mt-6" aria-labelledby="profile-h">
+      <header class="panel-h"><h2 id="profile-h">Profile</h2></header>
+      <form method="post" class="panel-b max-w-md">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="update_profile">
+        <div class="field">
+          <label class="label" for="ac-email">Email</label>
+          <input id="ac-email" type="text" value="{{ user.email }}" class="input cursor-not-allowed bg-paper text-muted" disabled>
+          <p class="help">To change your email, contact support.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="ac-name">Name</label>
+          <input id="ac-name" name="name" type="text" value="{{ user.name }}" class="input" required
+                 {% if errors.name %}aria-invalid="true" aria-describedby="ac-name-msg"{% endif %}>
+          {% if errors.name %}<p id="ac-name-msg" class="err">{{ errors.name }}</p>{% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary mt-6">Save profile</button>
+      </form>
+    </section>
+
+    {% if providers or identities %}
+    <section id="linked" class="panel scroll-mt-6" aria-labelledby="linked-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="linked-h">Linked accounts</h2>
+          <p>Sign in with any of these instead of a password.</p>
+        </div>
+      </header>
+      {% if errors.identities %}<p class="err px-6" role="alert">{{ errors.identities }}</p>{% endif %}
+      <div class="rows">
+        {% set labels = dict(providers) %}
+        {% for name in (labels.keys() | list) + (identities.keys() | reject('in', labels) | list) %}
+        {% set linked = identities.get(name) %}
+        <div class="row">
+          <i class="fa-brands fa-{{ name }} text-xl" aria-hidden="true"></i>
+          <div class="row-main">
+            <p class="row-title">{{ labels.get(name, name|capitalize) }}</p>
+            <p class="t-meta truncate">{{ ('Linked as ' ~ linked.email) if linked else 'Not linked' }}</p>
+          </div>
+          {% if linked %}
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="unlink_identity">
+            <input type="hidden" name="provider" value="{{ name }}">
+            <button type="submit" class="btn btn-secondary btn-sm">Unlink</button>
+          </form>
+          {% elif name in labels %}
+          <a href="{{ url_for('auth.oauth_start', provider=name, link=1) }}" class="btn btn-secondary btn-sm">Link</a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if password_login and has_password %}
+    <section id="security" class="panel scroll-mt-6" aria-labelledby="security-h">
+      <header class="panel-h"><h2 id="security-h">Password</h2></header>
+      <form method="post" class="panel-b max-w-md">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="change_password">
+        <div class="field">
+          <label class="label" for="ac-pw-curr">Current password</label>
+          <input id="ac-pw-curr" name="current_password" type="password" class="input" required autocomplete="current-password"
+                 {% if errors.current_password %}aria-invalid="true" aria-describedby="ac-pw-curr-msg"{% endif %}>
+          {% if errors.current_password %}<p id="ac-pw-curr-msg" class="err">{{ errors.current_password }}</p>{% endif %}
+        </div>
+        <div class="field">
+          <label class="label" for="ac-pw-new">New password</label>
+          <input id="ac-pw-new" name="new_password" type="password" class="input" required minlength="10" autocomplete="new-password"
+                 {% if errors.new_password %}aria-invalid="true" aria-describedby="ac-pw-new-msg"{% endif %}>
+          {% if errors.new_password %}<p id="ac-pw-new-msg" class="err">{{ errors.new_password }}</p>
+          {% else %}<p class="help">At least 10 characters.</p>{% endif %}
+        </div>
+        <div class="field">
+          <label class="label" for="ac-pw-conf">Confirm new password</label>
+          <input id="ac-pw-conf" name="confirm_password" type="password" class="input" required autocomplete="new-password"
+                 {% if errors.confirm_password %}aria-invalid="true" aria-describedby="ac-pw-conf-msg"{% endif %}>
+          {% if errors.confirm_password %}<p id="ac-pw-conf-msg" class="err">{{ errors.confirm_password }}</p>{% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary mt-6">Update password</button>
+      </form>
+    </section>
+    {% endif %}
+
+    <section id="sessions" class="panel scroll-mt-6" aria-labelledby="sessions-h">
+      <header class="panel-h">
+        <div>
+          <h2 id="sessions-h">Active sessions</h2>
+          <p>Where this account is signed in.</p>
+        </div>
+      </header>
+      <div class="rows">
+        {% for s in sessions %}
+        <div class="row">
+          <div class="row-main">
+            <p class="row-title">{{ s.ip or 'Unknown IP' }}</p>
+            <p class="t-meta truncate" title="{{ s.user_agent }}">{{ s.user_agent or 'Unknown device' }}</p>
+          </div>
+          <p class="t-meta whitespace-nowrap">Last seen {{ s.last_seen_at[:10] }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      <form method="post" class="panel-f">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="revoke_all">
+        <button type="submit" class="btn btn-secondary">Sign out of all other devices</button>
+      </form>
+    </section>
+
+    <section id="danger" class="panel scroll-mt-6 border-bad" aria-labelledby="danger-h">
+      <header class="panel-h"><h2 id="danger-h" class="text-bad">Delete account</h2></header>
+      <div class="panel-b">
+        <p class="text-muted max-w-2xl">
+          Deleting your account cannot be undone. Your name, email and sessions are removed, and
+          your entries in the platform audit log are kept but no longer linked to you.
+        </p>
+        {% if sole_owned %}
+        <div class="well mt-6 max-w-2xl">
+          <p class="text-muted">
+            You are the <strong class="text-ink">only owner</strong> of {{ sole_owned|join(', ') }}. Nobody else could
+            reach {{ 'them' if sole_owned|length > 1 else 'it' }} once your account is gone, so decide what happens:
+          </p>
+          <p class="mt-2 text-muted">
+            Either <a href="{{ url_for('public.dashboard') }}" class="link">invite another owner</a>
+            and hand over first, or tick the box below to delete
+            {{ 'those studies' if sole_owned|length > 1 else 'that study' }} along with all of
+            {{ 'their' if sole_owned|length > 1 else 'its' }} participant data.
+          </p>
+        </div>
         {% endif %}
-
-        {% if password_login and has_password %}
-        <!-- Security -->
-        <section id="security" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Security</h2>
-            <form method="post" class="space-y-4 max-w-sm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="action" value="change_password">
-                <div>
-                    <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-curr">Current password</label>
-                    <input id="ac-pw-curr" name="current_password" type="password" required
-                           class="w-full border {{ 'border-bad' if errors.current_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.current_password %}<p class="text-bad text-[13px] mt-1">{{ errors.current_password }}</p>{% endif %}
-                </div>
-                <div>
-                    <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-new">New password</label>
-                    <input id="ac-pw-new" name="new_password" type="password" required minlength="10"
-                           class="w-full border {{ 'border-bad' if errors.new_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.new_password %}<p class="text-bad text-[13px] mt-1">{{ errors.new_password }}</p>{% endif %}
-                </div>
-                <div>
-                    <label class="block text-[13px] font-semibold text-ink-muted mb-1" for="ac-pw-conf">Confirm new password</label>
-                    <input id="ac-pw-conf" name="confirm_password" type="password" required
-                           class="w-full border {{ 'border-bad' if errors.confirm_password else 'border-line' }} min-h-11 bg-card text-ink rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-                    {% if errors.confirm_password %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm_password }}</p>{% endif %}
-                </div>
-                <button type="submit" class="bg-brand-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-brand-700 text-[14px]">Update password</button>
-            </form>
-        </section>
-        {% endif %}
-
-        <!-- Sessions -->
-        <section id="sessions" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Active Sessions</h2>
-            <p class="text-[13px] text-ink-subtle mb-4">You are currently logged in on these devices.</p>
-            <div class="space-y-3 mb-4">
-                {% for s in sessions %}
-                <div class="border border-line rounded-lg p-3 flex justify-between items-center text-[13px]">
-                    <div>
-                        <p class="font-medium text-ink">{{ s.ip or 'Unknown IP' }}</p>
-                        <p class="text-ink-subtle truncate max-w-md" title="{{ s.user_agent }}">{{ s.user_agent or 'Unknown Device' }}</p>
-                    </div>
-                    <div class="text-right text-ink-subtle text-[12px]">
-                        Last seen: {{ s.last_seen_at[:10] }}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <form method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="action" value="revoke_all">
-                <button type="submit" class="border border-line text-ink-muted font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-surface-subtle text-[14px]">Sign out of all other devices</button>
-            </form>
-        </section>
-
-        <!-- Danger Zone -->
-        <section id="danger" class="scroll-mt-10">
-            <h2 class="text-lg font-bold text-bad mb-4 pb-2 border-b border-bad-line">Danger Zone</h2>
-            <div class="border border-bad-line rounded-xl p-5 bg-bad-soft/50">
-                <h3 class="font-bold text-ink mb-1 text-[15px]">Delete Account</h3>
-                <p class="text-[13px] text-ink-muted mb-4">
-                    Deleting your account cannot be undone. Your name, email and sessions are removed, and
-                    your entries in the platform audit log are kept but no longer linked to you.
-                </p>
-                {% if sole_owned %}
-                <div class="bg-card border border-bad-line rounded-lg p-3.5 mb-4">
-                    <p class="text-[13px] text-ink-muted mb-2">
-                        You are the <strong>only owner</strong> of {{ sole_owned|join(', ') }}. Nobody else could
-                        reach {{ 'them' if sole_owned|length > 1 else 'it' }} once your account is gone, so decide what happens:
-                    </p>
-                    <p class="text-[13px] text-ink-muted">
-                        Either <a href="{{ url_for('public.dashboard') }}" class="text-brand-600 dark:text-brand-400 underline">invite another owner</a>
-                        and hand over first, or tick the box below to delete
-                        {{ 'those studies' if sole_owned|length > 1 else 'that study' }} along with all of
-                        {{ 'their' if sole_owned|length > 1 else 'its' }} participant data.
-                    </p>
-                </div>
-                {% endif %}
-                <form method="post" class="space-y-3" onsubmit="return confirm('Are you absolutely sure you want to delete your account?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="action" value="delete_account">
-                    <div>
-                        <label class="block text-[13px] font-semibold text-ink-muted mb-1">To verify, type <strong>{{ user.email }}</strong> below</label>
-                        <input name="confirm_email" type="text" required class="w-full max-w-sm border border-line rounded-lg px-3 py-2 text-[14px] outline-none focus:border-bad">
-                        {% if errors.confirm_email %}<p class="text-bad text-[13px] mt-1">{{ errors.confirm_email }}</p>{% endif %}
-                    </div>
-                    {% if sole_owned %}
-                    <label class="flex items-start gap-2 text-[13px] text-ink-muted max-w-sm">
-                        <input type="checkbox" name="projects_action" value="delete" class="mt-0.5 rounded border-line">
-                        <span>Also delete these studies and their participant data: <strong>{{ sole_owned|join(', ') }}</strong></span>
-                    </label>
-                    {% endif %}
-                    <button type="submit" class="bg-red-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-red-700 text-[14px]">Delete my account</button>
-                    <p class="text-[13px] text-ink-subtle pt-1">
-                        Want a copy first? <a href="{{ url_for('auth.export_account') }}" class="text-brand-600 dark:text-brand-400 underline">Download your account data as JSON</a>.
-                        Participant answers export per study as CSV from its results page.
-                    </p>
-                </form>
-            </div>
-        </section>
-    </div>
+        <form method="post" class="mt-6 max-w-md" onsubmit="return confirm('Are you absolutely sure you want to delete your account?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="action" value="delete_account">
+          <div class="field">
+            <label class="label" for="ac-confirm">To confirm, type <span class="font-mono">{{ user.email }}</span></label>
+            <input id="ac-confirm" name="confirm_email" type="text" class="input" required autocomplete="off"
+                   {% if errors.confirm_email %}aria-invalid="true" aria-describedby="ac-confirm-msg"{% endif %}>
+            {% if errors.confirm_email %}<p id="ac-confirm-msg" class="err">{{ errors.confirm_email }}</p>{% endif %}
+          </div>
+          {% if sole_owned %}
+          <label class="mt-4 flex items-start gap-2 text-muted">
+            <input type="checkbox" name="projects_action" value="delete" class="mt-1">
+            <span>Also delete these studies and their participant data: <strong class="text-ink">{{ sole_owned|join(', ') }}</strong></span>
+          </label>
+          {% endif %}
+          <button type="submit" class="btn btn-danger-solid mt-6">Delete my account</button>
+        </form>
+        <p class="help mt-6">
+          Want a copy first? <a href="{{ url_for('auth.export_account') }}" class="link">Download your account data as JSON</a>.
+          Participant answers export per study as CSV from its results page.
+        </p>
+      </div>
+    </section>
+  </div>
 </div>
 {% endblock %}

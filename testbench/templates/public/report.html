@@ -6,7 +6,7 @@
 <div class="my-8">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-ink tracking-tight flex items-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Report Abuse or Phishing
+            <i class="fa-solid fa-triangle-exclamation text-bad"></i> Report Abuse or Phishing
         </h1>
         <p class="text-ink-subtle text-sm mt-1">
             Help us keep research ethical and safe. Report any study soliciting passwords or violating participant rights.
@@ -14,7 +14,7 @@
     </div>
 
     {% if sent %}
-    <div class="bg-ok-soft border border-ok-line rounded-2xl p-6 text-center">
+    <div class="bg-ok-soft border border-ok-line rounded-lg p-6 text-center">
         <div class="size-12 rounded-full bg-ok-soft text-ok flex items-center justify-center mx-auto mb-3 text-xl">
             <i class="fa-solid fa-check"></i>
         </div>
@@ -25,30 +25,30 @@
         <a href="/" class="inline-block mt-4 text-xs font-semibold text-ok-ink underline">Return to Home</a>
     </div>
     {% else %}
-    <form method="post" class="bg-card border border-line rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
+    <form method="post" class="bg-card border border-line rounded-lg p-6 sm:p-8  space-y-5">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <div>
-            <label for="rep-slug" class="block text-sm font-semibold text-ink mb-1">Study URL or Slug</label>
+            <label for="rep-slug" class="label">Study URL or Slug</label>
             <input id="rep-slug" name="slug" type="text" placeholder="e.g. checkout-test or full link" required
-                   class="w-full border border-line min-h-11 bg-card text-ink rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-500 outline-none">
+                   class="input">
         </div>
 
         <div>
-            <label for="rep-reason" class="block text-sm font-semibold text-ink mb-1">Reason for Report</label>
+            <label for="rep-reason" class="label">Reason for Report</label>
             <textarea id="rep-reason" name="reason" rows="4" placeholder="Please describe what you observed (e.g. phishing form asking for password, deceptive content, offensive material)..." required
-                      class="w-full border border-line min-h-11 bg-card text-ink rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:border-rose-500 outline-none"></textarea>
+                      class="input"></textarea>
         </div>
 
         <div>
-            <label for="rep-contact" class="block text-sm font-semibold text-ink mb-1">Your Email (Optional)</label>
+            <label for="rep-contact" class="label">Your Email (Optional)</label>
             <input id="rep-contact" name="contact" type="email" placeholder="you@domain.com"
-                   class="w-full border border-line min-h-11 bg-card text-ink rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-brand/30 outline-none">
+                   class="input">
             <span class="text-xs text-ink-subtle mt-1 block">In case our moderators need further clarification.</span>
         </div>
 
         <div class="pt-2">
-            <button type="submit" class="w-full min-h-11 inline-flex items-center justify-center bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm rounded-xl transition-all shadow-sm">
+            <button type="submit" class="btn btn-danger-solid w-full">
                 Submit Report
             </button>
         </div>

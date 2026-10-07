@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
-    <div class="bg-card border border-line rounded-xl p-6 md:p-8 shadow-sm">
+    <div class="bg-card border border-line rounded-lg p-6 md:p-8 ">
         <div class="text-sm font-semibold text-ink-subtle uppercase tracking-wider mb-2">
             Task {{ task_idx + 1 }} of {{ total }}
         </div>
         <h2 class="text-2xl font-bold text-ink mb-4">{{ task.prompt }}</h2>
         {% if conf.instructions %}<p class="text-ink-muted mb-6">{{ conf.instructions }}</p>{% endif %}
 
-        <div class="bg-surface-subtle border border-line rounded-xl p-4 md:p-6 mb-8 max-h-[500px] overflow-y-auto">
+        <div class="bg-surface-subtle border border-line rounded-lg p-4 md:p-6 mb-8 max-h-[500px] overflow-y-auto">
             {% macro render_tree(nodes) %}
             <ul class="space-y-1">
                 {% for node in nodes %}
@@ -24,7 +24,7 @@
                             </div>
                         </details>
                     {% else %}
-                        <div class="cursor-pointer px-3 py-2 hover:bg-brand-50 dark:hover:bg-brand-950/50 hover:text-brand-600 dark:hover:text-brand-400 rounded-lg flex items-center gap-2 select-none leaf-node" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}'); selectNode('{{ node.id }}', '{{ node.label|replace("'", "\\'") }}')">
+                        <div class="cursor-pointer px-3 py-2 hover:bg-brand-50 hover:text-brand rounded-lg flex items-center gap-2 select-none leaf-node" data-node-id="{{ node.id }}" onclick="recordClick('{{ node.id }}'); selectNode('{{ node.id }}', '{{ node.label|replace("'", "\\'") }}')">
                             <i class="fa-regular fa-file text-ink-subtle w-3 text-center"></i>
                             {{ node.label }}
                         </div>
@@ -42,7 +42,7 @@
                 I'd give up / I can't find it
             </button>
             <div class="flex items-center gap-4">
-                <span id="selected-label" class="text-ink-muted font-medium hidden">Selected: <span class="text-brand-600 dark:text-brand-400"></span></span>
+                <span id="selected-label" class="text-ink-muted font-medium hidden">Selected: <span class="text-brand"></span></span>
                 <button type="button" id="btn-submit" class="btn btn-primary px-8 disabled:opacity-50" disabled onclick="submitResult()">
                     Confirm Choice
                 </button>
@@ -63,7 +63,7 @@
     }
 
     // classList takes one class per argument; a string with a space throws.
-    const LEAF_HOVER = ['hover:bg-brand-50', 'dark:hover:bg-brand-950/50', 'hover:text-brand-600', 'dark:hover:text-brand-400'];
+    const LEAF_HOVER = ['hover:bg-brand-50', '', 'hover:text-brand-600', ''];
 
     function selectNode(nodeId, label) {
         selectedNodeId = nodeId;

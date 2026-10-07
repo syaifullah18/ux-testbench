@@ -1,48 +1,43 @@
-{#- The shared controls. Two rules hold across all of them.
+{#- The shared controls, drawn with the design system's components (static/admin/app.css), so a
+    participant's button is the same button as in the workspace.
 
-    Size: every interactive control is at least 44px tall (`min-h-11`), which is the smallest
-    target a thumb hits reliably. `py-2.5` on a 15px font lands around 38px, which reads fine on
-    a desktop mouse and misses on a phone — and participants answer on phones.
+    Size: `.btn` and `.input` grow to 44px on a touch screen, the smallest target a thumb hits
+    reliably, and participants answer on phones.
 
     Weight: there is exactly one primary style, and it is the brand colour. A screen with a brand
     button and a near-black button is a screen with two primaries, and the eye has to work out
     which one finishes the task. `secondary` is the outline, `ghost` is the text-only escape
     hatch for cancel-shaped actions that should not look clickable-important at all. -#}
 
+{%- macro _btn_class(style) -%}
+btn {% if style == 'primary' %}btn-primary{% elif style == 'danger' %}btn-danger-solid{% elif style == 'ghost' %}btn-ghost{% else %}btn-secondary{% endif %}
+{%- endmacro %}
+
 {% macro button(label, icon=None, type='submit', name=None, value=None, style='primary', cls='') -%}
-<button type="{{ type }}" {% if name %}name="{{ name }}" value="{{ value }}"{% endif %}
-        class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[15px] px-5 py-2.5 transition-colors focus:outline-none focus:ring-4 focus:ring-brand/30
-               {% if style == 'primary' %}text-white bg-brand-600 hover:bg-brand-700
-               {% elif style == 'danger' %}text-white bg-red-600 hover:bg-red-700
-               {% elif style == 'ghost' %}text-ink-muted hover:text-ink hover:bg-surface-subtle
-               {% else %}border border-line bg-card text-ink hover:bg-surface-subtle{% endif %} {{ cls }}">
-    {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</button>
+<button type="{{ type }}" {% if name %}name="{{ name }}" value="{{ value }}"{% endif %} class="{{ _btn_class(style) }} {{ cls }}">
+    {% if icon %}<i class="fa-solid {{ icon }}" aria-hidden="true"></i>{% endif %}{{ label }}</button>
 {%- endmacro %}
 
 {% macro link_button(href, label, icon=None, style='primary', cls='') -%}
-<a href="{{ href }}" class="inline-flex min-h-11 items-center justify-center gap-2 font-semibold rounded-lg text-[14px] px-4 py-2.5 transition-colors focus:outline-none focus:ring-4 focus:ring-brand/30
-   {% if style == 'primary' %}text-white bg-brand-600 hover:bg-brand-700
-   {% elif style == 'ghost' %}text-ink-muted hover:text-ink hover:bg-surface-subtle
-   {% else %}border border-line bg-card text-ink hover:bg-surface-subtle{% endif %} {{ cls }}">
-   {% if icon %}<i class="fa-solid {{ icon }}"></i>{% endif %}{{ label }}</a>
+<a href="{{ href }}" class="{{ _btn_class(style) }} {{ cls }}">
+   {% if icon %}<i class="fa-solid {{ icon }}" aria-hidden="true"></i>{% endif %}{{ label }}</a>
 {%- endmacro %}
 
 {% macro error_banner(errors, t) -%}
 {% if errors %}
-<div class="flex gap-3 p-3.5 mb-6 text-[14px] text-bad-ink rounded-lg bg-bad-soft border border-bad-line" role="alert">
-    <i class="fa-solid fa-circle-exclamation mt-1"></i><span>{{ t('error.banner') }}</span>
+<div class="flex gap-3 p-4 mb-6 text-sm font-semibold text-bad rounded-lg bg-bad-soft" role="alert">
+    <i class="fa-solid fa-circle-exclamation mt-0.5" aria-hidden="true"></i><span>{{ t('error.banner') }}</span>
 </div>
 {% endif %}
 {%- endmacro %}
 
 {% macro input(id, label, type='text', value='', error=None, hint=None, placeholder='', autocomplete='off', required=False) -%}
 <div>
-    <label for="{{ id }}" class="block mb-1.5 font-semibold text-ink">{{ label }}</label>
-    <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="{{ autocomplete }}"
+    <label for="{{ id }}" class="label">{{ label }}</label>
+    <input type="{{ type }}" id="{{ id }}" name="{{ id }}" value="{{ value }}" autocomplete="{{ autocomplete }}" class="input"
            {% if placeholder %}placeholder="{{ placeholder }}"{% endif %} {% if required %}required{% endif %}
-           {% if error or hint %}aria-describedby="{{ id }}-msg"{% endif %} {% if error %}aria-invalid="true"{% endif %}
-           class="{% if error %}bg-bad-soft border-bad{% else %}bg-card border-line{% endif %} min-h-11 border rounded-lg block w-full px-3.5 py-2.5 text-ink placeholder:text-ink-subtle focus:ring-2 focus:ring-brand/40 focus:border-brand outline-none">
-    {% if error %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-bad-ink">{{ error }}</p>
-    {% elif hint %}<p id="{{ id }}-msg" class="mt-1.5 text-[13px] text-ink-subtle">{{ hint }}</p>{% endif %}
+           {% if error or hint %}aria-describedby="{{ id }}-msg"{% endif %} {% if error %}aria-invalid="true"{% endif %}>
+    {% if error %}<p id="{{ id }}-msg" class="err">{{ error }}</p>
+    {% elif hint %}<p id="{{ id }}-msg" class="help">{{ hint }}</p>{% endif %}
 </div>
 {%- endmacro %}

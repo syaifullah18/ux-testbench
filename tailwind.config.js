@@ -1,49 +1,52 @@
 /** Tailwind build for LOCAL_ASSETS=1.
  *
- *  This must define the same theme as the inline CDN config in templates/_head.html, because a
- *  class that exists in one build and not the other produces a page that silently loses its
- *  colour. Both read their values from the CSS custom properties that _head.html emits, so
- *  neither file hard-codes a palette and the surface tokens flip with the theme class.
+ *  Must define the same theme as testbench/static/admin/tw.js (the CDN config), because a class
+ *  that exists in one build and not the other produces a page that silently loses its colour.
+ *  Both map the CSS variables in testbench/static/admin/app.css, so neither hard-codes a palette
+ *  and every colour flips with the theme class and follows a study's own --brand.
  */
-const scale = (name) =>
-  Object.fromEntries(
-    [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
-      step,
-      `rgb(var(--${name}-${step}) / <alpha-value>)`,
-    ]),
-  );
+const c = (name) => `color-mix(in srgb, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
 
-const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
-
-// Status colours: DEFAULT accent, a soft panel, its border, and text on it. See _head.html.
 const status = (name) => ({
-  DEFAULT: token(name),
-  soft: token(`${name}-soft`),
-  line: token(`${name}-line`),
-  ink: token(`${name}-ink`),
+  DEFAULT: c(`${name}-fg`),
+  soft: c(`${name}-bg`),
+  line: c(`${name}-line`),
+  ink: c(`${name}-fg`),
 });
+
+const brand = {
+  DEFAULT: c("brand"),
+  soft: c("brand-soft"),
+  line: c("brand-line"),
+  strong: c("brand-strong"),
+  on: c("on-brand"),
+  ...Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((s) => [s, c(`brand-${s}`)])),
+};
 
 module.exports = {
   darkMode: "class",
   content: ["./testbench/templates/**/*.html", "./testbench/static/**/*.js"],
   theme: {
     extend: {
-      fontFamily: { sans: ["Plus Jakarta Sans", "ui-sans-serif", "system-ui", "sans-serif"] },
       colors: {
-        brand: { DEFAULT: token("brand-500"), ...scale("brand") },
-        nav: token("nav-rgb"),
-        // Surface tokens: one set of markup, two themes.
-        surface: token("surface"),
-        "surface-subtle": token("surface-subtle"),
-        card: token("card"),
-        line: token("line"),
-        ink: token("ink"),
-        "ink-muted": token("ink-muted"),
-        "ink-subtle": token("ink-subtle"),
+        ink: { DEFAULT: c("ink"), 2: c("ink"), muted: c("muted"), subtle: c("subtle") },
+        muted: c("muted"),
+        subtle: c("subtle"),
+        paper: c("paper"),
+        sub: c("sub"),
+        card: c("card"),
+        surface: { DEFAULT: c("surface"), subtle: c("surface-subtle") },
+        nav: c("nav"),
+        line: { DEFAULT: c("line"), strong: c("line-strong") },
         ok: status("ok"),
         warn: status("warn"),
         bad: status("bad"),
         info: status("info"),
+        brand,
+      },
+      fontFamily: {
+        sans: ['"Hanken Grotesk"', "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       height: { 18: "4.5rem" },
       spacing: { 18: "4.5rem" },
