@@ -34,7 +34,12 @@ SIGNUP_MODE=invite            # open the gates only after the beta
 APP_DOMAIN=testbench.example.org
 USERCONTENT_DOMAIN=testbench-usercontent.example      # a different registrable domain
 ACME_EMAIL=ops@example.org
-SMTP_URL=smtps://user:pass@smtp.example.org:465
+GOOGLE_CLIENT_ID=…           # sign in with Google; see "Signing in with Google and GitHub"
+GOOGLE_CLIENT_SECRET=…
+GITHUB_CLIENT_ID=…           # and/or GitHub
+GITHUB_CLIENT_SECRET=…
+PASSWORD_LOGIN=off            # no passwords stored; needs a provider above
+SMTP_URL=smtps://user:pass@smtp.example.org:465       # optional with PASSWORD_LOGIN=off
 MAIL_FROM="UX Testbench <noreply@testbench.example.org>"
 LOCAL_ASSETS=1                # serve CSS, fonts and icons ourselves
 ```
@@ -48,6 +53,37 @@ docker compose exec app python -m testbench create-admin you@example.org
 ```
 
 Point both domains' DNS at the host before starting Caddy, or certificate issuance fails.
+
+With `PASSWORD_LOGIN=off`, `create-admin` asks for no password: it marks the address as a platform
+admin, and that person signs in with Google or GitHub using the same address.
+
+## Signing in with Google and GitHub
+
+Researchers can sign in with a Google or GitHub account instead of a password. A provider is
+offered once both of its variables are set. Register this instance with each provider:
+
+- **Google:** Google Cloud console → APIs & Services → Credentials → Create OAuth client ID,
+  type *Web application*. Authorized redirect URI: `https://<APP_DOMAIN>/login/google/callback`.
+  The consent screen needs only the `openid`, `email` and `profile` scopes, which need no review.
+- **GitHub:** Settings → Developer settings → OAuth Apps → New OAuth App. Authorization callback
+  URL: `https://<APP_DOMAIN>/login/github/callback`.
+
+How accounts are matched:
+
+- An account is found by the provider's own account id, so it survives a change of address at the
+  provider.
+- The first time, it is matched to an existing account by **verified** email address. An address
+  the provider has not verified is refused.
+- If the matching account had a password but had never verified its address, that password and
+  its sessions are removed: the provider has just proved the address belongs to someone else.
+- A new address creates an account only when `SIGNUP_MODE` allows it (`invite` needs an
+  invitation sent to that address).
+- Researchers link or unlink a provider at `/account`. The last way to sign in cannot be unlinked.
+
+Moving an existing instance off passwords: set the provider variables and keep
+`PASSWORD_LOGIN=on` for a while. Each person who signs in through Google or GitHub with the same
+address is linked automatically. Then set `PASSWORD_LOGIN=off`. Anyone not linked yet signs in
+the same way and is linked then; their old password stops being offered.
 
 ## Environment variables
 
@@ -64,7 +100,10 @@ Point both domains' DNS at the host before starting Caddy, or certificate issuan
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | unset | Credentials with read, write, list and delete on the bucket |
 | `S3_PREFIX` | `testbench` | Key prefix, so one bucket can hold several instances |
 | `LOCAL_ASSETS` | off | `1` serves CSS, fonts and icons from this instance, so participant pages make no third-party requests |
-| `SMTP_URL`, `MAIL_FROM` | unset | Without `SMTP_URL`, emails are written to the log instead of sent. Verification and invitations then do not work for real users. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | unset | Offer "Continue with Google". See [Signing in with Google and GitHub](#signing-in-with-google-and-github). |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | unset | Offer "Continue with GitHub" |
+| `PASSWORD_LOGIN` | `on` | `off` removes email and password sign-in, sign-up, verification and reset. Needs a provider. |
+| `SMTP_URL`, `MAIL_FROM` | unset | Without `SMTP_URL`, emails are written to the log instead of sent. Password verification and reset then do not work for real users; invitations still give the owner a link to share. |
 | `SESSION_COOKIE_SECURE` | off | Forced on in public mode |
 | `MAX_UPLOAD_MB` | 50 | Hard request limit, before the per-account quota |
 | `LIMIT_PROJECTS_PER_USER` | 10 | 0 means no limit |
@@ -171,7 +210,8 @@ off-site URL. A prototype is meant to be a mock, not a working service.
    the error at `/app/admin/`. `python -m testbench check` prints every problem in one pass.
 5. **Someone asks for their data to be deleted:** participant rows live in that study's own
    `.db`. A project admin deletes one participant from the participants screen. An account is
-   deleted by its owner from `/account`.
+   deleted by its owner from `/account`, or by an operator with
+   `python -m testbench delete-user <email>`.
 
 ## Monitoring
 
@@ -194,7 +234,8 @@ The items that block opening `SIGNUP_MODE=open`:
 - [ ] Prototypes are served from `USERCONTENT_DOMAIN`, and app cookies are absent there.
 - [ ] The privacy policy and terms have been reviewed by someone qualified in Indonesian data
       protection law (UU PDP No. 27/2022), and name the operator.
-- [ ] `SMTP_URL` works: verification, reset and invitation emails arrive.
+- [ ] Sign-in works end to end: Google and/or GitHub with the production callback URLs, or, while
+      `PASSWORD_LOGIN=on`, `SMTP_URL` delivers verification and reset emails.
 - [ ] A restore from backup has been tested.
 - [ ] `LOCAL_ASSETS=1`, so participant pages make no third-party requests.
 - [ ] Quotas match what the host can actually hold.
