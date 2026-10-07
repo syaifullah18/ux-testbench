@@ -163,6 +163,7 @@ UX Testbench includes a built-in CLI for project scaffolding, validation, operat
 | `python -m testbench demo [-n N]` | Seeds $N$ synthetic participants into the example study (default 30). |
 | `python -m testbench create-admin <email>` | Creates a platform administrator account with email verification (public mode). |
 | `python -m testbench claim <slug> <email>` | Assigns an owner to an existing project in public mode. |
+| `python -m testbench delete-user <email>` | Deletes a researcher account (`--disable` only disables it, `--delete-studies` also removes studies they own alone). |
 | `python -m testbench retention [--ip-days N] [--close-after M]` | Maintenance cron job: prunes stale IPs, flushes spent tokens, and lists expired studies. |
 | `python -m testbench migrate-to-postgres [--dry-run]` | Copies every SQLite database in `DATA_DIR` into `DATABASE_URL`, keeping ids and checking row counts. |
 | `python -m testbench migrate-files-to-s3` | Uploads every Studio study folder to the bucket and verifies each object. |
