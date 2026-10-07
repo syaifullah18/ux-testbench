@@ -10,7 +10,7 @@
 {% block content %}
 <div class="mb-8">
     <h1 class="text-2xl font-bold text-ink">Account Settings</h1>
-    <p class="text-ink-subtle text-[14px]">Manage your profile, security, and sessions.</p>
+    <p class="text-ink-subtle text-[14px]">Manage your profile, how you sign in, and your sessions.</p>
 </div>
 
 {% if saved %}
@@ -23,7 +23,8 @@
     <div class="md:col-span-1">
         <nav class="flex flex-col gap-1 text-[14px] font-medium text-ink-muted">
             <a href="#profile" class="min-h-11 flex items-center px-3 rounded-lg bg-surface-subtle text-ink">Profile</a>
-            <a href="#security" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Security</a>
+            {% if providers or identities %}<a href="#linked" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Linked accounts</a>{% endif %}
+            {% if password_login and has_password %}<a href="#security" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Security</a>{% endif %}
             <a href="#sessions" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-surface-subtle">Sessions</a>
             <a href="#danger" class="min-h-11 flex items-center px-3 rounded-lg hover:bg-bad-soft text-bad mt-4">Danger Zone</a>
         </nav>
@@ -51,6 +52,41 @@
             </form>
         </section>
 
+        {% if providers or identities %}
+        <!-- Linked accounts -->
+        <section id="linked" class="scroll-mt-10">
+            <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Linked accounts</h2>
+            <p class="text-[13px] text-ink-subtle mb-4">Sign in with any of these instead of a password.</p>
+            {% if errors.identities %}<p class="text-bad text-[13px] mb-3" role="alert">{{ errors.identities }}</p>{% endif %}
+            <div class="space-y-3">
+                {% set labels = dict(providers) %}
+                {% for name in (labels.keys() | list) + (identities.keys() | reject('in', labels) | list) %}
+                {% set linked = identities.get(name) %}
+                <div class="border border-line rounded-lg p-3 flex flex-wrap justify-between items-center gap-3 text-[13px]">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <i class="fa-brands fa-{{ name }} text-lg text-ink" aria-hidden="true"></i>
+                        <div class="min-w-0">
+                            <p class="font-medium text-ink">{{ labels.get(name, name|capitalize) }}</p>
+                            <p class="text-ink-subtle truncate">{{ ('Linked as ' ~ linked.email) if linked else 'Not linked' }}</p>
+                        </div>
+                    </div>
+                    {% if linked %}
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="unlink_identity">
+                        <input type="hidden" name="provider" value="{{ name }}">
+                        <button type="submit" class="border border-line text-ink-muted font-medium min-h-10 py-2 px-3 rounded-lg hover:bg-surface-subtle">Unlink</button>
+                    </form>
+                    {% elif name in labels %}
+                    <a href="{{ url_for('auth.oauth_start', provider=name, link=1) }}" class="border border-line text-ink-muted font-medium min-h-10 inline-flex items-center py-2 px-3 rounded-lg hover:bg-surface-subtle">Link</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if password_login and has_password %}
         <!-- Security -->
         <section id="security" class="scroll-mt-10">
             <h2 class="text-lg font-bold text-ink mb-4 pb-2 border-b border-line">Security</h2>
@@ -78,6 +114,7 @@
                 <button type="submit" class="bg-brand-600 text-white font-medium min-h-11 py-2.5 px-4 rounded-lg hover:bg-brand-700 text-[14px]">Update password</button>
             </form>
         </section>
+        {% endif %}
 
         <!-- Sessions -->
         <section id="sessions" class="scroll-mt-10">

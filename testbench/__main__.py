@@ -139,7 +139,18 @@ def cmd_create_admin(args):
             else:
                 print(f"{email} is already a platform admin.")
             return 0
-        
+
+        from .auth import password_login_enabled
+        if not password_login_enabled():
+            user_id, problems = users.create_user(email, "Admin")
+            if problems:
+                print(f"Failed: {problems}", file=sys.stderr)
+                return 1
+            users.update_user(user_id, is_platform_admin=1)
+            users.set_email_verified(user_id)
+            print(f"Platform admin {email} created. Sign in with Google or GitHub using this address.")
+            return 0
+
         while True:
             pw = getpass.getpass("Password (min 10 chars): ")
             if len(pw) >= 10:

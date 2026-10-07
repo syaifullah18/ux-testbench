@@ -3,13 +3,16 @@
 Only active in public mode (TESTBENCH_MODE=public). In internal mode these
 routes return 404, so existing deployments are completely unaffected.
 """
+import hmac
+import os
 import re
+import secrets
 from urllib.parse import urlsplit
 
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    session as cookie, url_for)
 
-from . import limits, mail, moderation, users
+from . import limits, mail, moderation, oauth, users
 from .i18n import translator
 from .rate_limit import clear as clear_rate, is_rate_limited, record_failed_login
 
@@ -17,11 +20,23 @@ bp = Blueprint("auth", __name__)
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 SESSION_COOKIE_KEY = "tb_auth_sid"
+OAUTH_FLOW_KEY = "tb_oauth"
 
 
 def is_public_mode():
-    import os
     return os.environ.get("TESTBENCH_MODE", "internal") == "public"
+
+
+def password_login_enabled():
+    """PASSWORD_LOGIN=off leaves Google and GitHub as the only way in: no password form, no
+    sign-up with a password, no reset or verification emails. On by default so existing
+    accounts keep working until they have linked a provider."""
+    return os.environ.get("PASSWORD_LOGIN", "on").strip().lower() not in ("off", "0", "false", "no")
+
+
+def require_password_login():
+    if not password_login_enabled():
+        abort(404)
 
 
 def signup_mode():
@@ -31,7 +46,6 @@ def signup_mode():
     invited can create an account; 'open' once quotas and moderation have been exercised;
     'closed' if we ever need to stop the flow without taking the instance down.
     """
-    import os
     mode = os.environ.get("SIGNUP_MODE", "open").lower()
     return mode if mode in ("open", "invite", "closed") else "open"
 
@@ -70,7 +84,6 @@ def _safe_next_url(target):
 
 
 def _base_url():
-    import os
     domain = (
         current_app.config.get("APP_DOMAIN")
         or os.environ.get("APP_DOMAIN")
@@ -80,6 +93,35 @@ def _base_url():
         scheme = "https" if (current_app.config.get("SESSION_COOKIE_SECURE") or request.is_secure) else "http"
         return f"{scheme}://{domain}"
     return request.host_url.rstrip("/")
+
+
+def _login_user(user):
+    """Start a signed-in session for this user. The CSRF token is replaced so a token seen
+    before signing in is useless after it; the rest of the cookie (participant progress, a
+    pending invitation) is kept."""
+    cookie[SESSION_COOKIE_KEY] = users.create_session(
+        user["id"], ip=request.remote_addr, user_agent=request.headers.get("User-Agent", ""))
+    cookie["csrf_token"] = secrets.token_urlsafe(32)
+    users.update_last_login(user["id"])
+
+
+def _accept_pending_invite(user):
+    """Accepts the invitation this browser opened before signing in, when it was sent to this
+    account's address. Returns the project slug, or None."""
+    token = cookie.get("pending_invite")
+    if not token:
+        return None
+    invite = users.get_invitation(token)
+    if not invite or invite["email"].lower() != user["email"].lower():
+        return None
+    cookie.pop("pending_invite", None)
+    return users.accept_invitation(token, user["id"])
+
+
+def _auth_page_vars():
+    """What the sign-in and sign-up pages need to offer Google, GitHub and/or a password."""
+    return {"providers": oauth.enabled_providers(), "password_login": password_login_enabled(),
+            "next_param": _safe_next_url(request.args.get("next")) or ""}
 
 
 # ---------------------------------------------------------------- sign up
@@ -118,6 +160,7 @@ def signup():
                                         "invitation. Open the link you were sent, or get in touch."))
 
     if request.method == "POST":
+        require_password_login()
         form["email"] = request.form.get("email", "").strip()
         form["name"] = request.form.get("name", "").strip()
         password = request.form.get("password", "")
@@ -166,12 +209,13 @@ def signup():
     if invite_token and invite:
         cookie["pending_invite"] = invite_token
     return render_template("auth/signup.html", t=t, errors=errors, form=form, project=None,
-                           invite=invite, signup_mode=mode)
+                           invite=invite, signup_mode=mode, **_auth_page_vars())
 
 
 @bp.route("/verify/<token>")
 def verify(token):
     require_public()
+    require_password_login()
     t = translator("en")
     user = users.use_token(token, "verify")
     if user is None:
@@ -195,6 +239,7 @@ def login():
         return redirect(next_url)
 
     if request.method == "POST":
+        require_password_login()
         form["email"] = request.form.get("email", "").strip()
         password = request.form.get("password", "")
 
@@ -206,18 +251,153 @@ def login():
                 if user["disabled_at"]:
                     errors["email"] = t("auth.account_disabled")
                 else:
-                    sid = users.create_session(
-                        user["id"], ip=request.remote_addr,
-                        user_agent=request.headers.get("User-Agent", ""))
-                    cookie[SESSION_COOKIE_KEY] = sid
-                    users.update_last_login(user["id"])
+                    _login_user(user)
                     clear_rate(request.remote_addr, "auth_login")
                     return redirect(next_url)
             else:
                 record_failed_login(request.remote_addr, "auth_login")
                 errors["email"] = t("auth.login_failed")
 
-    return render_template("auth/login.html", t=t, errors=errors, form=form, project=None)
+    return render_template("auth/login.html", t=t, errors=errors, form=form, project=None,
+                           **_auth_page_vars())
+
+
+# ---------------------------------------------------------------- Google and GitHub
+
+def _redirect_uri(provider):
+    return _base_url() + url_for("auth.oauth_callback", provider=provider)
+
+
+@bp.route("/login/<provider>")
+def oauth_start(provider):
+    """A plain GET link, not a form: CSP form-action 'self' would block a POST that redirects
+    to the provider. Signing in, signing up and linking from /account all start here."""
+    require_public()
+    if not oauth.is_enabled(provider):
+        abort(404)
+    linking = bool(request.args.get("link")) and current_user() is not None
+    default_next = url_for("auth.account") if linking else url_for("public.dashboard")
+    state, verifier = oauth.new_state()
+    cookie[OAUTH_FLOW_KEY] = {
+        "provider": provider, "state": state, "verifier": verifier,
+        "next": _safe_next_url(request.args.get("next")) or default_next,
+        "intent": "link" if linking else "login",
+    }
+    return redirect(oauth.authorize_url(provider, _redirect_uri(provider), state, verifier))
+
+
+def _oauth_failed(title, message, status=200):
+    return render_template("auth/message.html", t=translator("en"), project=None,
+                           title=title, message=message), status
+
+
+@bp.route("/login/<provider>/callback")
+def oauth_callback(provider):
+    require_public()
+    if not oauth.is_enabled(provider):
+        abort(404)
+    t = translator("en")
+    label = oauth.PROVIDERS[provider]["label"]
+
+    # The state is single-use: popped before anything else, so a replayed callback finds nothing.
+    flow = cookie.pop(OAUTH_FLOW_KEY, None)
+    state = request.args.get("state", "")
+    if (not isinstance(flow, dict) or flow.get("provider") != provider
+            or not state or not hmac.compare_digest(str(flow.get("state", "")), state)):
+        return _oauth_failed("Sign-in expired",
+                             "That sign-in link is no longer valid. Start again from the sign-in page.", 400)
+    code = request.args.get("code")
+    if request.args.get("error") or not code:
+        return _oauth_failed("Sign-in cancelled", f"{label} did not sign you in. You can try again.")
+
+    try:
+        profile = oauth.fetch_profile(provider, code, _redirect_uri(provider), flow["verifier"])
+    except oauth.OAuthError as exc:
+        return _oauth_failed("Sign-in failed", str(exc), 502)
+    email = profile["email"]
+    if not profile["subject"] or not email or not profile["email_verified"]:
+        return _oauth_failed("No verified email",
+                             f"Your {label} account has no verified email address. Verify one with "
+                             f"{label} and try again.")
+
+    ip = request.remote_addr
+    linked = users.find_identity(provider, profile["subject"])
+
+    if flow.get("intent") == "link":
+        me = current_user()
+        if me is None:
+            return redirect(url_for("auth.login"))
+        if linked is not None and linked["id"] != me["id"]:
+            return _oauth_failed("Already linked",
+                                 f"That {label} account is already linked to another account here.")
+        if linked is None:
+            if any(i["provider"] == provider for i in users.list_identities(me["id"])):
+                return _oauth_failed("Already linked",
+                                     f"Another {label} account is already linked. Unlink it first.")
+            users.link_identity(me["id"], provider, profile["subject"], email)
+            moderation.audit("account.link", user_id=me["id"], actor=me["email"],
+                             detail={"provider": provider}, ip=ip)
+        flash(f"{label} is linked. You can sign in with it from now on.", "success")
+        return redirect(flow["next"])
+
+    user = linked
+    if user is None:
+        user = users.get_user_by_email(email)
+        if user is not None:
+            if not user["email_verified_at"]:
+                # Someone signed up with this address and a password but never proved it was
+                # theirs. The provider has now proved it belongs to this visitor, so that password,
+                # and anyone signed in with it, must not keep access.
+                users.clear_password(user["id"])
+                users.revoke_all_sessions(user["id"])
+                users.set_email_verified(user["id"])
+            users.link_identity(user["id"], provider, profile["subject"], email)
+            moderation.audit("account.link", user_id=user["id"], actor=email,
+                             detail={"provider": provider}, ip=ip)
+            user = users.get_user(user["id"])
+        else:
+            user, problem = _oauth_signup(provider, profile, ip)
+            if problem:
+                return _oauth_failed(*problem)
+
+    if user["disabled_at"]:
+        return _oauth_failed("Account disabled", t("auth.account_disabled"), 403)
+    _login_user(user)
+    joined = _accept_pending_invite(user)
+    if joined:
+        flash(f"You have joined {joined}.", "success")
+        if flow["next"].startswith("/invite/"):   # already used; opening it again would say so
+            return redirect(url_for("public.dashboard"))
+    return redirect(flow["next"])
+
+
+def _oauth_signup(provider, profile, ip):
+    """Creates an account for a first-time visitor. Returns (user, None) or (None, (title, message))."""
+    mode = signup_mode()
+    token = cookie.get("pending_invite")
+    invite = users.get_invitation(token) if token else None
+    invited = invite is not None and invite["email"].lower() == profile["email"]
+    if mode == "closed":
+        return None, ("Sign-ups are closed", "This instance is not accepting new accounts at the moment.")
+    if mode == "invite" and not invited:
+        return None, ("Invitation needed",
+                      "This instance is in a private beta, so an account needs an invitation sent to "
+                      f"{profile['email']}. Open the link you were sent, or get in touch.")
+    over_quota = (translator("en")("auth.rate_limited") if is_rate_limited(ip, "signup")
+                  else limits.check_signup(ip))
+    if over_quota:
+        return None, ("Too many sign-ups", over_quota)
+
+    name = profile["name"].strip() or profile["email"].split("@")[0]
+    user_id, problems = users.create_user(profile["email"], name)
+    if problems:
+        return None, ("Sign-up failed", "This account could not be created. Please try again.")
+    users.set_email_verified(user_id)
+    users.link_identity(user_id, provider, profile["subject"], profile["email"])
+    moderation.record_signup(ip)
+    moderation.audit("account.signup", user_id=user_id, actor=profile["email"],
+                     detail={"provider": provider}, ip=ip)
+    return users.get_user(user_id), None
 
 
 # ---------------------------------------------------------------- logout
@@ -233,6 +413,7 @@ def logout():
 @bp.route("/forgot", methods=["GET", "POST"])
 def forgot():
     require_public()
+    require_password_login()
     t, sent = translator("en"), False
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -250,6 +431,7 @@ def forgot():
 @bp.route("/reset/<token>", methods=["GET", "POST"])
 def reset(token):
     require_public()
+    require_password_login()
     t, errors = translator("en"), {}
     if request.method == "POST":
         password, confirm = request.form.get("password", ""), request.form.get("confirm", "")
@@ -287,7 +469,7 @@ def account():
             else:
                 users.update_user(user["id"], name=name)
                 saved = True
-        elif action == "change_password":
+        elif action == "change_password" and password_login_enabled() and users.has_password(user):
             current, new_pw, confirm = (request.form.get("current_password", ""),
                                         request.form.get("new_password", ""),
                                         request.form.get("confirm_password", ""))
@@ -300,11 +482,20 @@ def account():
             else:
                 users.update_password(user["id"], new_pw)
                 saved = True
+        elif action == "unlink_identity":
+            provider = request.form.get("provider", "")
+            others = [i for i in users.list_identities(user["id"]) if i["provider"] != provider]
+            if not others and not (password_login_enabled() and users.has_password(user)):
+                errors["identities"] = ("This is the only way you can sign in. Link another account "
+                                        "before removing it.")
+            else:
+                users.unlink_identity(user["id"], provider)
+                moderation.audit("account.unlink", user_id=user["id"], actor=user["email"],
+                                 detail={"provider": provider}, ip=request.remote_addr)
+                saved = True
         elif action == "revoke_all":
             users.revoke_all_sessions(user["id"])
-            sid = users.create_session(user["id"], ip=request.remote_addr,
-                                       user_agent=request.headers.get("User-Agent", ""))
-            cookie[SESSION_COOKIE_KEY] = sid
+            _login_user(user)
             saved = True
         elif action == "delete_account":
             if request.form.get("confirm_email", "").strip().lower() != user["email"]:
@@ -324,9 +515,13 @@ def account():
 
     sessions = users.list_sessions(user["id"])
     projects = users.user_projects(user["id"])
+    identities = {i["provider"]: i for i in users.list_identities(user["id"])}
     return render_template("auth/account.html", t=t, user=user, errors=errors,
                            saved=saved, sessions=sessions, projects=projects, project=None,
-                           sole_owned=sole_owned(user))
+                           sole_owned=sole_owned(user), identities=identities,
+                           providers=oauth.enabled_providers(),
+                           password_login=password_login_enabled(),
+                           has_password=users.has_password(user))
 
 
 # ---------------------------------------------------------------- account data and deletion
@@ -387,6 +582,8 @@ def export_account():
                         for m in users.user_projects(user["id"])],
         "sessions": [{"created_at": s["created_at"], "last_seen_at": s["last_seen_at"],
                       "user_agent": s["user_agent"]} for s in users.list_sessions(user["id"])],
+        "linked_accounts": [{"provider": i["provider"], "email": i["email"], "since": i["created_at"]}
+                            for i in users.list_identities(user["id"])],
     }
     resp = jsonify(payload)
     resp.headers["Content-Disposition"] = "attachment; filename=testbench-account.json"

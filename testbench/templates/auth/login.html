@@ -1,4 +1,5 @@
 {% extends "admin/_layout.html" %}
+{% from "auth/_providers.html" import provider_buttons, divider %}
 {% block title %}Sign in{% endblock %}
 {% block shell %}none{% endblock %}
 
@@ -26,7 +27,11 @@
     <div class="w-full max-w-[420px]">
 
       <h2 class="t-page" id="title">Sign in</h2>
-      <p class="mt-2 text-muted" id="lede">Enter your email and password to continue.</p>
+      <p class="mt-2 text-muted" id="lede">
+        {% if providers and password_login %}Continue with your {{ providers | map(attribute=1) | join(' or ') }} account, or use your email and password.
+        {% elif providers %}Continue with the account you use for work.
+        {% else %}Enter your email and password to continue.{% endif %}
+      </p>
 
       {% if errors.email or errors.password or errors.general %}
       <div id="err" role="alert" class="mt-6 flex gap-3 rounded-lg border border-[#F0C4BF] bg-bad-soft p-4 text-bad">
@@ -35,7 +40,11 @@
       </div>
       {% endif %}
 
-      <form id="form" method="post" class="mt-8 space-y-6" novalidate>
+      {% if providers %}<div class="mt-8">{{ provider_buttons(providers, next_param) }}</div>{% endif %}
+
+      {% if password_login %}
+      {% if providers %}{{ divider() }}{% endif %}
+      <form id="form" method="post" class="{{ '' if providers else 'mt-8 ' }}space-y-6" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <div>
@@ -56,6 +65,7 @@
 
         <button type="submit" class="btn btn-primary w-full">Sign in</button>
       </form>
+      {% endif %}
 
       <div class="mt-8 space-y-3 border-t border-line pt-6 text-sm text-muted">
         <p>New here? <a href="{{ url_for('auth.signup') }}" class="link">Create an account</a></p>
