@@ -127,23 +127,23 @@ def test_packaging_files_are_present_and_consistent():
     assert "frame-ancestors" in caddy
 
 
-def test_every_page_shares_one_brand_palette(projects_dir, make_app):
-    """The landing page once carried its own hardcoded indigo scale while the rest of the app
-    used the project's colour, so the two never matched and brand-300/400/950 resolved to
-    nothing at all. Both now come from the same custom properties."""
+def test_every_page_shares_one_design_system(projects_dir, make_app):
+    """The landing page once carried its own hardcoded indigo scale, and the participant pages a
+    palette and font of their own, so nothing matched the workspace. Every page now loads the one
+    stylesheet and Tailwind theme, and a study's colour reaches its pages as --brand."""
     app = make_app(projects_dir, TESTBENCH_MODE="public")
     client = app.test_client()
 
-    for path in ("/", "/s/example/", "/login", "/about"):
-        body = client.get(path).get_data(as_text=True)
-        for step in (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950):
-            assert f"--brand-{step}:" in body, f"{path} is missing --brand-{step}"
+    for path in ("/", "/s/example/", "/login", "/about", "/docs/"):
+        body = client.get(path, follow_redirects=True).get_data(as_text=True)
+        assert "static/admin/app.css" in body, f"{path} does not load the design system"
+        assert "static/admin/tw.js" in body, f"{path} does not load the shared Tailwind theme"
 
     # A project's own primary colour reaches its participant pages.
-    example = client.get("/s/example/").get_data(as_text=True)
-    assert "--brand-500: 15 118 110" in example      # #0F766E from projects/example
-    # The landing page has no project, so it falls back to the default blue.
-    assert "--brand-500: 37 99 235" in client.get("/").get_data(as_text=True)
+    example = client.get("/s/example/", follow_redirects=True).get_data(as_text=True)
+    assert "--brand: #0F766E" in example
+    # The landing page has no project, so it keeps the neutral accent from app.css.
+    assert "--brand:" not in client.get("/").get_data(as_text=True)
 
 
 def test_the_landing_page_honours_local_assets(projects_dir, make_app):
@@ -163,34 +163,31 @@ def test_the_landing_page_honours_local_assets(projects_dir, make_app):
 def test_the_two_tailwind_configs_define_the_same_tokens():
     """A class present in one build and absent from the other loses its colour silently."""
     root = Path(__file__).resolve().parent.parent
-    head = (root / "testbench" / "templates" / "_head.html").read_text()
+    cdn = (root / "testbench" / "static" / "admin" / "tw.js").read_text()
     config = (root / "tailwind.config.js").read_text()
 
     # Every colour name the templates can use has to exist in both builds.
-    for name in ("brand", "nav", "surface", "surface-subtle", "card", "line",
-                 "ink", "ink-muted", "ink-subtle", "height"):
-        assert name in head and name in config, name
+    for name in ("brand", "nav", "surface", "subtle", "card", "line", "paper", "sub", "muted",
+                 "ink", "ok", "warn", "bad", "info", "Hanken Grotesk", "height"):
+        assert name in cdn and name in config, name
 
     # Both builds switch theme on a class, so the toggle controls both.
-    assert "darkMode: 'class'" in head or 'darkMode: "class"' in head
+    assert "darkMode: 'class'" in cdn or 'darkMode: "class"' in cdn
     assert 'darkMode: "class"' in config or "darkMode: 'class'" in config
 
 
-SURFACE_TOKENS = ("--surface", "--surface-subtle", "--card", "--line",
-                  "--ink", "--ink-muted", "--ink-subtle")
+THEMED_TOKENS = ("--paper", "--sub", "--card", "--line", "--line-strong", "--ink", "--muted",
+                 "--subtle", "--nav", "--ok-bg", "--ok-fg", "--warn-bg", "--warn-fg",
+                 "--bad-bg", "--bad-fg", "--info-bg", "--info-fg")
 
 
-def test_every_surface_token_has_both_themes(projects_dir, make_app):
+def test_every_surface_token_has_both_themes():
     """A token defined for one theme only is how a dark card ends up with black-on-black text.
-
-    This reads the rendered CSS rather than the template, because the template's brand values are
-    Jinja expressions and what matters is what the browser is actually served.
-    """
-    app = make_app(projects_dir, TESTBENCH_MODE="public")
-    body = app.test_client().get("/").get_data(as_text=True)
-    light = body.split(":root {", 1)[1].split("}", 1)[0]
-    dark = body.split(".dark {", 1)[1].split("}", 1)[0]
-    for token in SURFACE_TOKENS:
+    The aliases (--surface, --ink-muted, the brand scale) derive from these, so they follow."""
+    css = (Path(__file__).resolve().parent.parent / "testbench" / "static" / "admin" / "app.css").read_text()
+    light = css.split(":root {", 1)[1].split("}", 1)[0]
+    dark = css.split("html.dark {", 1)[1].split("}", 1)[0]
+    for token in THEMED_TOKENS:
         assert f"{token}:" in light, f"{token} missing from the light theme"
         assert f"{token}:" in dark, f"{token} missing from the dark theme"
 

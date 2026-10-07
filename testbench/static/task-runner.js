@@ -138,12 +138,12 @@
             const wrap = document.createElement('div');
             if (f.kind === 'choice') {
                 const p = document.createElement('p'), list = document.createElement('div');
-                p.className = 'text-[14px] font-semibold text-ink mb-2';
+                p.className = 'text-sm font-semibold text-ink mb-2';
                 p.textContent = f.label;
                 list.className = 'space-y-2';
                 f.options.forEach((opt) => {
                     const l = document.createElement('label'), r = document.createElement('input');
-                    l.className = 'flex items-center gap-2.5 px-3.5 py-2.5 border border-line rounded-lg cursor-pointer text-[14px] has-[:checked]:border-brand has-[:checked]:bg-brand/10';
+                    l.className = 'flex items-center gap-2.5 px-3.5 py-2.5 border border-line rounded-lg cursor-pointer text-sm has-[:checked]:border-brand has-[:checked]:bg-brand/10';
                     Object.assign(r, { type: 'radio', name: f.id, value: opt, className: 'w-4 h-4 text-brand border-ink-subtle focus:ring-0' });
                     l.append(r, document.createTextNode(opt));
                     list.appendChild(l);
@@ -151,11 +151,11 @@
                 wrap.append(p, list);
             } else {
                 const l = document.createElement('label'), i = document.createElement('input');
-                l.className = 'block mb-1.5 text-[14px] font-semibold text-ink';
+                l.className = 'label';
                 l.textContent = f.label;
                 l.htmlFor = 'f-' + f.id;
                 Object.assign(i, { type: 'text', id: 'f-' + f.id, name: f.id, placeholder: f.placeholder || '', autocomplete: 'off',
-                    className: 'bg-card text-ink border border-ink-subtle rounded-lg block w-full px-3.5 py-2.5 text-[15px] focus:ring-brand focus:border-brand' });
+                    className: 'input' });
                 wrap.append(l, i);
             }
             box.appendChild(wrap);

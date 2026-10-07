@@ -1,45 +1,15 @@
-{#- Shared <head> for every page: the stylesheets, the Tailwind theme, and the colour tokens.
+{#- Shared <head> for every page: participant, public and workspace. One design system.
 
-    Both the CDN build and the compiled build (LOCAL_ASSETS=1) read their theme from the same CSS
-    custom properties, so one definition serves every page and each project's own colour reaches
-    all of them. tailwind.config.js maps the same names for the compiled build; keep the two in
-    step when adding a token.
-
-    Two things live here:
-
-    1. The brand scale. A project sets one primary colour in project.yaml; the 50–950 steps are
-       tints and shades of it, computed below, so a page can reach for a lighter or darker version
-       of the brand without hard-coding a second palette that stops matching. `brand` means 500.
-
-    2. The surface tokens — `surface`, `card`, `line`, `ink` and friends. These are what make one
-       set of markup work in both themes. Writing `bg-card text-ink` gives a card that is white
-       with near-black text in the light theme and near-black with white text in the dark one,
-       because the token flips, not the class. Hand-writing `dark:` on every element is how you
-       end up with a dark card whose heading is still `text-ink` and therefore invisible.
-       Reach for `dark:` only for a genuine one-off.
-
-    3. The status tokens — `ok`, `warn`, `bad`, `info` — for notices, badges and error text.
-       Each has `-soft` (a tinted panel), `-line` (its border), `-ink` (text on that panel) and a
-       plain accent for icons. They flip with the theme like the surface tokens, so a notice is
-       `bg-warn-soft border-warn-line text-warn-ink`. A fixed tint such as `bg-amber-50` stays
-       light in the dark theme, and any `text-ink` inside it turns white and disappears. -#}
-
-{%- set brand = project.brand if project else {'primary': '#2563EB', 'nav': '#0F172A'} -%}
-
-{%- macro rgb(hex) -%}
-{{ hex[1:3]|int(base=16) }} {{ hex[3:5]|int(base=16) }} {{ hex[5:7]|int(base=16) }}
-{%- endmacro -%}
-
-{#- tint mixes the colour with white, shade with black; `p` is how much of that is mixed in. -#}
-{%- macro tint(hex, p) -%}
-{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}
-{{ (r + (255 - r) * p)|round|int }} {{ (g + (255 - g) * p)|round|int }} {{ (b + (255 - b) * p)|round|int }}
-{%- endmacro -%}
-
-{%- macro shade(hex, p) -%}
-{%- set r = hex[1:3]|int(base=16) -%}{%- set g = hex[3:5]|int(base=16) -%}{%- set b = hex[5:7]|int(base=16) -%}
-{{ (r * (1 - p))|round|int }} {{ (g * (1 - p))|round|int }} {{ (b * (1 - p))|round|int }}
-{%- endmacro -%}
+    - Tokens and components live in static/admin/app.css: the palette (`ink`, `muted`, `paper`,
+      `card`, `line`, status colours), type (Hanken Grotesk), and the components (`.btn`,
+      `.panel`, `.input`, `.label`, `.t-page` …). Reach for a component before writing a stack of
+      utilities, so a button on a participant page is the same button as in the workspace.
+    - Tailwind's theme (static/admin/tw.js, and tailwind.config.js for LOCAL_ASSETS=1) maps the
+      same variables, so `bg-card text-ink` flips with the theme and `bg-brand` follows a study's
+      own colour. Hand-writing `dark:` on every element is how you end up with a dark card whose
+      heading is invisible; reach for it only for a genuine one-off.
+    - A study's colour is set on <html> by `html_attrs()` in _brand.html; pages without a study
+      use the neutral accent, which flips to a light one in the dark theme. -#}
 
 {#- Set the theme class before the first paint, or a dark-theme visitor gets a white flash on
     every page load. This has to be inline and before the stylesheet; a deferred script is too
@@ -67,113 +37,21 @@
 <link href="{{ url_for('static', filename='vendor/icons.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='vendor/fonts.css') }}" rel="stylesheet">
 {% else %}
-<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-<script>
-    const status = (n) => ({
-        DEFAULT: `rgb(var(--${n}) / <alpha-value>)`,
-        soft: `rgb(var(--${n}-soft) / <alpha-value>)`,
-        line: `rgb(var(--${n}-line) / <alpha-value>)`,
-        ink: `rgb(var(--${n}-ink) / <alpha-value>)`,
-    });
-    tailwind.config = {
-        darkMode: 'class',
-        theme: { extend: {
-            fontFamily: { sans: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-            colors: {
-                brand: {
-                    DEFAULT: 'rgb(var(--brand-500) / <alpha-value>)',
-                    50: 'rgb(var(--brand-50) / <alpha-value>)',
-                    100: 'rgb(var(--brand-100) / <alpha-value>)',
-                    200: 'rgb(var(--brand-200) / <alpha-value>)',
-                    300: 'rgb(var(--brand-300) / <alpha-value>)',
-                    400: 'rgb(var(--brand-400) / <alpha-value>)',
-                    500: 'rgb(var(--brand-500) / <alpha-value>)',
-                    600: 'rgb(var(--brand-600) / <alpha-value>)',
-                    700: 'rgb(var(--brand-700) / <alpha-value>)',
-                    800: 'rgb(var(--brand-800) / <alpha-value>)',
-                    900: 'rgb(var(--brand-900) / <alpha-value>)',
-                    950: 'rgb(var(--brand-950) / <alpha-value>)',
-                },
-                nav: 'rgb(var(--nav-rgb) / <alpha-value>)',
-                surface: 'rgb(var(--surface) / <alpha-value>)',
-                'surface-subtle': 'rgb(var(--surface-subtle) / <alpha-value>)',
-                card: 'rgb(var(--card) / <alpha-value>)',
-                line: 'rgb(var(--line) / <alpha-value>)',
-                ink: 'rgb(var(--ink) / <alpha-value>)',
-                'ink-muted': 'rgb(var(--ink-muted) / <alpha-value>)',
-                'ink-subtle': 'rgb(var(--ink-subtle) / <alpha-value>)',
-                ok: status('ok'),
-                warn: status('warn'),
-                bad: status('bad'),
-                info: status('info'),
-            },
-            height: { 18: '4.5rem' },
-            spacing: { 18: '4.5rem' },
-        } }
-    }
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.tail{{ '' }}windcss.com?plugins=typography"></script>
+<script src="{{ url_for('static', filename='admin/tw.js') }}"></script>
 {% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/app.css') }}">
 
 <style>
-    :root {
-        /* Brand: one colour from project.yaml, expanded into a scale. */
-        --brand-rgb: {{ rgb(brand.primary) }};
-        --nav-rgb: {{ rgb(brand.nav) }};
-        --brand-50:  {{ tint(brand.primary, 0.95) }};
-        --brand-100: {{ tint(brand.primary, 0.89) }};
-        --brand-200: {{ tint(brand.primary, 0.76) }};
-        --brand-300: {{ tint(brand.primary, 0.60) }};
-        --brand-400: {{ tint(brand.primary, 0.33) }};
-        --brand-500: {{ rgb(brand.primary) }};
-        --brand-600: {{ shade(brand.primary, 0.12) }};
-        --brand-700: {{ shade(brand.primary, 0.27) }};
-        --brand-800: {{ shade(brand.primary, 0.42) }};
-        --brand-900: {{ shade(brand.primary, 0.55) }};
-        --brand-950: {{ shade(brand.primary, 0.72) }};
-
-        /* Light theme: the base. White page, near-black text. */
-        --surface: 255 255 255;
-        --surface-subtle: 248 250 252;
-        --card: 255 255 255;
-        --line: 226 232 240;
-        --ink: 15 23 42;
-        --ink-muted: 71 85 105;
-        --ink-subtle: 100 116 139;
-
-        /* Status: soft panel, its border, text on it, and a plain accent. */
-        --ok-soft: 236 253 245;   --ok-line: 167 243 208;   --ok-ink: 6 95 70;     --ok: 5 150 105;
-        --warn-soft: 255 251 235; --warn-line: 252 211 77;  --warn-ink: 120 53 15; --warn: 217 119 6;
-        --bad-soft: 254 242 242;  --bad-line: 252 165 165;  --bad-ink: 153 27 27;  --bad: 220 38 38;
-        --info-soft: 239 246 255; --info-line: 191 219 254; --info-ink: 30 64 175; --info: 37 99 235;
-    }
-
-    .dark {
-        /* Dark theme. Not pure black: a slight blue cast sits better under the brand colour,
-           and pure black against pure white text is harsher than it needs to be. */
-        --surface: 9 11 17;
-        --surface-subtle: 14 17 25;
-        --card: 18 22 31;
-        --line: 39 45 58;
-        --ink: 248 250 252;
-        --ink-muted: 148 163 184;
-        --ink-subtle: 113 128 150;
-
-        --ok-soft: 6 40 32;       --ok-line: 6 95 70;       --ok-ink: 167 243 208;  --ok: 52 211 153;
-        --warn-soft: 45 30 8;     --warn-line: 146 64 14;   --warn-ink: 253 230 138; --warn: 251 191 36;
-        --bad-soft: 55 14 14;     --bad-line: 127 29 29;    --bad-ink: 254 202 202; --bad: 248 113 113;
-        --info-soft: 17 30 64;    --info-line: 30 64 175;   --info-ink: 191 219 254; --info: 96 165 250;
-    }
-
     /* Only the theme switch animates the page colours. Without this every hover and focus on the
        page would also fade, which reads as lag. */
     .theme-anim, .theme-anim * {
         transition: background-color .2s ease, border-color .2s ease, color .2s ease;
     }
-
     @media (prefers-reduced-motion: reduce) {
         .theme-anim, .theme-anim * { transition: none; }
     }

@@ -8,7 +8,7 @@
 
     <div class="flex flex-col md:flex-row gap-6 items-start h-[70vh]">
         <!-- Unsorted Cards Pool -->
-        <div class="w-full md:w-1/3 flex flex-col h-full bg-surface-subtle border border-line rounded-xl shadow-inner p-4 overflow-y-auto"
+        <div class="w-full md:w-1/3 flex flex-col h-full bg-surface-subtle border border-line rounded-lg shadow-inner p-4 overflow-y-auto"
              id="card-pool"
              aria-label="Unsorted Cards Pool"
              ondrop="drop(event)" ondragover="allowDrop(event)">
@@ -18,7 +18,7 @@
             
             <div id="cards-container" class="space-y-2.5">
                 {% for card in conf.cards %}
-                <div class="p-3 bg-card border border-line rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-brand/60 hover:shadow transition-all select-none text-ink text-sm font-medium"
+                <div class="p-3 bg-card border border-line rounded-lg  cursor-grab active:cursor-grabbing hover:border-brand/60  transition-all select-none text-ink text-sm font-medium"
                      draggable="true" tabindex="0" role="button" aria-grabbed="false"
                      ondragstart="drag(event)" 
                      id="card-{{ card.id }}" 
@@ -33,14 +33,14 @@
         <div class="w-full md:w-2/3 flex flex-col h-full">
             {% if conf.allow_new_categories %}
             <div class="mb-4 flex items-center gap-2">
-                <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="border border-line bg-card text-ink rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand/40 focus:border-brand flex-1 outline-none">
+                <input type="text" id="new-cat-name" aria-label="New Category Name" placeholder="New Category Name..." class="input flex-1">
                 <button type="button" aria-label="Add Category" onclick="addCategory()" class="btn btn-secondary px-4 py-2 text-sm font-semibold flex items-center gap-1.5"><i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>Add</button>
             </div>
             {% endif %}
             
             <div id="categories-container" class="flex-1 overflow-x-auto flex gap-4 pb-4">
                 {% for cat in conf.categories %}
-                <div class="min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-xl border border-line p-3 h-full">
+                <div class="min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-lg border border-line p-3 h-full">
                     <h3 class="font-semibold text-ink mb-2 truncate" title="{{ cat }}">{{ cat }}</h3>
                     <div class="flex-1 overflow-y-auto space-y-2.5 category-dropzone p-1 rounded-lg min-h-[120px]" 
                          data-category="{{ cat }}"
@@ -102,7 +102,7 @@ function addCategory() {
     
     const container = document.getElementById('categories-container');
     const col = document.createElement('div');
-    col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-xl border border-line p-3 h-full';
+    col.className = 'min-w-[250px] max-w-[250px] flex flex-col bg-surface-subtle rounded-lg border border-line p-3 h-full';
     // Built with DOM calls, not innerHTML: the name is typed by the participant, and a quote in
     // it would break the data-category attribute the result is read from.
     const h = document.createElement('h3');

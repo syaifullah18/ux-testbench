@@ -12,7 +12,7 @@
     </div>
 
     {% if not studies %}
-    <div class="text-center py-16 bg-surface-subtle border border-line rounded-3xl">
+    <div class="text-center py-16 bg-surface-subtle border border-line rounded-lg">
         <i class="fa-solid fa-compass text-3xl text-ink-subtle mb-3 block"></i>
         <h3 class="text-base font-bold text-ink">No public studies listed</h3>
         <p class="text-xs text-ink-subtle mt-1 max-w-sm mx-auto text-pretty">
@@ -20,7 +20,7 @@
             so this page stays empty most of the time. Most people arrive through a direct link
             from whoever invited them.
         </p>
-        <a href="{{ url_for('public.docs') }}" class="inline-block mt-4 text-xs font-semibold text-brand-600 dark:text-brand-400 underline">
+        <a href="{{ url_for('public.docs') }}" class="inline-block mt-4 text-xs font-semibold text-brand underline">
             Read how studies work
         </a>
     </div>
@@ -32,11 +32,11 @@
             did nothing. The whole card is the link now, and the corner keeps a button-shaped
             affordance so it still reads as somewhere to click. -#}
         <a href="{{ url_for('web.home', slug=p.slug) }}"
-           class="group bg-card border border-line rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-colors hover:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand/40">
+           class="group bg-card border border-line rounded-lg p-6  flex flex-col justify-between transition-colors hover:border-brand-500/60 focus:outline-none focus:ring-2 focus:ring-brand/40">
             <div>
                 <div class="flex items-start justify-between gap-2 mb-2">
                     <h2 class="text-base font-bold text-ink">{{ p.name }}</h2>
-                    <span class="flex-none text-[11px] font-semibold bg-ok-soft text-ok-ink px-2 py-0.5 rounded-full border border-ok-line">
+                    <span class="flex-none text-xs font-semibold bg-ok-soft text-ok-ink px-2 py-0.5 rounded-full border border-ok-line">
                         Live Study
                     </span>
                 </div>
@@ -46,7 +46,7 @@
             </div>
             <div class="pt-4 border-t border-line flex items-center justify-between gap-3">
                 <span class="text-xs text-ink-subtle">{{ p.modules|length }} module{% if p.modules|length != 1 %}s{% endif %}</span>
-                <span class="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/50 px-3.5 text-xs font-semibold text-brand-700 dark:text-brand-400 transition-colors group-hover:bg-brand-100 dark:group-hover:bg-brand-950">
+                <span class="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-50 px-3.5 text-xs font-semibold text-brand transition-colors group-hover:bg-brand-100">
                     Participate <i class="fa-solid fa-arrow-right text-[10px]"></i>
                 </span>
             </div>

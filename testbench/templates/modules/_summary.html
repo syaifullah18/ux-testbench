@@ -31,8 +31,8 @@
         {% endif %}
     {% elif q.type == 'scale' %}
         <div class="panel-b">
-            <p class="text-[14px] mb-2">{{ t('admin.mean') }} <strong>{{ s.mean|num(2) }}</strong> / {{ q.points }}</p>
-            <div class="flex gap-1 text-[12px]">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-surface-subtle py-1"><strong>{{ n }}</strong></div><div class="text-ink-subtle mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
+            <p class="text-sm mb-2">{{ t('admin.mean') }} <strong>{{ s.mean|num(2) }}</strong> / {{ q.points }}</p>
+            <div class="flex gap-1 text-xs">{% for n in s.dist %}<div class="flex-1 text-center"><div class="rounded bg-surface-subtle py-1"><strong>{{ n }}</strong></div><div class="text-ink-subtle mt-0.5">{{ loop.index }}</div></div>{% endfor %}</div>
         </div>
     {% elif q.type == 'matrix' %}
         <div class="overflow-x-auto">

@@ -9,7 +9,7 @@
         {% if project.description %}<p class="text-base mb-4 whitespace-pre-line">{{ project.description }}</p>{% endif %}
         <p class="text-ink-muted">{{ t('login.reassure') }}</p>
     </section>
-    <section class="md:col-span-5 border border-line rounded-xl p-5 sm:p-6">
+    <section class="md:col-span-5 border border-line rounded-lg p-5 sm:p-6">
         <h2 class="text-lg font-bold text-ink mb-5">{{ t('login.title') }}</h2>
         <form method="post" novalidate class="space-y-4">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -24,17 +24,17 @@
             {% endif %}
             {% if project.consent %}
             <div>
-                <label class="flex items-start gap-2.5 text-[14px] cursor-pointer">
-                    <input type="checkbox" name="consent" value="1" class="mt-1 size-4 rounded text-brand-600 dark:text-brand-400 border-line focus:ring-brand/30">
+                <label class="flex items-start gap-2.5 text-sm cursor-pointer">
+                    <input type="checkbox" name="consent" value="1" class="mt-1 size-4 rounded text-brand border-line focus:ring-brand/30">
                     <span>{{ project.consent }}</span>
                 </label>
-                {% if errors.consent %}<p class="mt-1.5 text-[13px] text-bad-ink">{{ errors.consent }}</p>{% endif %}
+                {% if errors.consent %}<p class="mt-1.5 text-sm text-bad-ink">{{ errors.consent }}</p>{% endif %}
             </div>
             {% endif %}
             {% if mode == 'anonymous' %}
                 {{ button(t('login.start_new'), 'fa-play', name='action', value='start', cls='w-full') }}
-                <details class="pt-2 text-[14px]" {% if errors.identity %}open{% endif %}>
-                    <summary class="cursor-pointer text-brand-600 dark:text-brand-400">{{ t('login.resume_summary') }}</summary>
+                <details class="pt-2 text-sm" {% if errors.identity %}open{% endif %}>
+                    <summary class="cursor-pointer text-brand">{{ t('login.resume_summary') }}</summary>
                     <div class="mt-3 space-y-3">
                         {{ input('identity', t('login.resume_label'), value=form.identity, error=errors.identity, placeholder='ABCD-2345') }}
                         {{ button(t('login.resume'), 'fa-rotate-right', name='action', value='resume', style='secondary', cls='w-full') }}
@@ -42,7 +42,7 @@
                 </details>
             {% else %}
                 {{ button(t('login.submit'), 'fa-right-to-bracket', cls='w-full') }}
-                <p class="text-[13px] text-ink-subtle">{{ t('login.resume_hint') }}</p>
+                <p class="text-sm text-ink-subtle">{{ t('login.resume_hint') }}</p>
             {% endif %}
         </form>
     </section>
