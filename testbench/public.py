@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session as cookie, url_for
 
 from . import auth, limits, mail, markdown, moderation, storage, users
 from .config import RESERVED_SLUGS, SLUG_RE
@@ -307,12 +307,18 @@ def members(slug):
                     flash(f"{email} is already a member.", "error")
                 else:
                     _, token = users.create_invitation(slug, email, role, user["id"])
-                    mail.send_invitation(email, token, request.host_url.rstrip("/"),
-                                         project.name, user["name"] or user["email"], role)
+                    base = auth._base_url()
+                    if mail.configured():
+                        mail.send_invitation(email, token, base,
+                                             project.name, user["name"] or user["email"], role)
                     moderation.audit("member.invite", user_id=user["id"], actor=user["email"],
                                      project_slug=slug, detail={"email": email, "role": role},
                                      ip=request.remote_addr)
-                    flash(f"Invitation sent to {email}.", "success")
+                    # Only the hash is stored, so this is the one chance to show the link. Sharing it
+                    # by hand works with or without SMTP: it is only good for this address.
+                    cookie["invite_link"] = {"email": email,
+                                             "url": base + url_for("public.accept_invite", token=token),
+                                             "emailed": mail.configured()}
         elif action == "revoke_invite":
             users.revoke_invitation(slug, int(request.form.get("invitation_id", 0)))
             flash("Invitation revoked.", "success")
@@ -345,6 +351,7 @@ def members(slug):
     return render_template("public/members.html", user=user, project=project,
                            members=users.project_members(slug),
                            invitations=users.pending_invitations(slug),
+                           invite_link=cookie.pop("invite_link", None),
                            roles=users.ROLES, t=translator("en"))
 
 
@@ -364,7 +371,6 @@ def accept_invite(token):
 
     user = auth.current_user()
     if user is None:
-        from flask import session as cookie
         cookie["pending_invite"] = token
         if users.get_user_by_email(invite["email"]):
             flash("Sign in to accept the invitation.", "success")
@@ -379,7 +385,6 @@ def accept_invite(token):
                                         "address, or ask for an invitation to this one.")), 403
 
     slug = users.accept_invitation(token, user["id"])
-    from flask import session as cookie
     cookie.pop("pending_invite", None)
     moderation.audit("member.accept", user_id=user["id"], actor=user["email"], project_slug=slug,
                      detail={"role": invite["role"]}, ip=request.remote_addr)

@@ -88,7 +88,9 @@ def test_inviting_a_teammate_grants_the_role_on_acceptance(projects_dir, make_ap
     resp = owner.post("/app/p/study/members",
                       data={"action": "invite", "email": "mate@example.org", "role": "viewer"},
                       follow_redirects=True)
-    assert "Invitation sent" in resp.get_data(as_text=True)
+    # No SMTP in tests, so the owner gets the link to pass on by hand.
+    body = resp.get_data(as_text=True)
+    assert "Invitation ready" in body and "/invite/" in body
     with app.app_context():
         pending = users.pending_invitations("study")
         assert len(pending) == 1

@@ -14,6 +14,11 @@ from flask import current_app, render_template
 log = logging.getLogger(__name__)
 
 
+def configured():
+    """True when SMTP_URL is set, so mail really leaves the server instead of going to the log."""
+    return bool(os.environ.get("SMTP_URL", ""))
+
+
 def _smtp_config():
     url = os.environ.get("SMTP_URL", "")
     if not url:
