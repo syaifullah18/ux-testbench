@@ -1,0 +1,8 @@
+{#- Plain words by default. When a technical term is the clearest word, wrap it in term():
+    a dotted underline, with the explanation on hover, on keyboard focus and on tap (a tap
+    focuses the span), so it also works on touch screens, where a title tooltip never shows. -#}
+{% macro term(label, tip) -%}<span class="term" tabindex="0" role="button" aria-label="{{ label }}: {{ tip }}" data-tip="{{ tip }}">{{ label }}</span>{%- endmacro %}
+
+{#- A translated sentence with a term inside it: pass t(key, term='@@TERM@@', ...) as text, since
+    word order differs between languages. The sentence is escaped; only the term is markup. -#}
+{% macro tterm(text, label, tip) -%}{{ (text|e)|replace('@@TERM@@', term(label, tip)) }}{%- endmacro %}

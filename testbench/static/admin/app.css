@@ -420,3 +420,16 @@ html.dark .bg-amber-50 { background-color: var(--warn-bg); }
 html.dark .border-red-300 { border-color: color-mix(in srgb, var(--bad-fg) 40%, transparent); }
 html.dark .border-emerald-200 { border-color: color-mix(in srgb, var(--ok-fg) 40%, transparent); }
 html.dark .border-amber-200, html.dark .border-amber-300 { border-color: color-mix(in srgb, var(--warn-fg) 40%, transparent); }
+
+/* A technical term with a plain explanation (templates/modules/_terms.html). */
+.term { position: relative; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.term:focus-visible { outline: 2px solid var(--brand, currentColor); outline-offset: 2px; border-radius: 2px; }
+.term::after {
+  content: attr(data-tip); position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
+  width: max-content; max-width: min(320px, 80vw); padding: 8px 10px; border-radius: 8px;
+  background: var(--ink); color: var(--card); font-size: 13px; font-weight: 400; line-height: 1.4;
+  text-transform: none; letter-spacing: 0; white-space: normal; text-align: left;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .12s;
+}
+.term:hover::after, .term:focus::after { opacity: 1; visibility: visible; }

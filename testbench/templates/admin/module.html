@@ -216,7 +216,8 @@
     survey: 'Survey',
     tree_test: 'Tree test',
     card_sort: 'Card sort',
-    first_click: 'First click'
+    first_click: 'First click',
+    journey_test: 'Journey test'
   };
 
   var INITIAL = {{ initial_data|tojson }};
@@ -582,17 +583,20 @@
     if (S.minutes !== '' && S.minutes != null) y += 'minutes: ' + S.minutes + '\n';
     if (S.requires.length) y += 'requires: [' + S.requires.join(', ') + ']\n';
     y += '\nvariants:\n' + S.variants.map(function (v) { return '  ' + v.key + ': { label: ' + yq(v.label) + ', file: ' + yq(v.file) + ' }'; }).join('\n') + '\nbaseline: ' + S.baseline + '\norder: ' + S.order + '\n\nintro: >-\n  ' + S.intro + '\n\n';
+    Object.keys(S.keepModule || {}).forEach(function (k) { y += k + ': ' + JSON.stringify(S.keepModule[k]) + '\n'; });
     y += 'ease_question: ' + (S.ease ? 'true' : 'false') + '\n';
     y += 'preference: ' + (S.preference ? 'true' : 'false') + '\n\ntasks:\n';
     S.tasks.forEach(function (t, i) {
       var id = t.id || String(t.title).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 24) || 'task_' + (i + 1);
       var opts = lines(t.options);
-      y += '  - id: ' + id + '\n    title: ' + yq(t.title) + '\n    prompt: ' + yq(t.prompt) + '\n    fields: [{ id: ' + id + ', label: ' + yq(t.fieldLabel) + (t.kind === 'choice' ? ', kind: choice' : '') + (t.kind === 'choice' && opts.length ? ', options: [' + opts.map(yq).join(', ') + ']' : '') + (t.placeholder ? ', placeholder: ' + yq(t.placeholder) : '') + ' }]\n';
+      y += '  - id: ' + id + '\n    title: ' + yq(t.title) + '\n    prompt: ' + yq(t.prompt) + '\n';
+      if (t.noFields) y += '    fields: []\n'; else y += '    fields: [{ id: ' + id + ', label: ' + yq(t.fieldLabel) + (t.kind === 'choice' ? ', kind: choice' : '') + (t.kind === 'choice' && opts.length ? ', options: [' + opts.map(yq).join(', ') + ']' : '') + (t.placeholder ? ', placeholder: ' + yq(t.placeholder) : '') + ' }]\n';
       if (t.accept.filter(Boolean).length) y += '    accept: { ' + id + ': [' + t.accept.filter(Boolean).map(function (a) { return '"' + a + '"'; }).join(', ') + '] }\n';
       if (t.probe) y += '    probe: ' + yq(t.probe) + '\n';
+      Object.keys(t.keep || {}).forEach(function (k) { y += '    ' + k + ': ' + JSON.stringify(t.keep[k]) + '\n'; });
     });
-    function ql(list) { return S[list].map(function (q) { return '  - id: ' + q.id + '\n    type: ' + q.type + '\n    label: ' + yq(q.label) + (q.type === 'scale' ? '\n    labels: [' + yq(q.low || 'Strongly disagree') + ', ' + yq(q.high || 'Strongly agree') + ']' : '') + (q.required ? '' : '\n    required: false'); }).join('\n'); }
-    y += '\npost_survey:\n' + ql('post') + '\n\nfinal_survey:\n' + ql('final') + '\n\ndecision_rule:\n  min_participants: ' + S.rule.min + '\n' + (S.rule.question ? '  survey_questions: [' + S.rule.question + ']\n' : '') + '  min_survey_gain: ' + S.rule.gain + '\n';
+    function ql(list) { return S[list].map(function (q) { if (q.preset) return '  - id: ' + q.id + '\n    preset: ' + q.preset; return '  - id: ' + q.id + '\n    type: ' + q.type + '\n    label: ' + yq(q.label) + (q.type === 'scale' ? '\n    labels: [' + yq(q.low || 'Strongly disagree') + ', ' + yq(q.high || 'Strongly agree') + ']' : '') + (q.required ? '' : '\n    required: false'); }).join('\n'); }
+    y += '\npost_survey:\n' + ql('post') + '\n\nfinal_survey:\n' + ql('final') + '\n\ndecision_rule:\n  min_participants: ' + S.rule.min + '\n' + (S.rule.question ? '  survey_questions: [' + S.rule.question + ']\n' : '') + '  min_survey_gain: ' + S.rule.gain + '\n' + (S.rule.timeTest && S.rule.timeTest !== 'sign' ? '  time_test: ' + S.rule.timeTest + '\n' : '');
     return y;
   }
   function yq(s) {

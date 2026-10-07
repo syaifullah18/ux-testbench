@@ -48,6 +48,17 @@ sqlite_only = pytest.mark.skipif(bool(TEST_DATABASE_URL), reason="about SQLite f
 
 
 @pytest.fixture(autouse=True)
+def _local_file_storage(monkeypatch):
+    """testbench loads .env on import, so a developer's real bucket settings would otherwise reach
+    every test (uploads to the real bucket, network on every request). Tests that want S3 pass
+    STORAGE_BACKEND and S3_* to make_app themselves."""
+    import os
+    for k in list(os.environ):
+        if k == "STORAGE_BACKEND" or k.startswith("S3_"):
+            monkeypatch.delenv(k, raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _database_backend(monkeypatch):
     if TEST_DATABASE_URL:
         monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)

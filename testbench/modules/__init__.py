@@ -3,5 +3,6 @@ from .survey import Survey
 from .first_click import FirstClick
 from .card_sort import CardSort
 from .tree_test import TreeTest
+from .journey_test import JourneyTest
 
-MODULE_TYPES = {cls.type_name: cls for cls in (Survey, ABTest, FirstClick, CardSort, TreeTest)}
+MODULE_TYPES = {cls.type_name: cls for cls in (Survey, ABTest, FirstClick, CardSort, TreeTest, JourneyTest)}

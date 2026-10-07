@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from . import db
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 CLICKS_MAX = 300           # clicks kept per session and surface; mirrors ab_test's CLICK_PATH_MAX
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -52,6 +52,14 @@ CREATE TABLE IF NOT EXISTS task_results (
     grade TEXT,
     observer_note TEXT,
     finished_at TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, position, task_id)
+);
+CREATE TABLE IF NOT EXISTS task_events (
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    task_id TEXT NOT NULL,
+    events TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (session_id, position, task_id)
 );
@@ -132,7 +140,7 @@ def close_all(_exc=None):
 
 def reset(slug):
     conn = connect(slug)
-    for table in ("clicks", "task_results", "answers", "sessions", "participants"):
+    for table in ("clicks", "task_events", "task_results", "answers", "sessions", "participants"):
         conn.execute(f"DELETE FROM {table}")
     conn.commit()
 
@@ -183,6 +191,18 @@ def bulk_task_results(conn, session_ids):
     for r in rows:
         sid, pos, tid = r["session_id"], r["position"], r["task_id"]
         out[sid].setdefault(pos, {})[tid] = r
+    return out
+
+
+def bulk_task_events(conn, session_ids):
+    """{session_id: {position: {task_id: [event, ...]}}} for prototype events (goals, ...)."""
+    if not session_ids:
+        return {}
+    placeholders = ",".join("?" for _ in session_ids)
+    rows = conn.execute(f"SELECT * FROM task_events WHERE session_id IN ({placeholders})", tuple(session_ids)).fetchall()
+    out = {sid: {} for sid in session_ids}
+    for r in rows:
+        out[r["session_id"]].setdefault(r["position"], {})[r["task_id"]] = loads(r["events"], [])
     return out
 
 

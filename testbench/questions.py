@@ -11,6 +11,110 @@ from .config import MAX_OPTIONS_PER_QUESTION, MAX_QUESTIONS_PER_MODULE, MAX_ROWS
 TYPES = {"single", "multi", "scale", "matrix", "text"}
 NA = "na"
 
+# Standard questionnaires with fixed wording, scale and scoring. `{id: sus, preset: sus}` expands
+# into a matrix question; changing its wording or scale would break comparability with published
+# norms, so a preset takes no rows, points or labels (use a normal matrix for custom wording).
+PRESETS = {
+    "sus": {
+        "points": 5,
+        "source": "Brooke (1996), System Usability Scale",
+        "label": {"en": "How much do you agree with each statement?",
+                  "id": "Seberapa setuju Anda dengan setiap pernyataan berikut?"},
+        "ends": {"en": ["Strongly disagree", "Strongly agree"], "id": ["Sangat tidak setuju", "Sangat setuju"]},
+        "translation": {"en": "original English wording (Brooke 1996)",
+                        "id": "Indonesian wording following Sharfina & Santoso (2016); check it against the published version"},
+        "items": {
+            "en": ["I think that I would like to use this system frequently.",
+                   "I found the system unnecessarily complex.",
+                   "I thought the system was easy to use.",
+                   "I think that I would need the support of a technical person to be able to use this system.",
+                   "I found the various functions in this system were well integrated.",
+                   "I thought there was too much inconsistency in this system.",
+                   "I would imagine that most people would learn to use this system very quickly.",
+                   "I found the system very cumbersome to use.",
+                   "I felt very confident using the system.",
+                   "I needed to learn a lot of things before I could get going with this system."],
+            "id": ["Saya berpikir akan sering menggunakan sistem ini.",
+                   "Saya merasa sistem ini rumit padahal tidak perlu serumit itu.",
+                   "Saya merasa sistem ini mudah digunakan.",
+                   "Saya membutuhkan bantuan dari orang teknis untuk dapat menggunakan sistem ini.",
+                   "Saya merasa fitur-fitur sistem ini berjalan dengan semestinya.",
+                   "Saya merasa ada banyak hal yang tidak konsisten pada sistem ini.",
+                   "Saya merasa orang lain akan memahami cara menggunakan sistem ini dengan cepat.",
+                   "Saya merasa sistem ini membingungkan.",
+                   "Saya merasa tidak ada hambatan dalam menggunakan sistem ini.",
+                   "Saya perlu membiasakan diri terlebih dahulu sebelum menggunakan sistem ini."],
+        },
+    },
+    "umux_lite": {
+        "points": 7,
+        "source": "Lewis, Utesch & Maher (2013), UMUX-Lite",
+        "label": {"en": "How much do you agree with each statement?",
+                  "id": "Seberapa setuju Anda dengan setiap pernyataan berikut?"},
+        "ends": {"en": ["Strongly disagree", "Strongly agree"], "id": ["Sangat tidak setuju", "Sangat setuju"]},
+        "translation": {"en": "original English wording (Lewis et al. 2013)",
+                        "id": "Indonesian wording by UX Testbench, not a validated translation"},
+        "items": {
+            "en": ["This system's capabilities meet my requirements.", "This system is easy to use."],
+            "id": ["Kemampuan sistem ini memenuhi kebutuhan saya.", "Sistem ini mudah digunakan."],
+        },
+    },
+}
+
+# Sauro & Lewis curved grading scale for SUS scores (Quantifying the User Experience, 2nd ed.).
+SUS_GRADES = [(84.1, "A+"), (80.8, "A"), (78.9, "A-"), (77.2, "B+"), (74.1, "B"), (72.6, "B-"),
+              (71.1, "C+"), (65.0, "C"), (62.7, "C-"), (51.7, "D"), (0.0, "F")]
+
+
+def expand_preset(raw, scope, where, locale):
+    """The matrix question a preset stands for, or None when the preset is unknown or edited."""
+    name = raw.get("preset")
+    spec = PRESETS.get(name)
+    if spec is None:
+        scope.add(f"{where}: preset must be one of {sorted(PRESETS)}")
+        return None
+    edited = sorted(k for k in ("type", "rows", "points", "labels", "options") if k in raw)
+    if edited:
+        scope.add(f"{where}: preset {name} has fixed wording and scale; remove {', '.join(edited)} "
+                  "or use a normal matrix question")
+        return None
+    loc = str(raw.get("locale") or locale or "en")
+    loc = loc if loc in spec["items"] else "en"
+    items = spec["items"][loc]
+    return {"id": str(raw["id"]), "type": "matrix", "label": str(raw.get("label") or spec["label"][loc]),
+            "hint": str(raw.get("hint") or ""), "required": True, "show_if": raw.get("show_if"),
+            "points": spec["points"], "labels": [spec["ends"][loc][0]] + [""] * (spec["points"] - 2) + [spec["ends"][loc][1]],
+            "rows": [(f"{i}", text) for i, text in enumerate(items, start=1)], "na_label": None,
+            "preset": name, "preset_locale": loc, "preset_note": f"{spec['source']}; {spec['translation'][loc]}"}
+
+
+def preset_score(q, value):
+    """0-100 score for a preset answer, or None when it is not a preset or not fully answered."""
+    name = q.get("preset")
+    if not name or not isinstance(value, dict):
+        return None
+    try:
+        items = [int(value[str(i)]) for i in range(1, len(q["rows"]) + 1)]
+    except (KeyError, ValueError, TypeError):
+        return None
+    if name == "sus":
+        # Odd items are positive (score - 1), even items negative (5 - score); the sum times 2.5.
+        return sum((x - 1) if i % 2 == 0 else (5 - x) for i, x in enumerate(items)) * 2.5
+    if name == "umux_lite":
+        return sum(x - 1 for x in items) / 12 * 100
+    return None
+
+
+def sus_grade(score):
+    if score is None:
+        return None
+    return next(g for cut, g in SUS_GRADES if score >= cut)
+
+
+def umux_lite_to_sus(score):
+    """Regression-adjusted UMUX-Lite (Lewis et al. 2013), comparable with SUS norms."""
+    return None if score is None else 0.65 * score + 22.9
+
 
 def normalize_options(raw, scope, where):
     """Accepts a list of strings, [value, label] pairs, {value, label} dicts, or a mapping."""
@@ -53,7 +157,7 @@ def scale_labels(q, points, scope, where):
     return labels
 
 
-def normalize(questions, scope, where="questions"):
+def normalize(questions, scope, where="questions", locale=None):
     if not isinstance(questions, list):
         scope.add(f"{where} must be a list")
         return []
@@ -74,6 +178,11 @@ def normalize(questions, scope, where="questions"):
         if qid in seen:
             scope.add(f"{w}: duplicate id")
         seen.add(qid)
+        if "preset" in raw:
+            q = expand_preset(raw, scope, w, locale)
+            if q:
+                out.append(q)
+            continue
         if qtype not in TYPES:
             scope.add(f"{w}: type must be one of {sorted(TYPES)}")
             continue
@@ -261,6 +370,11 @@ def summarize(questions, responses):
                              "mean": mean(vals) if vals else None,
                              "top_pct": (sum(1 for v in vals if v >= top) / len(vals)) if vals else None,
                              "picks": pick_counts.get(rv, 0)})
+            if q.get("preset"):
+                scores = [x for x in (preset_score(q, v) for _, v in answered) if x is not None]
+                s["score"] = mean(scores) if scores else None
+                s["score_n"] = len(scores)
+                s["grade"] = sus_grade(s["score"] if q["preset"] == "sus" else umux_lite_to_sus(s["score"]))
             s["has_picks"] = qid in picks_from
             s["rows"] = sorted(rows, key=lambda r: (-r["picks"], -(r["mean"] or 0))) if s["has_picks"] else rows
         elif t == "text":
@@ -277,6 +391,9 @@ def flatten(questions, answers):
         if q["type"] == "matrix":
             for rv, _ in q["rows"]:
                 cols[f"{q['id']}[{rv}]"] = (val or {}).get(rv, "")
+            if q.get("preset"):
+                score = preset_score(q, val)
+                cols[f"{q['id']}.score"] = "" if score is None else round(score, 1)
         elif q["type"] == "multi":
             cols[q["id"]] = "|".join(val or [])
         else:

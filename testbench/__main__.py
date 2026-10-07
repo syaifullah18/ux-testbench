@@ -24,8 +24,41 @@ def cmd_check(_args):
             print(f"    - {m.id:<20} {m.type:<8} {m.title}{extra}")
         where = "studio, editable" if p.editable else "read-only"
         print(f"    ({where}: {p.dir})")
+    from . import preflight
+    blocking = 0
+    for p in projects.values():
+        found = preflight.run(p, os.environ.get("LOCAL_ASSETS") == "1")
+        for f in found:
+            where = f"{p.slug}/{f['file']}" + (f" [{f['module']}:{f['variant']}]" if f.get("variant") else "")
+            print(f"  {f['severity'].upper():<7} {where}: {f['message']}. Fix: {f['fix']}")
+        blocking += preflight.summary(found)[0]
+    locked = lock_problems(projects)
+    if locked:
+        print("Locked analysis rules were changed:\n  - " + "\n  - ".join(locked), file=sys.stderr)
+        return 1
+    if blocking:
+        print(f"Preflight: {blocking} error(s) would block going live.", file=sys.stderr)
+        return 1
     print(f"OK: {len(projects)} project(s)")
     return 0
+
+
+def lock_problems(projects):
+    """Every change to rules locked when a study went live (see locks.py)."""
+    from . import create_app, db, locks, storage
+    app = create_app()
+    out = []
+    with app.app_context():
+        try:
+            for p in projects.values():
+                if db.study_exists(p.slug):
+                    out += [f"{p.slug}/{msg}" for msg in locks.violations(storage.connect(p.slug), p)]
+        except Exception as exc:   # the YAML check must still work when the database is unreachable
+            print(f"warning: locked rules not checked, database unavailable ({type(exc).__name__}: {exc})",
+                  file=sys.stderr)
+        finally:
+            storage.close_all()
+    return out
 
 
 def cmd_new(args):

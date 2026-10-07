@@ -92,6 +92,9 @@ runner:
   show: Lihat tugas
   your_answer: Jawaban Anda
   submit: Kirim jawaban
+  stuck: "Tidak bisa selesai"
+  stuck_title: "Tidak bisa menyelesaikan tugas ini?"
+  stuck_confirm: "Ya, saya tidak bisa menyelesaikannya"
   gave_up: Saya tidak menemukannya
   back: Kembali mencari
   ease_q: Seberapa mudah tugas tadi?
@@ -150,9 +153,9 @@ admin:
   n_finished: "{n} respons selesai"
   n_runs: "{n} sesi selesai"
   ab_note: Tugas tanpa kunci jawaban baru dihitung setelah dinilai di halaman peserta.
-  rule_title: "Ambang keputusan: {challenger} dibanding {baseline}"
-  rule_pairs: "Berdasarkan {n} peserta yang mencoba keduanya."
-  rule_indicative: "Kurang dari {min} peserta, jadi hasil ini masih indikatif."
+  rule_title: "Apakah {challenger} lebih baik dari {baseline}?"
+  rule_pairs: "Berdasarkan {n} orang yang mencoba kedua desain."
+  rule_indicative: "Belum mencapai {min} peserta yang direncanakan, jadi ini hasil awal yang masih bisa berubah."
   rule_faster: "Total waktu tugas lebih singkat di {challenger} pada mayoritas peserta"
   rule_success: "Keberhasilan tugas di {challenger} tidak lebih rendah"
   rule_survey: "Rata-rata {qs} naik paling sedikit {gain}"
@@ -330,3 +333,162 @@ heatmap:
   mean_first: "Rata-rata waktu hingga klik pertama: {s}"
 card_sort:
   sort: Sortir Kartu
+report:
+  details: Detail untuk peneliti
+  people: Orang
+  design: Desain
+  task: Tugas
+  group: Kelompok
+  clear_yes: perbedaannya jelas
+  clear_no: bisa jadi masih kebetulan
+  early_result: Hasil awal
+  early_result_tip: Peserta belum sebanyak yang direncanakan, jadi hasil ini masih bisa berubah.
+  verdict_yes: 'Ya: {design} jelas lebih baik pada semua ukuran yang ditetapkan sebelum pengujian.'
+  verdict_too_few: Belum cukup orang yang mencoba kedua desain untuk bisa disimpulkan.
+  verdict_not_yet: 'Belum: kami belum bisa menyatakan {design} lebih baik dari {baseline} pada semua ukuran.'
+  col_question: Pertanyaan
+  col_saw: Yang terlihat
+  col_difference: Selisih
+  col_answer: Jawaban
+  chk_faster: Lebih cepat dengan {design}
+  chk_faster_sub: Total waktu menyelesaikan semua tugas
+  chk_success: Lebih banyak orang mengerjakan tugas dengan benar
+  chk_success_sub: Semua tugas digabung
+  chk_first_click: Klik pertama di tempat yang tepat
+  chk_first_click_sub: Apakah orang tahu harus mulai dari mana? Sebagai konteks; tidak mengubah jawaban di atas
+  chk_survey: Dinilai lebih tinggi ({q})
+  chk_survey_sub: Pertanyaan setelah setiap desain
+  faster_people: '{n} dari {total} orang lebih cepat dengan {design}'
+  fc_better: orang lebih baik dengan {design}; {clear}
+  likely_range: Rentang yang mungkin
+  likely_range_tip: Rentang perkiraan selisih yang sebenarnya (interval 95%). Jika seluruh rentang berada di satu sisi nol, perbedaannya jelas.
+  range: '{a} sampai {b}'
+  early_sign: 'Tanda awal: {design} unggul'
+  yes_better: Ya, jelas lebih baik
+  no_worse: Tidak, jelas lebih buruk
+  cant_tell: Belum bisa disimpulkan
+  yes_faster: Ya, jelas lebih cepat
+  no_slower: Tidak, jelas lebih lambat
+  answer_note: Jawaban hanya "jelas" ya atau tidak jika perbedaannya terlalu besar untuk sekadar kebetulan.
+  ease_title: Seberapa mudah menurut orang
+  ease_sub: Skor dari 100 berdasarkan serangkaian pertanyaan standar yang singkat. Makin tinggi makin baik; sekitar 68 adalah rata-rata.
+  ease_higher: Orang menilai {design} {points} poin lebih tinggi dari {baseline}.
+  ease_lower: Orang menilai {design} {points} poin lebih rendah dari {baseline}.
+  ease_clear: Perbedaannya jelas.
+  ease_chance: Dengan jumlah orang sebanyak ini, perbedaannya bisa jadi masih kebetulan.
+  col_asked: Ditanyakan
+  col_score: Skor dari 100
+  col_rating: Penilaian
+  after_each: Setelah setiap desain
+  at_end: Di akhir
+  everyone: Semua orang
+  grade_excellent: Sangat baik sekali
+  grade_very_good: Sangat baik
+  grade_good: Baik
+  grade_ok: Cukup
+  grade_below: Di bawah rata-rata
+  grade_poor: Buruk
+  grade_very_poor: Sangat buruk
+  conf_title: Tanda-tanda kebingungan
+  conf_sub: Seberapa sering orang kembali ke halaman sebelumnya, mengklik sesuatu yang tidak berfungsi, atau mendapat pesan error. Makin rendah makin baik.
+  conf_back: Kembali ke halaman yang sudah dilihat
+  conf_misclicks: Mengklik sesuatu yang tidak berfungsi
+  conf_errors: Mendapat pesan error
+  conf_lostness: Seberapa tersesat (0 = langsung ke tujuan)
+  verb_back: kembali ke halaman sebelumnya
+  verb_misclicks: mengklik sesuatu yang tidak berfungsi
+  verb_errors: mendapat pesan error
+  verb_lostness: tersesat
+  and: ' dan '
+  conf_less: Dengan {design}, orang jelas lebih jarang {what} dibanding dengan {baseline}.
+  conf_less_more: Dengan {design}, orang jelas lebih jarang {what} dibanding dengan {baseline}, tetapi lebih sering {more}.
+  conf_more: Dengan {design}, orang jelas lebih sering {what} dibanding dengan {baseline}.
+  conf_none: Belum ada perbedaan kebingungan yang jelas antara {design} dan {baseline}.
+  task_title: Per tugas
+  task_sub: Setiap tugas, per desain.
+  col_correct: Benar
+  typical_time: Waktu umum
+  typical_tip: 'Median: separuh orang lebih cepat dari waktu ini, separuh lagi lebih lambat.'
+  how_easy: Seberapa mudah, 1 sampai 7
+  how_easy_tip: Setelah setiap tugas, orang menilai seberapa mudah tugas itu, dari 1 (sangat sulit) sampai 7 (sangat mudah).
+  gave_up: Menyerah
+  first_click: Klik pertama
+  first_click_tip: Hal pertama yang diklik seseorang dalam tugas. Klik pertama yang salah sering berarti halaman tidak menunjukkan harus mulai dari mana.
+  why_task: 'Tujuan tugas ini: {probe}'
+  on_target: '{pct} tepat sasaran'
+  wrong: 'Salah: {list}'
+  typical_total: Total umum, semua tugas
+  device_title: Menurut ukuran layar
+  device_sub: Ponsel atau layar kecil (lebar {px} px atau kurang) dibanding layar lebih besar. Kelompok di bawah 5 orang terlalu kecil untuk dibaca.
+  desktop: Layar besar
+  mobile: Ponsel
+  too_few: Terlalu sedikit
+  group_title: Menurut kelompok
+  group_sub: Hasil yang sama dibagi per kelompok (misalnya per peran). Kelompoknya kecil, jadi anggap sebagai petunjuk, bukan kesimpulan.
+  col_correct_of: '{design}: benar'
+  col_time_of: '{design}: waktu umum'
+  time_saved_on: Waktu yang dihemat dengan {design}
+  order_title: Apakah urutan berpengaruh?
+  order_sub: Total waktu umum, dikelompokkan menurut desain yang dilihat lebih dulu. Orang bisa lebih baik di desain kedua hanya karena sudah berlatih di desain pertama.
+  saw_first: Dilihat lebih dulu
+  no_order: Belum ada data urutan
+  order_warn: 'Periksa urutannya: hasilnya berubah tergantung desain mana yang dilihat lebih dulu. {design} {a} bagi orang yang melihat {baseline} lebih dulu ({na} orang), tetapi {b} bagi orang yang melihatnya lebih dulu ({nb} orang). Latihan di desain pertama mungkin membantu desain kedua. Dengan sedikit orang, ini bisa kebetulan; periksa sesi satu per satu sebelum memercayai hasil keseluruhan.'
+  secs_faster: '{s} detik lebih cepat'
+  secs_slower: '{s} detik lebih lambat'
+  pref_title: Desain yang lebih disukai
+  pref_sub: 'Ditanyakan di akhir: mana yang akan Anda gunakan?'
+  survey_title: Pertanyaan setelah setiap desain
+  survey_sub: Rata-rata pada skala 1 sampai 7.
+  col_q: Pertanyaan
+  compared_with: '{design} dibanding {baseline}'
+  words_title: Dengan kata-kata mereka sendiri
+  words_sub: Apa yang ditulis orang.
+  comments: Komentar terbuka
+  answers: '{n} jawaban'
+  rules_title: Aturan yang ditetapkan sebelum pengujian
+  rules_tip: Apa yang dianggap berhasil dan cara membandingkan desain ditetapkan saat studi dimulai, sehingga tidak bisa diubah setelah melihat hasil. Peneliti menyebutnya pra-registrasi.
+  locked_since: Dikunci sejak {when} UTC.
+  locked_ab: Desain, tugas, jawaban yang benar, tujuan, target klik pertama, dan cara membandingkan desain tidak bisa diubah lagi, sehingga hasil tidak bisa disesuaikan belakangan.
+  locked_flow: Alur (langkah, peran, halaman, tujuan) dan cara membandingkannya tidak bisa diubah lagi, sehingga hasil tidak bisa disesuaikan belakangan.
+  not_locked_sub: Belum dikunci. Aturan dikunci saat studi dimulai; sampai saat itu setiap sesi dihitung sebagai {term}.
+  locked: Terkunci
+  not_locked: Belum dikunci
+  drift: Pengaturan berubah setelah dikunci ({fields}). Jawaban ditahan sampai perubahan dibatalkan, atau aturan dibuka lalu dikunci lagi.
+  trial_run: sesi uji coba
+  trial_runs: sesi uji coba
+  trial_tip: Sesi dari sebelum aturan ditetapkan, biasanya tim yang mencoba studinya. Tidak dihitung dalam hasil. Peneliti menyebutnya sesi pilot.
+  pilots_hidden: '{n} {term} dari sebelum penguncian tidak dihitung.'
+  show_them: Tampilkan
+  pilots_shown: Termasuk {n} {term} dari sebelum penguncian; belum ada jawaban yang final.
+  hide_them: Sembunyikan
+  unlock_reason: Alasan membuka kunci (dicatat di log audit)
+  unlock: Buka kunci aturan
+  lock_now: Kunci aturan sekarang
+  lock_history: Riwayat kunci ({n})
+  history_locked: Dikunci
+  history_unlocked: Dibuka
+  flow_title: Struktur alur
+  flow_sub: Bagaimana setiap alur disusun, sebelum ada yang mencobanya. Langkah dan serah terima (pekerjaan berpindah dari satu peran ke peran lain) yang lebih sedikit biasanya berarti lebih sedikit menunggu.
+  col_flow: Alur
+  col_steps: Langkah
+  col_handoffs: Serah terima
+  col_roles: Peran
+  col_cycle: Seluruh proses saat ini
+  baseline: alur saat ini
+  hours: '{h} jam'
+  flow_vs: '{design} dibanding {baseline}'
+  flow_vs_sub: '{n} orang menjalankan kedua alur. Hanya total yang dibandingkan; langkah kedua alur berbeda.'
+  work_time: Waktu kerja
+  finished_faster: '{n} dari {total} orang selesai lebih cepat dengan {design}.'
+  saved: 'Waktu umum yang dihemat: {t} per putaran.'
+  saved_share: 'Waktu umum yang dihemat: {t} per putaran, yaitu {pct}% dari {h} jam yang dibutuhkan seluruh proses saat ini; sebagian besar waktu itu adalah menunggu antarperan.'
+  all_steps: Semua langkah selesai dengan benar
+  range_diff: '(rentang selisih yang mungkin: {a} sampai {b})'
+  steps_title: Per langkah
+  steps_sub: Di mana waktu habis dan di mana orang kesulitan, langkah demi langkah. Waktu dihitung dari membuka langkah sampai menyelesaikannya.
+  col_step: Langkah
+  col_role: Peran
+  col_done: Benar
+  col_back: Kembali
+  col_err: Pesan error
+  runs_line: '{design}: {n} putaran, total umum {t}'

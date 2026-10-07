@@ -49,7 +49,7 @@ def test_an_existing_v1_database_gains_the_table_on_open(app):
         assert conn.execute("SELECT COUNT(*) FROM participants").fetchone()[0] == 1   # data kept
         assert conn.execute("SELECT COUNT(*) FROM clicks").fetchone()[0] == 0
         version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()[0]
-        assert version == str(storage.SCHEMA_VERSION) == "2"
+        assert version == str(storage.SCHEMA_VERSION) == "3"
 
 
 def test_the_same_payload_written_twice_is_stored_once(app):

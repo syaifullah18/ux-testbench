@@ -1,108 +1,218 @@
 {% from "modules/_summary.html" import summary_block %}
+{% from "modules/_terms.html" import term %}
+{#- All wording comes from the `report` block of the locale files: plain words first, technical
+    terms only through term() with an explanation, exact statistics under "Details for researchers". -#}
+{% macro clear(p) -%}{{ t('report.clear_yes') if p is not none and p < 0.05 else t('report.clear_no') }}{%- endmacro %}
+{% macro rating(grade) -%}{{ t('report.grade_' ~ {'A+': 'excellent', 'A': 'excellent', 'A-': 'very_good', 'B+': 'good', 'B': 'good', 'B-': 'good', 'C+': 'ok', 'C': 'ok', 'C-': 'below', 'D': 'poor', 'F': 'very_poor'}[grade]) if grade else '-' }}{%- endmacro %}
+
+{% include "modules/_rules_panel.html" %}
 
 {% for r in rules %}
 <section class="panel" aria-labelledby="vd-{{ r.variant }}">
   <header class="panel-h">
     <div>
-      <h2 id="vd-{{ r.variant }}">{{ t('admin.rule_title', challenger=r.variant, baseline=c.baseline) }}</h2>
+      <h2 id="vd-{{ r.variant }}">{{ t('admin.rule_title', challenger=c.variants[r.variant].label, baseline=c.variants[c.baseline].label) }}</h2>
       <p>{{ t('admin.rule_pairs', n=r.n) }}{% if not r.enough %} {{ t('admin.rule_indicative', min=c.rule.min_participants) }}{% endif %}</p>
     </div>
     {% if not r.enough %}
-      <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>Indicative</span>
+      <span class="st st-warn"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>{{ term(t('report.early_result'), t('report.early_result_tip')) }}</span>
     {% endif %}
   </header>
   <div class="panel-b" style="border-bottom:1px solid var(--line)">
     <p class="t-panel">
-      {% if r.all_ok and r.enough %}
-        Evidence for {{ c.variants[r.variant].label }} across all rule checks.
-      {% elif not r.enough %}
-        Too few people have finished both variants yet to make a call.
-      {% else %}
-        Not enough evidence to declare {{ c.variants[r.variant].label }} better than {{ c.variants[c.baseline].label }}.
+      {% if r.all_ok and r.enough %}{{ t('report.verdict_yes', design=c.variants[r.variant].label) }}
+      {% elif not r.enough %}{{ t('report.verdict_too_few') }}
+      {% else %}{{ t('report.verdict_not_yet', design=c.variants[r.variant].label, baseline=c.variants[c.baseline].label) }}
       {% endif %}
     </p>
   </div>
   <div class="chk-grid chk-head" aria-hidden="true">
-    <span>Check</span>
-    <span>What we measured</span>
-    <span>Difference</span>
-    <span>Verdict</span>
+    <span>{{ t('report.col_question') }}</span>
+    <span>{{ t('report.col_saw') }}</span>
+    <span>{{ t('report.col_difference') }}</span>
+    <span>{{ t('report.col_answer') }}</span>
   </div>
   <ul class="rows">
     {% for chk in r.checks %}
     <li class="chk-grid">
       <div>
         <p class="row-title">
-          {% if chk.key == 'faster' %}Faster on {{ c.variants[r.variant].label }}
-          {% elif chk.key == 'success' %}Higher task success
-          {% else %}Higher satisfaction ({{ chk.key }})
+          {% if chk.key == 'faster' %}{{ t('report.chk_faster', design=c.variants[r.variant].label) }}
+          {% elif chk.key == 'success' %}{{ t('report.chk_success') }}
+          {% elif chk.key == 'first_click' %}{{ t('report.chk_first_click') }}
+          {% else %}{{ t('report.chk_survey', q=chk.key) }}
           {% endif %}
         </p>
         <p class="t-meta">
-          {% if chk.key == 'faster' %}Total time across all tasks
-          {% elif chk.key == 'success' %}Combined across tasks
-          {% else %}Survey question after each variant
+          {% if chk.key == 'faster' %}{{ t('report.chk_faster_sub') }}
+          {% elif chk.key == 'success' %}{{ t('report.chk_success_sub') }}
+          {% elif chk.key == 'first_click' %}{{ t('report.chk_first_click_sub') }}
+          {% else %}{{ t('report.chk_survey_sub') }}
           {% endif %}
         </p>
       </div>
-      <p>
-        {% if chk.key == 'faster' %}{{ chk.value }} (p={{ chk.p_value|num(3) }})
-        {% elif chk.key == 'success' %}{{ c.baseline }} {{ chk.a|pct }}, {{ r.variant }} {{ chk.b|pct }}
-        {% else %}{{ c.baseline }} {{ chk.a|num(2) }}, {{ r.variant }} {{ chk.b|num(2) }}
+      <div>
+        {% if chk.key == 'faster' %}{{ t('report.faster_people', n=chk.value.split('/')[0], total=chk.value.split('/')[1], design=c.variants[r.variant].label) }}
+          <details class="verdict-note"><summary class="cursor-pointer">{{ t('report.details') }}</summary>
+            Sign test p={{ chk.sign_p|num(3) }}{% if chk.wilcoxon.n %}; Wilcoxon signed-rank p={{ chk.wilcoxon.p|num(3) }}{{ '' if chk.wilcoxon.exact else ' (normal approx.)' }}, rank-biserial r={{ '%+.2f'|format(chk.wilcoxon.r) }}{% endif %}. Verdict test: {{ 'Wilcoxon' if chk.test == 'wilcoxon' else 'sign' }}.
+          </details>
+        {% elif chk.key in ('success', 'first_click') %}{{ c.variants[c.baseline].label }} {{ chk.a|pct }}, {{ c.variants[r.variant].label }} {{ chk.b|pct }}
+        {% else %}{{ c.variants[c.baseline].label }} {{ chk.a|num(2) }}, {{ c.variants[r.variant].label }} {{ chk.b|num(2) }}
         {% endif %}
-      </p>
+      </div>
       <div>
         {% if chk.key == 'faster' %}
-          {{ chk.value }}
+          <span class="verdict-note">{{ clear(chk.p_value) }}</span>
+        {% elif chk.key == 'first_click' %}
+          <span class="num t-strong">{{ chk.value }}</span>
+          <span class="verdict-note block">{{ t('report.fc_better', design=c.variants[r.variant].label, clear=clear(chk.p_value)) }}</span>
         {% elif chk.key == 'success' %}
           {% if chk.b is not none and chk.a is not none %}
             <span class="num t-strong">{{ '%+.0f'|format((chk.b - chk.a) * 100) }}%</span>
           {% endif %}
           {% if chk.interval[0] is not none and chk.interval[1] is not none %}
-            <span class="verdict-note block">95% interval [{{ chk.interval[0]|pct }}, {{ chk.interval[1]|pct }}]</span>
+            <span class="verdict-note block">{{ term(t('report.likely_range'), t('report.likely_range_tip')) }}: {{ t('report.range', a=chk.interval[0]|pct, b=chk.interval[1]|pct) }}</span>
           {% endif %}
         {% else %}
           {% if chk.gain is not none %}
             <span class="num t-strong">{{ '%+.2f'|format(chk.gain) }}</span>
           {% endif %}
           {% if chk.interval[0] is not none and chk.interval[1] is not none %}
-            <span class="verdict-note block">95% interval [{{ chk.interval[0]|num(2) }}, {{ chk.interval[1]|num(2) }}]</span>
+            <span class="verdict-note block">{{ term(t('report.likely_range'), t('report.likely_range_tip')) }}: {{ t('report.range', a=chk.interval[0]|num(2), b=chk.interval[1]|num(2)) }}</span>
           {% endif %}
         {% endif %}
       </div>
       <div>
-        {% if chk.verdict == 'evidence for' %}
-          <span class="st st-ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>Evidence for</span>
+        {% if not r.enough and chk.verdict in ('evidence for', 'evidence against') %}
+          <span class="st st-warn"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>{{ t('report.early_sign', design=c.variants[r.variant].label if chk.verdict == 'evidence for' else c.variants[c.baseline].label) }}</span>
+        {% elif chk.verdict == 'evidence for' %}
+          <span class="st st-ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>{{ t('report.yes_better') }}</span>
         {% elif chk.verdict == 'evidence against' %}
-          <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>Evidence against</span>
+          <span class="st st-fail"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>{{ t('report.no_worse') }}</span>
         {% else %}
-          <span class="st st-info"><i class="fa-solid fa-circle-minus" aria-hidden="true"></i>Not enough evidence yet</span>
+          <span class="st st-info"><i class="fa-solid fa-circle-minus" aria-hidden="true"></i>{{ t('report.cant_tell') }}</span>
         {% endif %}
       </div>
     </li>
     {% endfor %}
   </ul>
-  <p class="panel-f">A check only counts as evidence when its interval clears the line you set.</p>
+  <p class="panel-f">{{ t('report.answer_note') }}</p>
 </section>
 {% endfor %}
+
+{% if presets %}
+<section class="panel" aria-labelledby="pq-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="pq-h">{{ t('report.ease_title') }}</h2>
+      <p>{{ t('report.ease_sub') }}</p>
+    </div>
+  </header>
+  <div class="panel-b space-y-2">
+    {% for p in presets %}{% for cmp in p.compare %}{% if cmp.gain is not none %}
+      <p class="t-panel">{{ t('report.ease_higher' if cmp.gain > 0 else 'report.ease_lower', design=c.variants[cmp.variant].label, points='%.0f'|format(cmp.gain|abs), baseline=c.variants[c.baseline].label) }}
+        {{ t('report.ease_chance') if cmp.verdict == 'not enough evidence yet' else t('report.ease_clear') }}</p>
+    {% endif %}{% endfor %}{% endfor %}
+  </div>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:520px">
+      <thead><tr><th scope="col">{{ t('report.col_asked') }}</th><th scope="col">{{ t('report.design') }}</th><th scope="col" class="text-right">{{ t('report.people') }}</th><th scope="col" class="text-right">{{ t('report.col_score') }}</th><th scope="col">{{ t('report.col_rating') }}</th></tr></thead>
+      {% for p in presets %}
+        <tbody class="task-g">
+          {% set rows = p.per.items()|list if p.where == 'post' else [('All', p.all)] %}
+          {% for k, st in rows %}
+            <tr class="sub-r">
+              {% if loop.first %}<th scope="row" rowspan="{{ rows|length }}">{{ t('report.after_each') if p.where == 'post' else t('report.at_end') }}</th>{% endif %}
+              <td>{{ c.variants[k].label if p.where == 'post' else t('report.everyone') }}</td>
+              <td class="num text-right">{{ st.n }}</td>
+              <td class="num text-right t-strong">{{ '%.0f'|format(st.mean) if st.mean is not none else '-' }}</td>
+              <td>{{ rating(st.grade) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      {% endfor %}
+    </table>
+  </div>
+  <details class="panel-f"><summary class="cursor-pointer">{{ t('report.details') }}</summary>
+    {% for p in presets %}
+      <p><b>{{ 'SUS' if p.q.preset == 'sus' else 'UMUX-Lite' }}</b> ({{ p.q.id }}): {{ p.q.preset_note }}.
+      {% for k, st in (p.per.items()|list if p.where == 'post' else [('All', p.all)]) %}
+        {{ k }}: mean {{ st.mean|num(1) }}{% if st.interval[0] is not none %} [95% CI {{ st.interval[0]|num(1) }}, {{ st.interval[1]|num(1) }}]{% endif %}, median {{ st.median|num(1) }}, grade {{ st.grade or '-' }}{% if st.sus_equiv is not none %} (SUS-equivalent {{ st.sus_equiv|num(1) }}){% endif %}.
+      {% endfor %}
+      {% for cmp in p.compare %}{{ cmp.variant }} vs {{ c.baseline }}: {{ '%+.1f'|format(cmp.gain) if cmp.gain is not none else '-' }} points{% if cmp.interval[0] is not none %}, paired 95% CI [{{ cmp.interval[0]|num(1) }}, {{ cmp.interval[1]|num(1) }}]{% endif %} ({{ cmp.n }} pairs).{% endfor %}</p>
+    {% endfor %}
+    <p>Ratings: Sauro-Lewis curved grading scale; UMUX-Lite rated on its SUS-equivalent score.</p>
+  </details>
+</section>
+{% endif %}
+
+{% set shown = rework_shown.items()|selectattr(1)|map(attribute=0)|list %}
+{% if shown %}
+{% set short = {'back': 'going back', 'misclicks': 'useless clicks', 'errors': 'error messages', 'lostness': 'getting lost'} %}
+<section class="panel" aria-labelledby="rw-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="rw-h">{{ t('report.conf_title') }}</h2>
+      <p>{{ t('report.conf_sub') }}</p>
+    </div>
+  </header>
+  <div class="panel-b space-y-2">
+    {% for k, cmp in rework_cmp.items() %}
+      {% set less = [] %}{% set more = [] %}
+      {% for key in shown %}{% set w = cmp[key] %}{% if w and w.n and w.p < 0.05 %}{% if w.r > 0 %}{% set _ = less.append(t('report.verb_' ~ key)) %}{% else %}{% set _ = more.append(t('report.verb_' ~ key)) %}{% endif %}{% endif %}{% endfor %}
+      {% set j = t('report.and') %}
+      <p class="t-panel">
+        {% if less and more %}{{ t('report.conf_less_more', design=c.variants[k].label, what=less|join(j), baseline=c.variants[c.baseline].label, more=more|join(j)) }}
+        {% elif less %}{{ t('report.conf_less', design=c.variants[k].label, what=less|join(j), baseline=c.variants[c.baseline].label) }}
+        {% elif more %}{{ t('report.conf_more', design=c.variants[k].label, what=more|join(j), baseline=c.variants[c.baseline].label) }}
+        {% else %}{{ t('report.conf_none', design=c.variants[k].label, baseline=c.variants[c.baseline].label) }}{% endif %}
+      </p>
+    {% endfor %}
+  </div>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:640px">
+      <thead><tr><th scope="col">{{ t('report.task') }}</th><th scope="col">{{ t('report.design') }}</th>{% for key in shown %}<th scope="col" class="text-right">{{ t('report.conf_' ~ key) }}</th>{% endfor %}</tr></thead>
+      {% for i in range(c.tasks|length) %}
+        <tbody class="task-g">
+          {% for k in keys %}
+            {% set rw = by_variant[k].tasks[i].rework %}
+            <tr class="sub-r">
+              {% if loop.first %}<th scope="row" rowspan="{{ keys|length }}">{{ c.tasks[i].title }}</th>{% endif %}
+              <td>{{ c.variants[k].label }}</td>
+              {% for key in shown %}<td class="num text-right">{{ rw[key]|num(2) if key == 'lostness' else rw[key]|num(1) }}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      {% endfor %}
+    </table>
+  </div>
+  <details class="panel-f"><summary class="cursor-pointer">{{ t('report.details') }}</summary>
+    <p>Averages per person and task. "How lost" is Smith's lostness (0 on the shortest path, above about 0.4 looks lost), using each task's <code>optimal_steps</code>.</p>
+    {% for k, cmp in rework_cmp.items() %}
+      <p>{{ k }} vs {{ c.baseline }}, paired Wilcoxon on each person's total:
+        {% for key in shown %}{% set w = cmp[key] %}{{ short[key] }} {% if w and w.n %}p={{ w.p|num(3) }}, r={{ '%+.2f'|format(w.r) }}{% else %}no difference{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}. Positive r means fewer on {{ k }}.</p>
+    {% endfor %}
+  </details>
+</section>
+{% endif %}
 
 <section class="panel" aria-labelledby="pt-h">
   <header class="panel-h">
     <div>
-      <h2 id="pt-h">Task by task</h2>
-      <p>Variants side by side. Median time means half of people were faster.</p>
+      <h2 id="pt-h">{{ t('report.task_title') }}</h2>
+      <p>{{ t('report.task_sub') }}</p>
     </div>
   </header>
   <div class="overflow-x-auto">
     <table class="tbl" style="min-width:760px">
       <thead>
         <tr>
-          <th scope="col">Variant</th>
-          <th scope="col">Success</th>
-          <th scope="col">Median time</th>
-          <th scope="col">Ease, 1 to 7</th>
-          <th scope="col">Gave up</th>
-          <th scope="col">Most common first click</th>
+          <th scope="col">{{ t('report.design') }}</th>
+          <th scope="col">{{ t('report.col_correct') }}</th>
+          <th scope="col">{{ term(t('report.typical_time'), t('report.typical_tip')) }}</th>
+          <th scope="col">{{ term(t('report.how_easy'), t('report.how_easy_tip')) }}</th>
+          <th scope="col">{{ t('report.gave_up') }}</th>
+          <th scope="col">{{ term(t('report.first_click'), t('report.first_click_tip')) }}</th>
         </tr>
       </thead>
       {% for i in range(c.tasks|length) %}
@@ -111,7 +221,7 @@
           <tr>
             <th colspan="6">
               {{ tsk.title }}
-              {% if tsk.probe %}<span class="t-meta block" style="font-weight:400">Probe: {{ tsk.probe }}</span>{% endif %}
+              {% if tsk.probe %}<span class="t-meta block" style="font-weight:400">{{ t('report.why_task', probe=tsk.probe) }}</span>{% endif %}
             </th>
           </tr>
           {% for k in keys %}
@@ -123,10 +233,11 @@
               <td class="num">{{ s.ease|num(1) if s.ease else '-' }}</td>
               <td class="num">{{ s.gave_up }}</td>
               <td>
-                {% if s.first_clicks %}
-                  {% for label, n in s.first_clicks %}
-                    “{{ label }}” ({{ n }}){% if not loop.last %}, {% endif %}
-                  {% endfor %}
+                {% if s.fc_targeted %}
+                  <span class="t-strong">{{ t('report.on_target', pct=s.fc_rate|pct) }}</span>
+                  {% if s.fc_wrong %}{% set ws = [] %}{% for l, n in s.fc_wrong %}{% set _ = ws.append('“' ~ l ~ '” (' ~ n ~ ')') %}{% endfor %}<span class="t-meta block">{{ t('report.wrong', list=ws|join(', ')) }}</span>{% endif %}
+                {% elif s.first_clicks %}
+                  {% for l, n in s.first_clicks %}“{{ l }}” ({{ n }}){% if not loop.last %}, {% endif %}{% endfor %}
                 {% else %}-{% endif %}
               </td>
             </tr>
@@ -135,7 +246,7 @@
       {% endfor %}
       <tfoot>
         <tr>
-          <td>Median total, all tasks</td>
+          <td>{{ t('report.typical_total') }}</td>
           <td colspan="5">
             {% for k in keys %}
               {{ c.variants[k].label }}: <span class="t-strong">{{ by_variant[k].median_total|secs }}</span>{% if not loop.last %}, {% endif %}
@@ -151,17 +262,17 @@
   <section class="panel" aria-labelledby="dv-h">
     <header class="panel-h">
       <div>
-        <h2 id="dv-h">By device</h2>
-        <p>{{ mobile_max }} px or narrower counts as mobile. Groups under 5 people are not read.</p>
+        <h2 id="dv-h">{{ t('report.device_title') }}</h2>
+        <p>{{ t('report.device_sub', px=mobile_max) }}</p>
       </div>
     </header>
     <table class="tbl">
       <thead>
         <tr>
-          <th>Group</th>
-          <th class="text-right">n</th>
-          <th class="text-right">Median</th>
-          <th class="text-right">Success</th>
+          <th>{{ t('report.group') }}</th>
+          <th class="text-right">{{ t('report.people') }}</th>
+          <th class="text-right">{{ term(t('report.typical_time'), t('report.typical_tip')) }}</th>
+          <th class="text-right">{{ t('report.col_correct') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -169,10 +280,10 @@
           {% for k in keys %}
             {% set s = by_device[dev][k] %}
             <tr>
-              <td>{{ dev|capitalize }} {{ c.variants[k].label }}</td>
+              <td>{{ t('report.' ~ dev) }}: {{ c.variants[k].label }}</td>
               <td class="num text-right">{{ s.n }}</td>
               {% if s.n < 5 %}
-                <td colspan="2" class="text-right"><span class="text-muted">Too few to read</span></td>
+                <td colspan="2" class="text-right"><span class="text-muted">{{ t('report.too_few') }}</span></td>
               {% else %}
                 <td class="num text-right">{{ s.median_total|secs }}</td>
                 <td class="num text-right">{{ s.success|pct }}</td>
@@ -184,19 +295,57 @@
     </table>
   </section>
 
-  <section class="panel" aria-labelledby="od-h">
+  {% if segments %}
+  <section class="panel" aria-labelledby="sg-h">
     <header class="panel-h">
       <div>
-        <h2 id="od-h">Order effect</h2>
-        <p>Median total time by which variant came first.</p>
+        <h2 id="sg-h">{{ t('report.group_title') }}</h2>
+        <p>{{ t('report.group_sub') }}</p>
       </div>
     </header>
+    <div class="overflow-x-auto">
     <table class="tbl">
       <thead>
         <tr>
-          <th>Came first</th>
-          <th class="text-right">n</th>
-          {% for k in keys %}<th class="text-right">{{ k }}</th>{% endfor %}
+          <th>{{ t('report.group') }}</th>
+          <th class="text-right">{{ t('report.people') }}</th>
+          {% for k in keys %}<th class="text-right">{{ t('report.col_correct_of', design=c.variants[k].label) }}</th><th class="text-right">{{ t('report.col_time_of', design=c.variants[k].label) }}</th>{% endfor %}
+          {% for k in keys if k != c.baseline %}<th class="text-right">{{ t('report.time_saved_on', design=c.variants[k].label) }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in segments %}
+          <tr>
+            <td>{{ g.name }}</td>
+            <td class="num text-right">{{ g.n }}</td>
+            {% for k in keys %}<td class="num text-right">{{ g.per[k].success|pct }}</td><td class="num text-right">{{ g.per[k].median|secs }}</td>{% endfor %}
+            {% for k in keys if k != c.baseline %}<td class="num text-right">{% if g.diff[k] is not none %}{{ '%+.1f'|format(-g.diff[k] / 1000) }}s{% else %}-{% endif %}</td>{% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="panel" aria-labelledby="od-h">
+    <header class="panel-h">
+      <div>
+        <h2 id="od-h">{{ t('report.order_title') }}</h2>
+        <p>{{ t('report.order_sub') }}</p>
+      </div>
+    </header>
+    {% for co in carryover %}
+      {% set a = t('report.secs_faster' if co.base_first < 0 else 'report.secs_slower', s='%.1f'|format((co.base_first / 1000)|abs)) %}
+      {% set b = t('report.secs_faster' if co.k_first < 0 else 'report.secs_slower', s='%.1f'|format((co.k_first / 1000)|abs)) %}
+      <p class="panel-b err">{{ t('report.order_warn', design=c.variants[co.variant].label, a=a, baseline=c.variants[c.baseline].label, na=co.n_base, b=b, nb=co.n_k) }}</p>
+    {% endfor %}
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>{{ t('report.saw_first') }}</th>
+          <th class="text-right">{{ t('report.people') }}</th>
+          {% for k in keys %}<th class="text-right">{{ c.variants[k].label }}</th>{% endfor %}
         </tr>
       </thead>
       <tbody>
@@ -207,7 +356,7 @@
             {% for k in keys %}<td class="num text-right">{{ o.medians[k]|secs }}</td>{% endfor %}
           </tr>
         {% else %}
-          <tr><td colspan="{{ 2 + keys|length }}" class="text-muted">No order data yet</td></tr>
+          <tr><td colspan="{{ 2 + keys|length }}" class="text-muted">{{ t('report.no_order') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -217,8 +366,8 @@
 <section class="panel" aria-labelledby="pf-h">
   <header class="panel-h">
     <div>
-      <h2 id="pf-h">Preference</h2>
-      <p>Which version they would use.</p>
+      <h2 id="pf-h">{{ t('report.pref_title') }}</h2>
+      <p>{{ t('report.pref_sub') }}</p>
     </div>
   </header>
   <ul class="rows">
@@ -239,19 +388,19 @@
 <section class="panel" aria-labelledby="sv-h">
   <header class="panel-h">
     <div>
-      <h2 id="sv-h">Survey after each variant</h2>
-      <p>Average on a 1 to 7 scale.</p>
+      <h2 id="sv-h">{{ t('report.survey_title') }}</h2>
+      <p>{{ t('report.survey_sub') }}</p>
     </div>
   </header>
   <div class="overflow-x-auto">
     <table class="tbl" style="min-width:640px">
       <thead>
         <tr>
-          <th scope="col">Question</th>
+          <th scope="col">{{ t('report.col_q') }}</th>
           {% for k in keys %}<th scope="col" class="text-right">{{ c.variants[k].label }}</th>{% endfor %}
           {% if keys|length > 1 %}
             {% for k in keys if k != c.baseline %}
-              <th scope="col" class="text-right">Difference ({{ k }} − {{ c.baseline }})</th>
+              <th scope="col" class="text-right">{{ t('report.compared_with', design=c.variants[k].label, baseline=c.variants[c.baseline].label) }}</th>
             {% endfor %}
           {% endif %}
         </tr>
@@ -284,20 +433,20 @@
 <section class="panel" aria-labelledby="oa-h">
   <header class="panel-h">
     <div>
-      <h2 id="oa-h">In their own words</h2>
-      <p>Sample answers from participants.</p>
+      <h2 id="oa-h">{{ t('report.words_title') }}</h2>
+      <p>{{ t('report.words_sub') }}</p>
     </div>
   </header>
   <details class="acc acc-plain">
     <summary>
       <span>
-        <span class="row-title block">Open comments</span>
-        <span class="t-meta block">{{ texts|length }} answers</span>
+        <span class="row-title block">{{ t('report.comments') }}</span>
+        <span class="t-meta block">{{ t('report.answers', n=texts|length) }}</span>
       </span>
       <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
     </summary>
     <ul class="rows" style="border-top:1px solid var(--line)">
-      {% for who, k, label, text in texts %}
+      {% for who, k, qlabel, text in texts %}
         <li class="row">
           <div class="row-main">
             <p>“{{ text }}”</p>

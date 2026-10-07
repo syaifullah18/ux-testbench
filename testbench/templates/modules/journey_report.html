@@ -1,0 +1,95 @@
+{% from "modules/_terms.html" import term %}
+{% include "modules/_rules_panel.html" %}
+<section class="panel" aria-labelledby="js-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="js-h">{{ t('report.flow_title') }}</h2>
+      <p>{{ t('report.flow_sub') }}</p>
+    </div>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:640px">
+      <thead><tr><th scope="col">{{ t('report.col_flow') }}</th><th scope="col" class="text-right">{{ t('report.col_steps') }}</th><th scope="col" class="text-right">{{ t('report.col_handoffs') }}</th><th scope="col">{{ t('report.col_roles') }}</th><th scope="col" class="text-right">{{ t('report.col_cycle') }}</th></tr></thead>
+      <tbody>
+        {% for s in structure %}
+          <tr>
+            <td>{{ s.label }} ({{ s.key }}){% if s.key == c.baseline %} <span class="t-meta">{{ t('report.baseline') }}</span>{% endif %}<span class="t-meta block">{{ s.path }}</span></td>
+            <td class="num text-right">{{ s.steps }}</td>
+            <td class="num text-right">{{ s.handoffs }}</td>
+            <td>{{ s.roles|join(', ') }}</td>
+            <td class="num text-right">{{ t('report.hours', h=s.cycle_time_hours) if s.cycle_time_hours else '-' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% for cmp in compare %}
+{% set design, baseline = c.variants[cmp.variant].label, c.variants[c.baseline].label %}
+<section class="panel" aria-labelledby="jc-{{ cmp.variant }}">
+  <header class="panel-h">
+    <div>
+      <h2 id="jc-{{ cmp.variant }}">{{ t('report.flow_vs', design=design, baseline=baseline) }}</h2>
+      <p>{{ t('report.flow_vs_sub', n=cmp.n) }}</p>
+    </div>
+    {% if not cmp.enough %}<span class="st st-warn"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>{{ term(t('report.early_result'), t('report.early_result_tip')) }}</span>{% endif %}
+  </header>
+  <ul class="rows">
+    <li class="row"><div class="row-main">
+      <p class="row-title">{{ t('report.work_time') }}</p>
+      <p class="t-meta">
+        {{ t('report.finished_faster', n=cmp.faster, total=cmp.n, design=design) }}
+        {% if cmp.median_saved_ms is not none %}
+          {% if cmp.cycle_share is not none %}{{ t('report.saved_share', t=cmp.median_saved_ms|secs, pct='%.2f'|format(cmp.cycle_share * 100), h=c.variants[c.baseline].cycle_time_hours) }}
+          {% else %}{{ t('report.saved', t=cmp.median_saved_ms|secs) }}{% endif %}
+        {% endif %}
+      </p>
+      <details class="t-meta"><summary class="cursor-pointer">{{ t('report.details') }}</summary>
+        {{ cmp.faster }}/{{ cmp.n }} faster on {{ cmp.variant }}; sign test p={{ cmp.sign_p|num(3) }}{% if cmp.wilcoxon.n %}, Wilcoxon p={{ cmp.wilcoxon.p|num(3) }}, r={{ '%+.2f'|format(cmp.wilcoxon.r) }}{% endif %}. Median saved {{ cmp.median_saved_ms|secs }} per run.
+      </details>
+    </div>
+    <div class="row-state">
+      {% if not cmp.enough and cmp.verdict != 'not enough evidence yet' %}
+        <span class="st st-warn">{{ t('report.early_sign', design=design if cmp.verdict == 'evidence for' else baseline) }}</span>
+      {% elif cmp.verdict == 'evidence for' %}<span class="st st-ok">{{ t('report.yes_faster') }}</span>
+      {% elif cmp.verdict == 'evidence against' %}<span class="st st-fail">{{ t('report.no_slower') }}</span>
+      {% else %}<span class="st st-info">{{ t('report.cant_tell') }}</span>{% endif %}
+    </div></li>
+    <li class="row"><div class="row-main">
+      <p class="row-title">{{ t('report.all_steps') }}</p>
+      <p class="t-meta">{{ baseline }} {{ per_variant[c.baseline].success|pct }}, {{ design }} {{ per_variant[cmp.variant].success|pct }}.{% if cmp.success_interval[0] is not none %} {{ t('report.range_diff', a=cmp.success_interval[0]|pct, b=cmp.success_interval[1]|pct) }}{% endif %}</p>
+    </div></li>
+  </ul>
+</section>
+{% endfor %}
+
+<section class="panel" aria-labelledby="jst-h">
+  <header class="panel-h">
+    <div>
+      <h2 id="jst-h">{{ t('report.steps_title') }}</h2>
+      <p>{{ t('report.steps_sub') }}</p>
+    </div>
+  </header>
+  <div class="overflow-x-auto">
+    <table class="tbl" style="min-width:640px">
+      <thead><tr><th scope="col">{{ t('report.col_step') }}</th><th scope="col">{{ t('report.col_role') }}</th><th scope="col" class="text-right">{{ term(t('report.typical_time'), t('report.typical_tip')) }}</th><th scope="col" class="text-right">{{ t('report.col_done') }}</th><th scope="col" class="text-right">{{ t('report.col_back') }}</th><th scope="col" class="text-right">{{ t('report.col_err') }}</th></tr></thead>
+      {% for k in keys %}
+        {% set pv = per_variant[k] %}
+        <tbody class="task-g">
+          <tr><th colspan="6">{{ t('report.runs_line', design=c.variants[k].label ~ ' (' ~ k ~ ')', n=pv.n, t=pv.median_total|secs) }}</th></tr>
+          {% for st in pv.steps %}
+            <tr class="sub-r">
+              <td>{{ loop.index }}. {{ st.step.title }}</td>
+              <td>{{ st.step.role }}</td>
+              <td class="num text-right">{{ st.median_ms|secs }}</td>
+              <td class="num text-right">{{ st.success|pct }}</td>
+              <td class="num text-right">{{ st.back|num(1) if st.back is not none else '-' }}</td>
+              <td class="num text-right">{{ st.errors|num(1) if st.errors is not none else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      {% endfor %}
+    </table>
+  </div>
+</section>

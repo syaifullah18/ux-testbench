@@ -10,11 +10,11 @@
   .side .grp { padding: 12px 12px 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
   .side hr { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
   .verdict-note { font-size: 14px; color: var(--muted); }
-  .tbl tbody.task-g th { font-size: 16px; color: var(--ink); background: #fff; border-bottom: 0; padding-top: 16px; }
+  .tbl tbody.task-g th { font-size: 16px; color: var(--ink); background: var(--card); border-bottom: 0; padding-top: 16px; }
   .tbl tbody.task-g + tbody.task-g th { border-top: 1px solid var(--line); }
   .sub-r td { padding-top: 8px; padding-bottom: 8px; border-bottom: 0; }
   .tbl td.num, .tbl th.text-right { white-space: nowrap; }
-  .tbl tfoot td { border-top: 1px solid var(--line); background: #FAFBFC; font-weight: 600; }
+  .tbl tfoot td { border-top: 1px solid var(--line); background: var(--sub); font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -141,7 +141,11 @@
         </div>
       </section>
 
-      {% if cur_stat.started == 0 %}
+      {% if cur_stat.finished == 0 and report_body %}
+        {# Some reports (journey_test structure) are useful before anyone finishes. #}
+        <section class="panel"><div class="panel-b"><p class="t-meta">{{ cur_stat.started }} started, none finished yet. The parts below need no participants.</p></div></section>
+        {{ report_body|safe }}
+      {% elif cur_stat.started == 0 %}
         <section class="panel">
           <div class="panel-b">
             <p class="t-strong">No one has entered this module yet.</p>

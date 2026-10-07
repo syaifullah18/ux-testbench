@@ -9,6 +9,8 @@
     const REVERSAL_MIN_PX = 80;     // ignore jitter: a reversal needs this much travel first
     const FLUSH_EVERY_MS = 15000;
     const PATH_MAX = 40;
+    const EVENTS_MAX = 200;
+    const CONTROL = '[data-testbench-label],a,button,select,input,textarea,summary,label,[role=button],[data-dropdown-toggle],[data-collapse-toggle]';
 
     let idx = cfg.tasks.findIndex((t) => !t.done);
     if (idx < 0) { location.reload(); return; }
@@ -43,7 +45,7 @@
     function snapshot() {
         settle();
         return { time_ms: m.time_ms, clicks: m.clicks, scroll_reversals: m.scroll_reversals,
-                 click_path: m.click_path, viewport_w: window.innerWidth };
+                 click_path: m.click_path, events: m.events, viewport_w: window.innerWidth };
     }
 
     function flush(beacon) {
@@ -53,11 +55,12 @@
     }
 
     function describe(el) {
-        const target = el.closest('a,button,select,input,textarea,summary,label,[role=button],[data-dropdown-toggle],[data-collapse-toggle]') || el;
+        const target = el.closest(CONTROL) || el;
         const tag = target.tagName.toLowerCase();
         // Never label a text field by what the participant typed into it.
         const typed = (tag === 'input' && !['button', 'submit', 'reset', 'checkbox', 'radio'].includes(target.type)) || tag === 'textarea';
-        const text = (target.getAttribute('aria-label') || (typed ? target.placeholder || target.name : target.innerText || target.value) || '')
+        // A stable label set by the prototype author wins, so first-click targets survive copy edits.
+        const text = (target.getAttribute('data-testbench-label') || target.getAttribute('aria-label') || (typed ? target.placeholder || target.name : target.innerText || target.value) || '')
             .replace(/\s+/g, ' ').trim();
         return (text ? `${tag}: ${text}` : `${tag}${target.id ? '#' + target.id : ''}`).slice(0, 80);
     }
@@ -65,6 +68,54 @@
     function logStep(label) {
         if (m.click_path.length < PATH_MAX) m.click_path.push(label);
     }
+
+    // A prototype reports a goal (saved, submitted, approved...) either declaratively, by a click
+    // on an element with data-testbench-goal="<id>", or from its own script with
+    // parent.postMessage({ testbench: 'goal', id: '<id>' }, '*'). Messages count only when they
+    // come from the prototype frame itself, whatever its origin.
+    function logEvent(kind, value) {
+        value = String(value || '').slice(0, 80);
+        if (!active || !value) return false;
+        settle();
+        if (m.events.length < EVENTS_MAX) m.events.push({ kind, value, t_ms: m.time_ms });
+        return true;
+    }
+
+    // Pages and in-page states (hash) the participant passes through, for back-navigation and
+    // lostness. Repeats of the same page in a row are one visit.
+    function logPage() {
+        if (!m || !active) return;   // the frame is blanked between tasks, which fires load too
+        let key;
+        try {
+            const loc = frame.contentWindow.location;
+            key = (loc.pathname.match(/\/view\/\d+\/(.*)$/) || [, ''])[1] || 'index';
+            key += loc.hash;
+        } catch (err) { return; }   // a cross-origin frame cannot be read; its script reports instead
+        const pages = m.events.filter((e) => e.kind === 'page');
+        if (!pages.length || pages[pages.length - 1].value !== key.slice(0, 80)) logEvent('page', key);
+    }
+
+    function reachGoal(id) {
+        id = String(id || '').slice(0, 80);
+        if (!logEvent('goal', id)) return;
+        const t = task();
+        if (t.end_on_goal && t.goals.includes(id)) {
+            active = false;       // the task ends at the goal, not when the participant moves on
+            since = null;
+            // With fields still to answer, save the stopped time now; otherwise the submit that
+            // follows carries it (a separate flush would race it and hit a closed view).
+            if (t.fields.length) flush(false);
+            openAnswer(true);
+        }
+    }
+    window.addEventListener('message', (e) => {
+        const d = e.data;
+        if (e.source !== frame.contentWindow || !d) return;
+        if (d.testbench === 'goal' && typeof d.id === 'string') reachGoal(d.id);
+        // A validation error the prototype shows: parent.postMessage({ testbench: 'error', id: 'npwp-format' }, '*')
+        if (d.testbench === 'error') logEvent('error', typeof d.id === 'string' && d.id ? d.id : 'error');
+        if (d.testbench === 'page' && typeof d.id === 'string') logEvent('page', d.id);
+    });
 
     function wireFrame() {
         const doc = frame.contentDocument, win = frame.contentWindow;
@@ -76,6 +127,9 @@
             if (!active) return;
             m.clicks += 1;
             logStep(describe(e.target));
+            if (!(e.target.closest && e.target.closest(CONTROL))) logEvent('miss', e.target.tagName.toLowerCase());
+            const g = e.target.closest && e.target.closest('[data-testbench-goal]');
+            if (g) reachGoal(g.getAttribute('data-testbench-goal'));
         }, true);
         doc.addEventListener('submit', (e) => e.preventDefault(), true);
         doc.addEventListener('change', (e) => {
@@ -91,6 +145,18 @@
             travel += Math.abs(y - lastY);
             lastY = y;
         }, { passive: true });
+        win.addEventListener('hashchange', logPage);
+        // A field the prototype marks aria-invalid="true" counts as a validation error, so
+        // prototypes that follow accessible error patterns need no extra script.
+        if (win.MutationObserver) {
+            new win.MutationObserver((records) => {
+                records.forEach((r) => {
+                    if (r.target.getAttribute('aria-invalid') === 'true' && r.oldValue !== 'true') {
+                        logEvent('error', r.target.getAttribute('data-testbench-label') || r.target.name || r.target.id || 'aria-invalid');
+                    }
+                });
+            }).observe(doc.documentElement, { attributes: true, attributeFilter: ['aria-invalid'], attributeOldValue: true, subtree: true });
+        }
     }
 
     function showGate() {
@@ -110,17 +176,27 @@
     // CDN load time (heavier for some variants) out of the measurement.
     $('btn-start').addEventListener('click', () => {
         const init = task().initial || {};
-        m = { time_ms: init.time_ms || 0, clicks: init.clicks || 0, scroll_reversals: init.scroll_reversals || 0, click_path: [] };
+        m = { time_ms: init.time_ms || 0, clicks: init.clicks || 0, scroll_reversals: init.scroll_reversals || 0, click_path: [],
+              events: (init.events || []).slice() };
         gate.classList.add('hidden');
+        let started = false;
         frame.onload = () => {
-            wireFrame();
+            wireFrame();          // every page the prototype navigates to needs its listeners
+            if (started) { logPage(); return; }   // never restart a timer a goal has stopped
+            started = true;
             active = true;
             settle();
+            logPage();
             ['btn-answer', 'btn-toggle', 't-prompt'].forEach((id) => $(id).classList.remove('hidden'));
+            // A task the prototype ends by a goal has nothing to type: the button only offers a way out.
+            $('btn-answer').querySelector('span').textContent = task().fields.length ? S.answer : S.stuck;
+            $('btn-answer').querySelector('i').className = task().fields.length ? 'fa-solid fa-pen' : 'fa-solid fa-flag';
+            $('btn-answer').classList.toggle('btn-primary', !!task().fields.length);
+            $('btn-answer').classList.toggle('btn-secondary', !task().fields.length);
             $('btn-toggle').textContent = S.hide;
             $('btn-toggle').setAttribute('aria-expanded', 'true');
         };
-        frame.src = cfg.frameUrl + '?t=' + (idx + 1) + '&_=' + Date.now();
+        frame.src = (task().frameUrl || cfg.frameUrl) + '?t=' + (idx + 1) + '&_=' + Date.now();
     });
 
     $('btn-toggle').addEventListener('click', (e) => {
@@ -177,15 +253,23 @@
         $(id).classList.toggle('hidden', !msg);
     }
 
-    $('btn-answer').addEventListener('click', () => {
+    // atGoal: the prototype ended the task, so there is no going back to it or giving up.
+    function openAnswer(atGoal) {
         buildFields();
         showError('d-error');
+        const noFields = !task().fields.length;
+        $('d-title').textContent = noFields && !atGoal ? S.stuck_title : S.your_answer;
+        $('btn-submit').classList.toggle('hidden', noFields);
+        $('btn-giveup').textContent = noFields ? S.stuck_confirm : S.gave_up;
         $('f-answer').classList.remove('hidden');
         $('ease').classList.add('hidden');
-        dlg.showModal();
+        ['btn-back', 'btn-giveup'].forEach((id) => $(id).classList.toggle('hidden', atGoal));
+        if (!dlg.open) dlg.showModal();
+        if (atGoal && !task().fields.length) { finishSearching(false); return; }
         const first = $('d-fields').querySelector('input');
         if (first) first.focus();
-    });
+    }
+    $('btn-answer').addEventListener('click', () => openAnswer(false));
     $('btn-back').addEventListener('click', () => dlg.close());
     dlg.addEventListener('cancel', (e) => { if (!active) e.preventDefault(); });
 
