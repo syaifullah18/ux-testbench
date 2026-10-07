@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "auth/_rail.html" import rail %}
+{% from "auth/_providers.html" import provider_buttons, divider %}
 {% block title %}Create your account{% endblock %}
 {% block content %}
 <div class="max-w-md mx-auto my-8 sm:my-14">
@@ -10,10 +11,14 @@
     <div class="border border-line bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
         <h1 class="text-xl font-bold text-ink mb-1.5 text-center">Create your account</h1>
         <p class="text-ink-subtle text-[14px] mb-6 text-center">
-            {% if have_email %}Two fields left. Free, and no credit card.
+            {% if have_email and password_login %}Two fields left. Free, and no credit card.
             {% else %}Free. No credit card needed.{% endif %}
         </p>
 
+        {{ provider_buttons(providers, next_param, verb="Sign up") }}
+
+        {% if password_login %}
+        {% if providers %}{{ divider() }}{% endif %}
         <form method="post" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div>
@@ -56,6 +61,7 @@
                 <i class="fa-solid fa-user-plus"></i>Create a free account
             </button>
         </form>
+        {% endif %}
 
         <p class="text-center text-[14px] text-ink-subtle mt-5">
             Already have an account?

@@ -1,0 +1,20 @@
+{#- Sign in with Google / GitHub. Plain links, not forms: the page's CSP allows forms to post
+    only to this site, and the provider round trip starts with a redirect. -#}
+{% macro provider_buttons(providers, next_param="", verb="Continue") %}
+{% if providers %}
+<div class="space-y-3" id="providers">
+    {% for name, label in providers %}
+    <a href="{{ url_for('auth.oauth_start', provider=name, next=next_param or None) }}"
+       class="w-full min-h-11 inline-flex items-center justify-center gap-2.5 rounded-lg border border-line bg-card px-4 py-2.5 text-[14px] font-semibold text-ink hover:bg-surface-subtle focus:outline-none focus:ring-4 focus:ring-brand/30">
+        <i class="fa-brands fa-{{ name }} text-base" aria-hidden="true"></i>{{ verb }} with {{ label }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro divider() %}
+<div class="my-6 flex items-center gap-3 text-[12px] uppercase tracking-wider text-ink-subtle" aria-hidden="true">
+    <span class="h-px flex-1 bg-line"></span>or<span class="h-px flex-1 bg-line"></span>
+</div>
+{% endmacro %}

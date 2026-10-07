@@ -57,8 +57,28 @@
     <div class="bg-card border border-line/80 rounded-2xl p-5 sm:p-6 shadow-sm">
         <h2 class="font-bold text-ink mb-1">Invite a teammate</h2>
         <p class="text-xs text-ink-subtle mb-4">
-            They receive a link that expires in 7 days. If they have no account yet, it offers to create one.
+            You get a link to send them; it works only for that address and expires in 7 days. If they
+            have no account yet, it offers to create one.
         </p>
+
+        {% if invite_link %}
+        <div class="mb-4 rounded-xl border border-ok-line bg-ok-soft p-4" role="status">
+            <p class="text-sm font-semibold text-ok-ink">
+                {% if invite_link.emailed %}Invitation emailed to {{ invite_link.email }}. You can also send this link yourself:
+                {% else %}Invitation ready. Send this link to {{ invite_link.email }}:{% endif %}
+            </p>
+            <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                <input id="invite-url" type="text" readonly value="{{ invite_link.url }}"
+                       class="flex-1 min-w-0 border border-line min-h-11 bg-card text-ink rounded-xl px-3.5 py-2.5 text-xs font-mono"
+                       onclick="this.select()">
+                <button type="button" id="invite-copy"
+                        class="min-h-11 inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold rounded-xl border border-line bg-card text-ink-muted hover:bg-surface-subtle whitespace-nowrap">
+                    <i class="fa-regular fa-copy text-xs"></i> <span>Copy link</span>
+                </button>
+            </div>
+            <p class="mt-2 text-xs text-ink-subtle">This link is shown once. Revoke the invitation below to cancel it.</p>
+        </div>
+        {% endif %}
         <form method="post" class="flex flex-col sm:flex-row gap-2">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="invite">
@@ -68,7 +88,7 @@
                 {% for r in roles %}<option value="{{ r }}" {% if r == 'editor' %}selected{% endif %}>{{ r }}</option>{% endfor %}
             </select>
             <button class="min-h-11 inline-flex items-center justify-center px-4 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm whitespace-nowrap">
-                <i class="fa-solid fa-paper-plane text-xs"></i> Send invitation
+                <i class="fa-solid fa-paper-plane text-xs"></i> Invite
             </button>
         </form>
 
@@ -94,4 +114,19 @@
         {% endif %}
     </div>
 </div>
+{% if invite_link %}
+<script>
+    (function () {
+        var btn = document.getElementById('invite-copy');
+        var field = document.getElementById('invite-url');
+        if (!btn || !field) return;
+        btn.addEventListener('click', function () {
+            field.select();
+            var done = function () { btn.lastElementChild.textContent = 'Copied'; };
+            if (navigator.clipboard) navigator.clipboard.writeText(field.value).then(done, function () {});
+            else if (document.execCommand('copy')) done();
+        });
+    })();
+</script>
+{% endif %}
 {% endblock %}

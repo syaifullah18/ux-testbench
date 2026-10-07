@@ -161,8 +161,9 @@ UX Testbench includes a built-in CLI for project scaffolding, validation, operat
 | `python -m testbench check` | Validates YAML schemas, dependencies, and prototype links across all projects. |
 | `python -m testbench new <slug> [--name NAME]` | Scaffolds a new study folder from template in `instance/projects/<slug>/`. |
 | `python -m testbench demo [-n N]` | Seeds $N$ synthetic participants into the example study (default 30). |
-| `python -m testbench create-admin <email>` | Creates a platform administrator account with email verification (public mode). |
+| `python -m testbench create-admin <email>` | Creates a platform administrator account with email verification (public mode). With `PASSWORD_LOGIN=off` it asks for no password; the admin signs in with Google or GitHub. |
 | `python -m testbench claim <slug> <email>` | Assigns an owner to an existing project in public mode. |
+| `python -m testbench delete-user <email>` | Deletes a researcher account (`--disable` only disables it, `--delete-studies` also removes studies they own alone). |
 | `python -m testbench retention [--ip-days N] [--close-after M]` | Maintenance cron job: prunes stale IPs, flushes spent tokens, and lists expired studies. |
 | `python -m testbench migrate-to-postgres [--dry-run]` | Copies every SQLite database in `DATA_DIR` into `DATABASE_URL`, keeping ids and checking row counts. |
 | `python -m testbench migrate-files-to-s3` | Uploads every Studio study folder to the bucket and verifies each object. |
@@ -206,6 +207,9 @@ TESTBENCH_MODE=public
 APP_DOMAIN=testbench.yourdomain.com
 USERCONTENT_DOMAIN=testbench-usercontent.yourdomain.com
 ACME_EMAIL=ops@yourdomain.com
+GOOGLE_CLIENT_ID=…              # researchers sign in with Google and/or GitHub
+GOOGLE_CLIENT_SECRET=…
+PASSWORD_LOGIN=off              # store no passwords; SMTP becomes optional
 
 # Start the stack
 docker compose up -d
@@ -282,6 +286,9 @@ A study is defined by `project.yaml`. The Studio provides a built-in visual edit
 | `TESTBENCH_MODE` | `internal` | Set to `public` to enable user accounts, quotas, and team invitations. |
 | `APP_DOMAIN` | None | Primary hostname serving the application and authenticated cookies. |
 | `USERCONTENT_DOMAIN` | None | Isolated registrable domain serving untrusted prototype JavaScript. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | None | Offer sign-in with Google (public mode). Callback: `https://<APP_DOMAIN>/login/google/callback`. |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | None | Offer sign-in with GitHub (public mode). Callback: `https://<APP_DOMAIN>/login/github/callback`. |
+| `PASSWORD_LOGIN` | `on` | `off` removes email and password accounts, so no password is stored. Needs a provider. |
 | `MAX_UPLOAD_MB` | `50` | Maximum file size for prototype ZIP archives and asset uploads. |
 | `LOCAL_ASSETS` | `0` | Set to `1` to serve CSS, fonts, and icons locally without third-party CDN requests. |
 | `SESSION_COOKIE_SECURE`| `0` | Set to `1` to enforce HTTPS-only cookies in production. |

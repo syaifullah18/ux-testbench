@@ -1,4 +1,4 @@
-"""Command line: python -m testbench [run|check|new|demo|create-admin|claim|retention]."""
+"""Command line: python -m testbench [run|check|new|demo|create-admin|claim|delete-user|retention]."""
 import argparse
 import os
 import shutil
@@ -139,7 +139,18 @@ def cmd_create_admin(args):
             else:
                 print(f"{email} is already a platform admin.")
             return 0
-        
+
+        from .auth import password_login_enabled
+        if not password_login_enabled():
+            user_id, problems = users.create_user(email, "Admin")
+            if problems:
+                print(f"Failed: {problems}", file=sys.stderr)
+                return 1
+            users.update_user(user_id, is_platform_admin=1)
+            users.set_email_verified(user_id)
+            print(f"Platform admin {email} created. Sign in with Google or GitHub using this address.")
+            return 0
+
         while True:
             pw = getpass.getpass("Password (min 10 chars): ")
             if len(pw) >= 10:
@@ -174,6 +185,52 @@ def cmd_claim(args):
         return 0
 
 
+def cmd_delete_user(args):
+    """Remove an account the same way the user would from /account, or only disable it."""
+    from . import create_app, moderation, storage, users
+    from .auth import _release_projects, sole_owned
+    app = create_app()
+    with app.app_context():
+        email = args.email.strip().lower()
+        user = users.get_user_by_email(email)
+        if not user:
+            print(f"User {email} not found.", file=sys.stderr)
+            return 1
+        if user["is_platform_admin"] and not any(
+                u["is_platform_admin"] and not u["disabled_at"] and u["id"] != user["id"]
+                for u in users.list_users()):
+            print(f"{email} is the last platform admin. Create another with create-admin first.",
+                  file=sys.stderr)
+            return 1
+
+        if args.disable:
+            users.update_user(user["id"], disabled_at=storage.now_iso())
+            users.revoke_all_sessions(user["id"])
+            moderation.audit("user.disable", actor="cli", detail={"email": email})
+            print(f"{email} disabled and signed out everywhere.")
+            return 0
+
+        orphans = sole_owned(user)
+        if orphans and not args.delete_studies:
+            print(f"{email} is the only owner of: {', '.join(orphans)}.\n"
+                  f"Make someone else an owner (claim <slug> <email>), or pass --delete-studies "
+                  f"to delete those studies and their participant data too.", file=sys.stderr)
+            return 1
+        if not args.yes:
+            warning = f" and the studies {', '.join(orphans)}" if orphans else ""
+            if input(f"Permanently delete {email}{warning}? Type the email to confirm: ").strip().lower() != email:
+                print("Cancelled.")
+                return 1
+
+        _release_projects(user, "delete" if args.delete_studies else "keep")
+        users.revoke_all_sessions(user["id"])
+        moderation.audit("account.delete", actor="cli", detail={"email": email})
+        moderation.anonymise_user(user["id"])
+        users.delete_user(user["id"])   # memberships, sessions and tokens cascade
+        print(f"{email} deleted.")
+        return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="python -m testbench")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -195,6 +252,14 @@ def main(argv=None):
     cl.add_argument("slug")
     cl.add_argument("email")
 
+    du = sub.add_parser("delete-user", help="delete (or --disable) a researcher account (public mode)")
+    du.add_argument("email")
+    du.add_argument("--disable", action="store_true",
+                    help="only disable the account and sign it out; nothing is deleted")
+    du.add_argument("--delete-studies", action="store_true",
+                    help="also delete studies this user owns alone, with their participant data")
+    du.add_argument("-y", "--yes", action="store_true", help="skip the confirmation prompt")
+
     rt = sub.add_parser("retention", help="clear old IPs and spent tokens; list stale studies")
     rt.add_argument("--ip-days", type=int, default=30,
                     help="clear IP addresses older than this many days (default 30)")
@@ -211,7 +276,8 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
     cmds = {"run": cmd_run, "check": cmd_check, "new": cmd_new, "demo": cmd_demo,
-            "create-admin": cmd_create_admin, "claim": cmd_claim, "retention": cmd_retention,
+            "create-admin": cmd_create_admin, "claim": cmd_claim, "delete-user": cmd_delete_user,
+            "retention": cmd_retention,
             "migrate-to-postgres": cmd_migrate_to_postgres,
             "migrate-files-to-s3": cmd_migrate_files_to_s3}
     return cmds[args.cmd](args)

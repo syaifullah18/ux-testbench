@@ -19,7 +19,7 @@ from . import db
 
 # Parents before children, so foreign keys are satisfied as rows arrive.
 STUDY_ORDER = ["meta", "participants", "sessions", "answers", "task_results", "clicks", "audit_log"]
-SYSTEM_ORDER = ["users", "auth_tokens", "sessions_auth", "memberships", "invitations", "reports",
+SYSTEM_ORDER = ["users", "user_identities", "auth_tokens", "sessions_auth", "memberships", "invitations", "reports",
                 "project_flags", "platform_audit", "signup_events", "rate_events", "passcodes"]
 BATCH = 500
 

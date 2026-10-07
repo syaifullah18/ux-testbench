@@ -1,7 +1,7 @@
 """Researcher accounts, stored in the platform database (`_system.db`, or the `testbench`
 schema on PostgreSQL; see db.py).
 
-Tables: users, auth_tokens, sessions_auth, memberships.
+Tables: users, user_identities, auth_tokens, sessions_auth, memberships, invitations.
 Participant data stays in the per-project databases and is unaffected.
 """
 import hashlib
@@ -23,6 +23,11 @@ COMMON_PASSWORDS = frozenset([
 ROLES = ("owner", "editor", "viewer")
 TOKEN_PURPOSES = ("verify", "reset", "invite", "login")
 
+# Stored in password_hash for accounts that sign in with Google or GitHub only. It is not a
+# werkzeug hash, so no password ever matches it. The column stays NOT NULL because existing
+# databases cannot drop that constraint without a migration (see ADR 006).
+NO_PASSWORD = "!nopassword"
+
 AUTH_SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +40,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at  TEXT NOT NULL,
     last_login_at TEXT,
     disabled_at TEXT
+);
+CREATE TABLE IF NOT EXISTS user_identities (
+    provider    TEXT NOT NULL,
+    subject     TEXT NOT NULL,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email       TEXT,
+    created_at  TEXT NOT NULL,
+    PRIMARY KEY (provider, subject)
 );
 CREATE TABLE IF NOT EXISTS auth_tokens (
     token_hash  TEXT PRIMARY KEY,
@@ -97,17 +110,20 @@ def close_users_db(_exc=None):
 
 # ---------------------------------------------------------------- users
 
-def create_user(email, name, password):
-    """Returns (user_id, problems). problems is a list of error strings."""
+def create_user(email, name, password=None):
+    """Returns (user_id, problems). problems is a list of error strings.
+
+    password=None creates an account that can only sign in through a linked provider."""
     problems = []
     email = email.strip().lower()
     name = name.strip()
     if not email or "@" not in email:
         problems.append("invalid_email")
-    if len(password) < 10:
-        problems.append("password_too_short")
-    if password.lower() in COMMON_PASSWORDS:
-        problems.append("password_common")
+    if password is not None:
+        if len(password) < 10:
+            problems.append("password_too_short")
+        if password.lower() in COMMON_PASSWORDS:
+            problems.append("password_common")
     if problems:
         return None, problems
     conn = system_db()
@@ -115,7 +131,7 @@ def create_user(email, name, password):
     if existing:
         problems.append("email_taken")
         return None, problems
-    pw_hash = generate_password_hash(password)
+    pw_hash = NO_PASSWORD if password is None else generate_password_hash(password)
     user_id = db.insert(
         conn, "INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)",
         (email, name, pw_hash, _now()))
@@ -133,9 +149,20 @@ def get_user_by_email(email):
 
 
 def verify_password(user_row, password):
-    if not user_row or not password:
+    if not user_row or not password or not has_password(user_row):
         return False
     return check_password_hash(user_row["password_hash"], password)
+
+
+def has_password(user_row):
+    return bool(user_row) and user_row["password_hash"] != NO_PASSWORD
+
+
+def clear_password(user_id):
+    """Nobody can sign in with a password any more, including whoever set it."""
+    conn = system_db()
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (NO_PASSWORD, user_id))
+    conn.commit()
 
 
 def update_password(user_id, new_password):
@@ -176,6 +203,34 @@ def delete_user(user_id):
 
 def list_users():
     return system_db().execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
+
+
+# ---------------------------------------------------------------- identities (Google, GitHub)
+
+def find_identity(provider, subject):
+    """The user linked to this provider account, or None."""
+    return system_db().execute(
+        "SELECT u.* FROM user_identities i JOIN users u ON u.id = i.user_id "
+        "WHERE i.provider = ? AND i.subject = ?", (provider, str(subject))).fetchone()
+
+
+def link_identity(user_id, provider, subject, email=None):
+    conn = system_db()
+    conn.execute(
+        "INSERT INTO user_identities (provider, subject, user_id, email, created_at) "
+        "VALUES (?, ?, ?, ?, ?)", (provider, str(subject), user_id, email, _now()))
+    conn.commit()
+
+
+def unlink_identity(user_id, provider):
+    conn = system_db()
+    conn.execute("DELETE FROM user_identities WHERE user_id = ? AND provider = ?", (user_id, provider))
+    conn.commit()
+
+
+def list_identities(user_id):
+    return system_db().execute(
+        "SELECT * FROM user_identities WHERE user_id = ? ORDER BY created_at", (user_id,)).fetchall()
 
 
 # ---------------------------------------------------------------- tokens

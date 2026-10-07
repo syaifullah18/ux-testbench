@@ -53,6 +53,12 @@ def create_app(overrides=None):
     if app.config["TESTBENCH_MODE"] == "public" and not app.config.get("TESTING"):
         # A public instance is served over HTTPS, so the session cookie says so.
         app.config["SESSION_COOKIE_SECURE"] = True
+    if app.config["TESTBENCH_MODE"] == "public":
+        from .auth import password_login_enabled
+        from .oauth import enabled_providers
+        if not password_login_enabled() and not enabled_providers():
+            raise RuntimeError("PASSWORD_LOGIN=off needs a way to sign in: set GOOGLE_CLIENT_ID and "
+                               "GOOGLE_CLIENT_SECRET, or GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.")
     if not app.config["SECRET_KEY"]:
         log.warning("SECRET_KEY is not set; using a random key, so sessions reset on every restart.")
         app.config["SECRET_KEY"] = secrets.token_hex(32)
